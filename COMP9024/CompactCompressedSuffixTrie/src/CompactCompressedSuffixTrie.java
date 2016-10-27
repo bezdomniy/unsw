@@ -54,6 +54,7 @@ public class CompactCompressedSuffixTrie {
 		}
 
 		Node prefix = new Node(start,start+1);
+//		System.out.println(n+" "+prefix);
 		// System.out.println(prefix.getValue());
 		// String suffix = s.substring(1);
 		
@@ -62,7 +63,7 @@ public class CompactCompressedSuffixTrie {
 		Node leafPrefix = null;
 		// String leafSuffix = null;
 		for (Node l: n.children.values()) {
-			if (l.isTerminalNode()) {
+			if (l.isTerminalNode()  && l.getValue().length() > 1) {
 				leaf = l;
 				leafPrefix = new Node(leaf.startIndex,leaf.startIndex+1);
 				
@@ -77,8 +78,8 @@ public class CompactCompressedSuffixTrie {
 		else if (leaf != null && leafPrefix.getValue().equals(prefix.getValue())) {
 			
 //			 System.out.println("here");
-			Node next = splitNode(n);
-			makeBranch(leaf.startIndex+1,leaf.endIndex,n.getChild(next));
+			Node next = splitNode(leaf);
+			makeBranch(start,end,leaf);
 
 //			makeTree(leaf.startIndex+1,leaf.endIndex,n.addChild(leafPrefix));
 		}
@@ -91,7 +92,8 @@ public class CompactCompressedSuffixTrie {
 	public Node splitNode(Node n) {
 		Node ret = n.addChild(new Node(n.startIndex+1,n.endIndex));
 		n.endIndex = n.startIndex +1;
-		n.setTerminalNode(false);
+		n.setTerminalNode(true);
+//		ret.setTerminalNode(false);
 		
 		return ret;
 	}
