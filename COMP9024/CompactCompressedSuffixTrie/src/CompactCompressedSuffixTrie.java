@@ -66,7 +66,7 @@ public class CompactCompressedSuffixTrie {
 		Node leaf = null;
 		Node leafPrefix = null;
 		// String leafSuffix = null;
-		// System.out.println(n.children.values());
+		System.out.println(n+" "+n.children.values());
 		for (Node l: n.children.values()) {
 			// System.out.println(prefix+" "+l);
 			// if (l.isTerminalNode()  ) {
@@ -79,6 +79,7 @@ public class CompactCompressedSuffixTrie {
 		}
 		
 		if (n.hasChild(prefix)) {
+			System.out.println(prefix+"here");
 			makeBranch(start+1,end,n.getChild(prefix));
 		}
 		else if (leaf != null && leafPrefix.getValue().equals(prefix.getValue())) {
@@ -90,6 +91,7 @@ public class CompactCompressedSuffixTrie {
 //			makeTree(leaf.startIndex+1,leaf.endIndex,n.addChild(leafPrefix));
 		}
 		else {
+			System.out.println("here");
 			makeLeaf(start,end,n);
 		}
 	}
@@ -206,9 +208,9 @@ public class CompactCompressedSuffixTrie {
 			return this.children.containsValue(n);
 		}
 		
-		public Node getChild(int i) {
-			return this.children.get(i);
-		}
+		// public Node getChild(int i) {
+			// return this.children.get(i);
+		// }
 		
 		public boolean hasChild() {
 			return !this.children.isEmpty();
