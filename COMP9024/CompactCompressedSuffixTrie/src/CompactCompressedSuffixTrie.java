@@ -34,12 +34,13 @@ public class CompactCompressedSuffixTrie {
 		this.root = new Node();
 		this.text = readFile(f);
 	
-		makeTree(0,this.text.length()-1,this.root);
+		makeTree(0,this.text.length(),this.root);
 	}
 	
 	public void makeTree(int start, int end, Node n) {
 		while (!(start == end)) {
-			makeBranch(start,end+1,n);
+			// System.out.println(text.substring(start,end));
+			makeBranch(start,end,n);
 			start += 1;
 		}
 	}
@@ -50,6 +51,10 @@ public class CompactCompressedSuffixTrie {
 		
 		if (start == end+1) {
 //			n.setTerminalNode(true);
+			// return;
+		}
+		
+		if (n == null) {
 			return;
 		}
 
@@ -58,16 +63,17 @@ public class CompactCompressedSuffixTrie {
 		// System.out.println(prefix.getValue());
 		// String suffix = s.substring(1);
 		
-
 		Node leaf = null;
 		Node leafPrefix = null;
 		// String leafSuffix = null;
+		// System.out.println(n.children.values());
 		for (Node l: n.children.values()) {
-			if (l.isTerminalNode()  && l.getValue().length() > 1) {
+			// System.out.println(prefix+" "+l);
+			// if (l.isTerminalNode()  ) {
+			if (this.text.substring(l.startIndex,l.startIndex+1).equals(prefix.getValue()) ) {
+				// System.out.println("here");
 				leaf = l;
 				leafPrefix = new Node(leaf.startIndex,leaf.startIndex+1);
-				
-				// leafSuffix = leaf.value.substring(1,leaf.value.length() - 1);
 				break;
 			}
 		}
@@ -77,22 +83,22 @@ public class CompactCompressedSuffixTrie {
 		}
 		else if (leaf != null && leafPrefix.getValue().equals(prefix.getValue())) {
 			
-//			 System.out.println("here");
+			// System.out.println("split");
 			Node next = splitNode(leaf);
-			makeBranch(start,end,leaf);
+			makeLeaf(start+1,end,leaf);
 
 //			makeTree(leaf.startIndex+1,leaf.endIndex,n.addChild(leafPrefix));
 		}
 		else {
-			// System.out.println(n);
-			makeLeaf(start+1,end,n.addChild(prefix));
+			makeLeaf(start,end,n);
 		}
 	}
 	
 	public Node splitNode(Node n) {
 		Node ret = n.addChild(new Node(n.startIndex+1,n.endIndex));
 		n.endIndex = n.startIndex +1;
-		n.setTerminalNode(true);
+		n.setTerminalNode(false);
+		ret.setTerminalNode(true);
 //		ret.setTerminalNode(false);
 		
 		return ret;
@@ -101,20 +107,20 @@ public class CompactCompressedSuffixTrie {
 	public void makeLeaf(int start, int end, Node n) {
 		Node suffix = new Node(start,end);
 		n.addChild(suffix);
-		
 		suffix.setTerminalNode(true);
+		
 	}
 	
 	public void printTrie(Node pointer,int level) {
 		level+=1;
 		
-		String p = null;
-		if (pointer.parent == null) {
-			p = "null";
-		}
-		else {
-			p = pointer.parent.getValue().toString();
-		}
+		// String p = null;
+		// if (pointer.parent == null) {
+			// p = "null";
+		// }
+		// else {
+			// p = pointer.parent.getValue().toString();
+		// }
 		
 		ArrayList<Boolean> tValues = new ArrayList<Boolean>();
 		for (Node nd:pointer.children.values()) {
@@ -122,7 +128,7 @@ public class CompactCompressedSuffixTrie {
 		}
 		
 		// System.out.println("P: "+p+" L: "+level+" "+pointer.children.values()+" S: "+tValues);
-		System.out.println("P: "+p+" L: "+level+" "+pointer.children.values()+" T:"+tValues);
+		System.out.println("L: "+level+" "+pointer.children.values()+" T:"+tValues);
 		
 		Collection<Node> c = pointer.children.values();
 		Iterator<Node> iter = c.iterator();
@@ -138,7 +144,7 @@ public class CompactCompressedSuffixTrie {
 	}
 	
 	class Node {
-		Node parent = null;
+		// Node parent = null;
 		// String value = null;
 		boolean terminalNode;
 		int startIndex ;
@@ -186,15 +192,15 @@ public class CompactCompressedSuffixTrie {
 			
 		public Node addChild(Node n) {
 			// System.out.println(this);
-			n.setParent(this);
+			// n.setParent(this);
 			children.put(n.hashCode(),n);
 			
 			return n;
 		}
 		
-		public void setParent(Node n) {
-			this.parent = n;
-		}
+		// public void setParent(Node n) {
+			// this.parent = n;
+		// }
 		
 		public boolean hasChild(Node n) {
 			return this.children.containsValue(n);
