@@ -138,9 +138,6 @@ public class CompactCompressedSuffixTrie {
 	}
 	
 	public void makeLeaf(int start, int end, Node n) {
-		if (start==end) {
-			return;
-		}
 		Node suffix = new Node(start,end);
 		n.addChild(suffix);
 		suffix.setTerminalNode(true);

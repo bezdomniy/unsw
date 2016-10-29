@@ -32,11 +32,9 @@ public class CompactCompressedSuffixTrie {
 
 	public CompactCompressedSuffixTrie(String f) {
 		this.root = new Node();
-		
 		this.text = readFile(f);
 	
 		makeTree(0,this.text.length(),this.root);
-		this.root.setTerminalNode(true);
 	}
 	
 	public void makeTree(int start, int end, Node n) {
@@ -49,15 +47,16 @@ public class CompactCompressedSuffixTrie {
 	
 
 	public void makeBranch(int start, int end, Node n) {
+		// To fix - index out of range when using end+1
 		
 		if (start == end+1) {
 //			n.setTerminalNode(true);
 			// return;
 		}
 		
-//		if (n == null) {
-//			return;
-//		}
+		if (n == null) {
+			return;
+		}
 
 		Node prefix = new Node(start,start+1);
 //		System.out.println(n+" "+prefix);
@@ -76,7 +75,7 @@ public class CompactCompressedSuffixTrie {
 				int i = l.startIndex+1;
 				int j = start+1;
 				while (this.text.substring(l.startIndex,i).equals(this.text.substring(start,j))) {
-//					System.out.println(this.text.substring(l.startIndex,i)+" "+this.text.substring(start,j));
+					System.out.println(this.text.substring(l.startIndex,i)+" "+this.text.substring(start,j));
 
 					offset = i - l.startIndex;
 					if (i >= this.text.length() || j >= this.text.length()) {
@@ -95,41 +94,33 @@ public class CompactCompressedSuffixTrie {
 			}
 		}
 		
-//		if (n.hasChild(leaf) && leaf.getValue().equals(text.substring(leaf.startIndex,leaf.startIndex+offset))) {
-//			System.out.println(n.children.values()+" "+n);
-//			System.out.println(leaf+"here");
-//			makeBranch(start+offset,end,n.getChild(leaf));
-//		}
-//		else 
+		if (n.hasChild(leaf) && leaf.getValue().equals(text.substring(start,end))) {
+			System.out.println(n.children.values()+" "+n);
+			System.out.println(leaf+"here");
+			makeBranch(start+offset,end,n.getChild(leaf));
+		}
+		else 
 			if (leaf != null) {
 			
 			// System.out.println("split");
 			System.out.println("off"+offset+" "+start+" trying: "+text.substring(start,end));
 			Node next = splitNode(offset,leaf);
 			
-			System.out.println("here"+" "+this.text.substring(start+1, end));
-			makeLeaf(start+offset,end,leaf);
+			makeLeaf(start+1,end,leaf);
 
 //			makeTree(leaf.startIndex+1,leaf.endIndex,n.addChild(leafPrefix));
 		}
 		else {
-//			System.out.println("here"+" "+this.text.substring(start, end));
+//			System.out.println("here");
 			makeLeaf(start,end,n);
 		}
 	}
 	
 	public Node splitNode(int pos, Node n) {
 		System.out.println("In: "+n+" at: "+pos);
-		System.out.println(n.children.values());
-		
-		HashMap<Integer,Node> nChildren =  n.clearChildren();
 		Node ret = n.addChild(new Node(n.startIndex+pos,n.endIndex));
-		ret.setChildren(nChildren);
-		
-		System.out.println(n.children.values());
-		
 		n.endIndex = n.startIndex +pos;
-		n.setTerminalNode(true);
+		n.setTerminalNode(false);
 		ret.setTerminalNode(true);
 		System.out.println("Out: "+n+" "+ret);
 //		ret.setTerminalNode(false);
@@ -138,9 +129,6 @@ public class CompactCompressedSuffixTrie {
 	}
 	
 	public void makeLeaf(int start, int end, Node n) {
-		if (start==end) {
-			return;
-		}
 		Node suffix = new Node(start,end);
 		n.addChild(suffix);
 		suffix.setTerminalNode(true);
@@ -252,23 +240,8 @@ public class CompactCompressedSuffixTrie {
 		
 		public Node getChild(Node n) {
 			return this.children.get(n.hashCode());
-		}
-		
-		public HashMap<Integer,Node> getChildren() {
-			return this.children;
-		}
-		
-		public HashMap<Integer,Node> clearChildren() {
-			HashMap<Integer,Node> ret = this.children;
-			this.children = new HashMap<Integer,Node>();
-			return ret;
-		}
-		
-		public void setChildren(HashMap<Integer,Node> newChildren) {
-			this.children = newChildren;
-		}
-		
 
+		}
 	}
 	
 
