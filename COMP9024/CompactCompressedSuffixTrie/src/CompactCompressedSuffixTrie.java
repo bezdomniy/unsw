@@ -169,19 +169,26 @@ public class CompactCompressedSuffixTrie {
 	
 	public Node splitNode(int pos, Node n) {
 		HashMap<Integer,Node> nChildren =  n.clearChildren();
+		int start = n.startIndex;
+		int end = n.endIndex;
+		Node parent = n.parent;
 		
-//		Node newNode = new Node(n.startIndex,n.startIndex +pos);
-//		newNode.setParent(n.parent);
+	
+		n.parent.removeChild(n);
+		n = new Node(start,start +pos);		
+		n.setParent(parent);
+		
+		n.parent.addChild(n);
 //		System.out.println(pos+" splitting: "+n);
 		
-		Node addNode = new Node(n.startIndex+pos,n.endIndex);
+		Node addNode = new Node(start+pos,end);
 //		System.out.println("===========added node: "+addNode+" to: "+n);
 		Node ret = n.addChild(addNode);
 //		System.out.println("done");
 		ret.setChildren(nChildren);
 		ret.updateChildren();
 		
-		n.endIndex = n.startIndex +pos;
+//		n.endIndex = n.startIndex +pos;
 		n.setTerminalNode(true);
 		ret.setTerminalNode(true);
 		
@@ -270,6 +277,10 @@ public class CompactCompressedSuffixTrie {
 			n.parent=this;
 			return n;
 		}
+		
+		public Node removeChild(Node n) {
+			return this.children.remove(n.hashCode());
+		}
 
 		public boolean hasChild(Node n) {
 			return this.children.containsValue(n);
@@ -279,13 +290,13 @@ public class CompactCompressedSuffixTrie {
 			return !this.children.isEmpty();
 		}
 		
-//		public Node getChild(Node n) {
+		public Node getChild(Node n) {
 //			System.out.println("getChild: "+n.hashCode());
 //			for (Node x: this.children.values()) {
 //				 System.out.println(x+" "+x.hashCode());
 //			}
-//			return this.children.get(n.hashCode());
-//		}
+			return this.children.get(n.hashCode());
+		}
 		
 		public Node getChild(String s) {
 //			System.out.println("getChild: "+s.hashCode());
@@ -328,35 +339,41 @@ public class CompactCompressedSuffixTrie {
 	 public int findString(String s) {
 		 int stringPos = 0;
 		 int stringSearch = 1;
+		 Integer origin = null;
 		 Node treePos = this.root;
-		 Node nextPos = null;
+		 Node nextPos = this.root;
+		 
 		 
 		 while (stringPos != s.length()) {
-//			 System.out.println(s.substring(stringPos, stringSearch));
-//			 System.out.println(stringPos);
-			 while (stringSearch != s.length() ) {
-				 System.out.println(treePos.children.values());
+			 while (stringSearch-stringPos != s.length() ) {
+				 System.out.println(treePos.children.values()+" "+s.substring(stringPos, stringSearch)+stringPos+" "+stringSearch);
 				 
 				 nextPos = treePos.getChild(s.substring(stringPos, stringSearch));
-				 System.out.println(nextPos);
 
-				 
-//				 System.out.println("h "+s.substring(stringPos, stringSearch).hashCode()+" "+this.root.getChild(new Node(1,2)).hashCode());
-				 
 				 if (nextPos != null) {
+					 
 					 stringPos = stringSearch;
+					 stringSearch=stringPos+1;
+					 treePos = nextPos;
+					 System.out.println(stringPos+" "+stringSearch);
+					 
+					 if (origin == null) {
+						 origin=nextPos.startIndex;
+					 }
+					 System.out.println("here");
 					 break;
 				 }
+				 
 				 
 				 stringSearch++;
 			 }
 			 
-			 if (nextPos == null) {
+			 if (stringSearch-stringPos==s.length()) {
 				 return -1;
 			 }
 			 
 		 }
-		 return stringPos;
+		 return origin;
 	 } 
  /** Method for computing the degree of similarity of two DNA sequences stored
  in the text files f1 and f2 */
@@ -369,8 +386,8 @@ public class CompactCompressedSuffixTrie {
 		 */       
 		CompactCompressedSuffixTrie trie1 = new CompactCompressedSuffixTrie("file1.txt");
 //		CompactCompressedSuffixTrie trie2 = new CompactCompressedSuffixTrie("file2.txt");
-		trie1.printTrie(trie1.root,0);
-//		System.out.println("ANANA is at: " + trie1.findString("ANANA"));
+//		trie1.printTrie(trie1.root,0);
+		System.out.println("ANANA is at: " + trie1.findString("ANANA"));
 
 		
 		// System.out.println("FB".hashCode()+" "+"Ea".hashCode());
