@@ -32,7 +32,6 @@ public class CompactCompressedSuffixTrie {
 
 	public CompactCompressedSuffixTrie(String f) {
 		this.root = new Node();
-		
 		this.text = readFile(f);
 	
 		makeTree(0,this.text.length(),this.root);
@@ -41,98 +40,150 @@ public class CompactCompressedSuffixTrie {
 	
 	public void makeTree(int start, int end, Node n) {
 		while (!(start == end)) {
-			// System.out.println(text.substring(start,end));
 			makeBranch(start,end,n);
 			start += 1;
 		}
 	}
 	
+	public class Pair<A,B> {
+	    public final A a;
+	    public final B b;
 
-	public void makeBranch(int start, int end, Node n) {
-		
-		if (start == end+1) {
-//			n.setTerminalNode(true);
-			// return;
-		}
-		
-//		if (n == null) {
-//			return;
-//		}
-
-		Node prefix = new Node(start,start+1);
-//		System.out.println(n+" "+prefix);
-		// System.out.println(prefix.getValue());
-		// String suffix = s.substring(1);
-		
+	    public Pair(A a, B b) {
+	        this.a = a;
+	        this.b = b;
+	    }
+	};
+	
+	public Pair<Node, Integer> findChildAndOffset(int start, Node n) {
 		Node leaf = null;
-//		Node leafPrefix = null;
 		int offset=0;
-		// String leafSuffix = null;
-//		System.out.println(n+" "+n.children.values());
 		for (Node l: n.children.values()) {
-			// System.out.println(prefix+" "+l);
-			// if (l.isTerminalNode()  ) {
-			if (this.text.substring(l.startIndex,l.startIndex+1).equals(prefix.getValue()) ) {
+			if (this.text.substring(l.startIndex,l.startIndex+1).equals(this.text.substring(start, start+1)) ) {
 				int i = l.startIndex+1;
 				int j = start+1;
 				while (this.text.substring(l.startIndex,i).equals(this.text.substring(start,j))) {
-//					System.out.println(this.text.substring(l.startIndex,i)+" "+this.text.substring(start,j));
-
 					offset = i - l.startIndex;
 					if (i >= this.text.length() || j >= this.text.length()) {
-						
 						break;
 					}
 					i++;
 					j++;
-//					System.out.println(this.text.substring(l.startIndex,i));
 				}
-				// System.out.println("here");
-				leaf = l;
-//				leafPrefix = new Node(leaf.startIndex,leaf.startIndex+1);
-//				leafPrefix = new Node(leaf.startIndex,j);
+				if (leaf == null || l.toString().length() >= leaf.toString().length()) {
+					leaf = l;
+				}
+				
+//				System.out.println("found: "+l);
+				
 				break;
 			}
 		}
-		
-//		if (n.hasChild(leaf) && leaf.getValue().equals(text.substring(leaf.startIndex,leaf.startIndex+offset))) {
-//			System.out.println(n.children.values()+" "+n);
-//			System.out.println(leaf+"here");
-//			makeBranch(start+offset,end,n.getChild(leaf));
-//		}
-//		else 
-			if (leaf != null) {
-			
-			// System.out.println("split");
-			System.out.println("off"+offset+" "+start+" trying: "+text.substring(start,end));
-			Node next = splitNode(offset,leaf);
-			
-			System.out.println("here"+" "+this.text.substring(start+1, end));
-			makeLeaf(start+offset,end,leaf);
+		return new Pair<Node, Integer>(leaf,offset);
+	}
 
-//			makeTree(leaf.startIndex+1,leaf.endIndex,n.addChild(leafPrefix));
+	public void makeBranch(int start, int end, Node n) {
+		int offset=0;
+		Pair<Node,Integer> child = findChildAndOffset(start,n);
+		Node leaf = child.a;
+		offset = child.b;
+//		System.out.println(this.text.substring(start, end)+" leaf "+leaf);
+		
+
+		if (leaf != null) {
+//			System.out.println("adding: "+this.text.substring(start, end)+" to "+leaf.toString());
+			
+			int textRun = start+1;
+			int leafRun = 1;
+			
+//			System.out.println("STRING"+leaf.toString());
+			
+			while (textRun < this.text.length() && leafRun < leaf.toString().length()+1  && this.text.substring(start, textRun).equals(leaf.toString().substring(0, leafRun))) {
+//				System.out.println(this.text.substring(start, textRun)+" "+leaf.toString().substring(0, leafRun));
+				
+				leafRun++;
+				textRun++;
+			}
+//			System.out.println("adding: "+this.text.substring(start, end)+" to "+leaf.toString());
+
+			boolean moveCondition = leaf.toString().length() == leafRun-1 && 
+									this.text.substring(start, end).length() != 1;	
+			if (moveCondition ) {
+				Node nextLeaf = leaf;
+				int nextOffset=0;
+				int nextSubstringOffset = 1;
+				while (true) {
+//					System.out.println(n.children.values());
+//					System.out.println("========here========="+nextLeaf+" s: "+start);
+					
+					Pair<Node,Integer> nextChild = findChildAndOffset(nextSubstringOffset,nextLeaf);
+//					System.out.println("====="+nextChild.a);
+					
+					if (nextChild.a == null) {
+						leaf = nextLeaf;
+						offset = nextOffset;
+						break;
+					}
+					nextLeaf = nextChild.a;
+					nextOffset = nextChild.b;
+							
+					nextSubstringOffset++;
+				}
+//				System.out.println("out "+leaf+" leafrun "+leafRun);
+				if (!(leaf.toString().length() == leafRun-1)) {
+//					System.out.println("offset: "+offset);
+					splitNode(offset,leaf);
+					
+				}
+				else {
+//					System.out.println(this.text.substring(start+nextSubstringOffset,end));
+//					leaf.addChild(new Node(start+nextSubstringOffset,end));
+					if (!leaf.children.values().contains(new Node(start+nextSubstringOffset,end))) {
+						makeLeaf(start+nextSubstringOffset,end,leaf);
+					}
+					
+//					System.out.println("==================================="+leaf);
+				}
+
+					
+
+			}
+			else {
+//				System.out.println("here-");
+				if (!(leaf.toString().length() == 1)) {
+					splitNode(offset,leaf);
+				}
+				
+				makeLeaf(start+offset,end,leaf);
+//				System.out.println("adding: "+this.text.substring(start, end)+" to "+leaf.toString());
+//				System.out.println(leaf.children.values());
+			}
+			
+
 		}
 		else {
-//			System.out.println("here"+" "+this.text.substring(start, end));
 			makeLeaf(start,end,n);
 		}
+//		printTrie(this.root,0);
 	}
 	
 	public Node splitNode(int pos, Node n) {
-		System.out.println("In: "+n+" at: "+pos);
-		System.out.println(n.children.values());
-		
 		HashMap<Integer,Node> nChildren =  n.clearChildren();
-		Node ret = n.addChild(new Node(n.startIndex+pos,n.endIndex));
-		ret.setChildren(nChildren);
 		
-		System.out.println(n.children.values());
+//		Node newNode = new Node(n.startIndex,n.startIndex +pos);
+//		newNode.setParent(n.parent);
+//		System.out.println(pos+" splitting: "+n);
+		
+		Node addNode = new Node(n.startIndex+pos,n.endIndex);
+//		System.out.println("===========added node: "+addNode+" to: "+n);
+		Node ret = n.addChild(addNode);
+//		System.out.println("done");
+		ret.setChildren(nChildren);
+		ret.updateChildren();
 		
 		n.endIndex = n.startIndex +pos;
 		n.setTerminalNode(true);
 		ret.setTerminalNode(true);
-		System.out.println("Out: "+n+" "+ret);
-//		ret.setTerminalNode(false);
 		
 		return ret;
 	}
@@ -149,40 +200,27 @@ public class CompactCompressedSuffixTrie {
 	
 	public void printTrie(Node pointer,int level) {
 		level+=1;
-		
-		// String p = null;
-		// if (pointer.parent == null) {
-			// p = "null";
-		// }
-		// else {
-			// p = pointer.parent.getValue().toString();
-		// }
-		
-		ArrayList<Boolean> tValues = new ArrayList<Boolean>();
+
+		ArrayList<Node> parents = new ArrayList<Node>();
 		for (Node nd:pointer.children.values()) {
-			tValues.add(nd.isTerminalNode());
+			parents.add(nd.parent);
 		}
 		
-		// System.out.println("P: "+p+" L: "+level+" "+pointer.children.values()+" S: "+tValues);
-		System.out.println("L: "+level+" "+pointer.children.values()+" T:"+tValues);
+		System.out.println("L: "+level+" "+pointer.children.values()+" T:"+parents);
 		
 		Collection<Node> c = pointer.children.values();
 		Iterator<Node> iter = c.iterator();
 
 		while (iter.hasNext()) {
-			// System.out.println(iter.next());
 			Node n = iter.next();
-			
 			printTrie(n,level);
-
 		}
 		
 	}
 	
 	class Node {
-		// Node parent = null;
-		// String value = null;
 		boolean terminalNode;
+		Node parent = null;
 		int startIndex ;
 		int endIndex ;
 		
@@ -212,9 +250,10 @@ public class CompactCompressedSuffixTrie {
 		
 		HashMap<Integer,Node> children = new HashMap<Integer,Node>();
 		
+		
+		
 		public String getValue() {
-			// System.out.println(String.valueOf(startIndex)+" "+String.valueOf(endIndex)); 
-			// System.out.println(CompactCompressedSuffixTrie.text.substring(startIndex,endIndex));
+
 			return text.substring(startIndex,endIndex);
 		}
 		
@@ -227,31 +266,33 @@ public class CompactCompressedSuffixTrie {
 		} 
 			
 		public Node addChild(Node n) {
-			// System.out.println(this);
-			// n.setParent(this);
 			children.put(n.hashCode(),n);
-			
+			n.parent=this;
 			return n;
 		}
-		
-		// public void setParent(Node n) {
-			// this.parent = n;
-		// }
-		
+
 		public boolean hasChild(Node n) {
 			return this.children.containsValue(n);
 		}
-		
-		// public Node getChild(int i) {
-			// return this.children.get(i);
-		// }
 		
 		public boolean hasChild() {
 			return !this.children.isEmpty();
 		}
 		
-		public Node getChild(Node n) {
-			return this.children.get(n.hashCode());
+//		public Node getChild(Node n) {
+//			System.out.println("getChild: "+n.hashCode());
+//			for (Node x: this.children.values()) {
+//				 System.out.println(x+" "+x.hashCode());
+//			}
+//			return this.children.get(n.hashCode());
+//		}
+		
+		public Node getChild(String s) {
+//			System.out.println("getChild: "+s.hashCode());
+//			for (int x: this.children.keySet()) {
+//				 System.out.println(x+" "+x);
+//			}
+			return this.children.get(s.hashCode());
 		}
 		
 		public HashMap<Integer,Node> getChildren() {
@@ -264,6 +305,16 @@ public class CompactCompressedSuffixTrie {
 			return ret;
 		}
 		
+		public void setParent(Node n) {
+			this.parent = n;
+		}
+		
+		public void updateChildren() {
+			for (Node c:this.children.values()) {
+				c.setParent(this);
+			}
+		}
+		
 		public void setChildren(HashMap<Integer,Node> newChildren) {
 			this.children = newChildren;
 		}
@@ -274,9 +325,39 @@ public class CompactCompressedSuffixTrie {
 
  /** Method for finding the first occurrence of a pattern s in the DNA sequence */
 
-	// public int findString(String s) {
-	 
-	// } 
+	 public int findString(String s) {
+		 int stringPos = 0;
+		 int stringSearch = 1;
+		 Node treePos = this.root;
+		 Node nextPos = null;
+		 
+		 while (stringPos != s.length()) {
+//			 System.out.println(s.substring(stringPos, stringSearch));
+//			 System.out.println(stringPos);
+			 while (stringSearch != s.length() ) {
+				 System.out.println(treePos.children.values());
+				 
+				 nextPos = treePos.getChild(s.substring(stringPos, stringSearch));
+				 System.out.println(nextPos);
+
+				 
+//				 System.out.println("h "+s.substring(stringPos, stringSearch).hashCode()+" "+this.root.getChild(new Node(1,2)).hashCode());
+				 
+				 if (nextPos != null) {
+					 stringPos = stringSearch;
+					 break;
+				 }
+				 
+				 stringSearch++;
+			 }
+			 
+			 if (nextPos == null) {
+				 return -1;
+			 }
+			 
+		 }
+		 return stringPos;
+	 } 
  /** Method for computing the degree of similarity of two DNA sequences stored
  in the text files f1 and f2 */
 	 // public static float similarityAnalyser(String f1, String f2, String f3) {
@@ -289,8 +370,8 @@ public class CompactCompressedSuffixTrie {
 		CompactCompressedSuffixTrie trie1 = new CompactCompressedSuffixTrie("file1.txt");
 //		CompactCompressedSuffixTrie trie2 = new CompactCompressedSuffixTrie("file2.txt");
 		trie1.printTrie(trie1.root,0);
-//		System.out.println("==========");
-//		trie1.printTrie(trie2.root,0);
+//		System.out.println("ANANA is at: " + trie1.findString("ANANA"));
+
 		
 		// System.out.println("FB".hashCode()+" "+"Ea".hashCode());
 		
