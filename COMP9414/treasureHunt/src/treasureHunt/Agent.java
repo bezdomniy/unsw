@@ -465,28 +465,45 @@ public class Agent {
 	   for (int i = 0; i < world.size(); i++) {
 		   for (int j = 0; j < world.get(i).size(); j++) {
 			   int[] nextPos = {i,j};
-			   if (i != j && !obstacles.contains(getValueAt(nextPos)) && checkReachable(nextPos) ) {
+			   if (i != j && !obstacles.contains(getValueAt(nextPos)) && checkReachable(nextPos) && !Arrays.equals(nextPos, worldPosition) ) {
 				   
 				   int nextManDist = manDistTo(nextPos, objective, 0);
-				   manDistPositionsMap.put(nextPos, nextManDist);
+				   int distFromEdge = distFromNearestEdge(nextPos);
+				   manDistPositionsMap.put(nextPos, nextManDist+distFromEdge);
 			   }
 		   }
 	   }
 	   
-	   int minDist = Collections.min(manDistPositionsMap.values());
-	   Map<int[],Integer> candidates = new HashMap<int[],Integer>();
-	   
+//	   int minDist = Collections.min(manDistPositionsMap.values());
+//	   Map<int[],Integer> candidates = new HashMap<int[],Integer>();
+//	   
+//
+//	   for (Entry<int[], Integer> entry : manDistPositionsMap.entrySet()) {
+//	       if (/*minDist == entry.getValue() &&*/ !Arrays.equals(entry.getKey(), worldPosition)) {
+//	           candidates.put(entry.getKey(),distFromNearestEdge(entry.getKey()));
+//	       }
+//	   }
+//	   
+//	   for (int[] v: candidates.keySet()) {
+//		   System.out.println("key "+v[0]+" "+v[1]);
+//	   }
+//	   
+//	   for (Integer v: candidates.values()) {
+//		   System.out.println("val "+v);
+//	   }
 
-	   for (Entry<int[], Integer> entry : manDistPositionsMap.entrySet()) {
-	       if (minDist == entry.getValue() && !Arrays.equals(entry.getKey(), worldPosition)) {
-	           candidates.put(entry.getKey(),distFromNearestEdge(entry.getKey()));
-	       }
-	   }
 
-	   return Collections.min(candidates.entrySet(),
+	   return Collections.min(manDistPositionsMap.entrySet(),
                Comparator.comparingInt(Entry::getValue)).getKey();
    }
-
+   
+//   public int checkDirection(int[] position) {
+//	   
+//	   
+//	return c;
+//	   
+//   }
+   
    public boolean checkReachable(int[] position) {
 	   
 	   Position pos = new Position(position[0],position[1]);
