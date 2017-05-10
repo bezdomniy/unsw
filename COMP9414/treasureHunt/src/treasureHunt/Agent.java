@@ -7,6 +7,7 @@ package treasureHunt;
 */
 
 import java.util.*;
+import java.util.Map.Entry;
 import java.io.*;
 import java.net.*;
 
@@ -30,6 +31,7 @@ public class Agent {
    
    private int[] objective = {2,2};
    private List<Character> nextMoves = new ArrayList<Character>();
+   Set<Character> obstacles = new HashSet<Character>();
    
    private int[] worldPosition = {2,2};
    
@@ -40,6 +42,74 @@ public class Agent {
       
    private Map<Integer, Integer[]> forward = new HashMap<Integer,Integer[]>();
    
+   
+   public class Position {
+	   private int row;
+	   private int col;
+	   
+	   @Override
+	   public boolean equals(Object object) {
+		   return this.row == ((Position) object).getRow() && this.col == ((Position) object).getCol();
+		   
+	   }
+	   
+	   @Override
+	    public int hashCode() {
+	        return Objects.hash(this.row,this.col);
+	    }
+	   
+	   @Override
+	   public String toString() {
+		   return String.format("["+this.row+","+this.col+"]");
+		   
+	   }
+	   
+	   public Position north() {
+		   if (this.getRow()-1 >= 0) {
+			   return new Position(this.getRow()-1,this.getCol());
+		   }
+		   return null;
+	   }
+	   
+	   public Position south() {
+		   if (this.getRow()+1 < world.size()) {
+			   return new Position(this.getRow()+1,this.getCol());
+		   }
+		   return null;
+	   }
+	   
+	   public Position east() {
+		   if (this.getCol()+1 < world.get(0).size()) {
+			   return new Position(this.getRow(),this.getCol()+1);
+		   }
+		   return null;
+	   }
+	   
+	   public Position west() {
+		   if (this.getCol()-1 >= 0) {
+			   return new Position(this.getRow(),this.getCol() - 1);
+		   }
+		   return null;
+	   }
+	   
+	   
+	   
+	   
+	   public Position(int row, int col) {
+	       this.row = row;
+	       this.col = col;
+	    }
+
+	   public int getRow() {
+	       return row;
+	   }
+
+	   public int getCol() {
+	       return col;
+	   }
+	   
+	   
+   }
    
    public class Node {
 	   private int[] position;
@@ -67,7 +137,7 @@ public class Agent {
 	   {
 	       if (object != null && object instanceof Node)
 	       {
-	           return Arrays.equals(this.position, ((Node) object).getPosition()) && this.orientation == ((Node) object).getOrientation();
+	           return this.position.equals(((Node) object).getPosition()) && this.orientation == ((Node) object).getOrientation();
 	       }
 
 	       return false;
@@ -80,7 +150,7 @@ public class Agent {
 	   
 	   @Override
 	   public String toString() {
-		   return String.format("Pos: "+this.position[0]+" "+this.position[1]+", Ori: "+this.orientation+" Fsc: "+this.f);
+		   return String.format("Pos: "+this.position[0]+" "+this.position[1]+", Ori: "+this.orientation);
 		   
 	   }
 	   
@@ -172,6 +242,11 @@ public class Agent {
 	   forward.put(2, new Integer[]{1,0});
 	   forward.put(3, new Integer[]{0,-1});
 	   
+	   obstacles.add('-');
+	   obstacles.add('*');
+	   obstacles.add('T');
+	   obstacles.add('~');
+	   
 	   
 //	   int[] t = {1,2};
 //	   orientation = 2;
@@ -185,6 +260,10 @@ public class Agent {
    
    public char getValueAt(int[] position) {
 	   return world.get(position[0]).get(position[1]);
+   }
+   
+   public char getValueAt(Position position) {
+	   return world.get(position.getRow()).get(position.getCol());
    }
 
    
@@ -206,7 +285,7 @@ public class Agent {
 	   
 
 	   
-	   System.out.println(path);
+//	   System.out.println(path);
 	   return path;
    }
 	   
@@ -229,8 +308,9 @@ public class Agent {
 		   Node current = Collections.min(open, new fScoreComparator());
 //		   System.out.println("open: "+open);
 //		   System.out.println("Fmin: "+current.toString());
-		   
-		   if (current.getSymbol() == getValueAt(Goal)) {
+//		   
+//		   if (current.getSymbol() == getValueAt(Goal)) {
+		   if (Arrays.equals(current.position, Goal)) {
 //			   System.out.println("****************************** "+current.getSymbol());
 			   return make_path(origins, current);
 		   }
@@ -302,7 +382,7 @@ public class Agent {
   
 	   manDist = Math.abs(position[0] - objective[0]) + Math.abs(position[1] - objective[1]);
 	   
-	   if (manDist == 0) return manDist;
+	   if (manDist == 0 || orientation == 9) return manDist;
 	   
 	   if (position[1] == objective[1] && orientation == 0 && position[0] > objective[0]) {
 		   turnCost = 0;
@@ -333,18 +413,35 @@ public class Agent {
 	   }
 	   
 	   return manDist + turnCost;
-
+   
+   }
+   
+   public int distFromNearestEdge(int[] position) {
+	   Set<Integer> distToEdge = new HashSet<Integer>();
 	   
+	   for (int i: new int[]{0,world.size()-1}) {
+		   for (int j = 0; j < world.get(0).size(); j++) {
+//			   System.out.println(i+" "+j+" "+manDistTo(position,new int[]{i,j},9));
+			   distToEdge.add(manDistTo(position,new int[]{i,j},9));
+		   }
+	   }
+	   for (int i: new int[]{0,world.get(0).size()-1}) {
+		   for (int j = 0; j < world.size(); j++) {
+//			   System.out.println(i+" "+j+" "+manDistTo(position,new int[]{i,j},9));
+			   distToEdge.add(manDistTo(position,new int[]{i,j},9));
+		   }
+	   }
+	   
+	   return Collections.min(distToEdge);
    }
    
    public void findObjective() {
-//	   int[] objective = {worldPosition[0],worldPosition[1]};
-	   int highestValue = 0;
-	   int nextValue = 0;
+	   double highestValue = 0d;
+	   double nextValue = 0d;
 	   for (int i = 0; i < world.size(); i++) {
 		   for (int j = 0; j < world.get(i).size(); j++) {
 			   if (symbolValues.get(world.get(i).get(j)) != null) {
-				   nextValue =  symbolValues.get(world.get(i).get(j));
+				   nextValue =  ((double) symbolValues.get(world.get(i).get(j))) / manDistTo(worldPosition, new int[]{i,j}, orientation) ;
 				   if (nextValue > highestValue) {
 					   highestValue = nextValue;
 					   objective[0] = i;
@@ -362,32 +459,107 @@ public class Agent {
 
    }
    
-   public boolean checkReachable(int[] objective) {
-	   List<Character> path = new ArrayList<Character>();
-	   path = astar(objective, worldPosition);
-	   System.out.println("Reachable path: "+path);
+   public int[] findNearestTo(int[] objective) {
+	   Map<int[],Integer> manDistPositionsMap = new HashMap<int[],Integer>();
 	   
-	return !path.isEmpty();
+	   for (int i = 0; i < world.size(); i++) {
+		   for (int j = 0; j < world.get(i).size(); j++) {
+			   int[] nextPos = {i,j};
+			   if (i != j && !obstacles.contains(getValueAt(nextPos)) && checkReachable(nextPos) ) {
+				   
+				   int nextManDist = manDistTo(nextPos, objective, 0);
+				   manDistPositionsMap.put(nextPos, nextManDist);
+			   }
+		   }
+	   }
 	   
+	   int minDist = Collections.min(manDistPositionsMap.values());
+	   Map<int[],Integer> candidates = new HashMap<int[],Integer>();
+	   
+
+	   for (Entry<int[], Integer> entry : manDistPositionsMap.entrySet()) {
+	       if (minDist == entry.getValue() && !Arrays.equals(entry.getKey(), worldPosition)) {
+	           candidates.put(entry.getKey(),distFromNearestEdge(entry.getKey()));
+	       }
+	   }
+
+	   return Collections.min(candidates.entrySet(),
+               Comparator.comparingInt(Entry::getValue)).getKey();
+   }
+
+   public boolean checkReachable(int[] position) {
+	   
+	   Position pos = new Position(position[0],position[1]);
+	   Position wp = new Position(worldPosition[0],worldPosition[1]);
+	   
+	   Set<Position> open = new HashSet<Position>();
+	   Set<Position> closed = new HashSet<Position>();
+	   
+	   open.add(pos);
+
+	   while (!open.isEmpty()) {
+//		   System.out.println("Open: "+open.toString());
+//		   System.out.println("Closed: "+closed);
+		   
+		   Iterator<Position> o = open.iterator();
+
+		   Position current = o.next();
+		   
+		   if (current.equals(wp)) {
+//			   System.out.println("Reachable path");
+			   return true;
+		   }
+		   
+		   Position north = current.north();
+		   Position south = current.south();
+		   Position east = current.east();
+		   Position west = current.west();
+		   
+		   if (north != null && !obstacles.contains(getValueAt(north)) && !closed.contains(north)) {
+			   open.add(north);
+		   }
+
+		   if (south != null && !obstacles.contains(getValueAt(south)) && !closed.contains(south)) {
+			   open.add(south);
+		   }
+		   
+		   if (east != null && !obstacles.contains(getValueAt(east)) && !closed.contains(east)) {
+			   open.add(east);
+		   }
+		   
+		   if (west != null && !obstacles.contains(getValueAt(west)) && !closed.contains(west)) {
+			   open.add(west);
+		   }
+
+		   open.remove(current);
+		   closed.add(current);
+	   }
+	   
+	   return false;
    }
    
    
    public char move() {
-	   
-	   
 	   if (nextMoves == null || nextMoves.isEmpty()) {
 		   
 		   findObjective();
 		   
 		   System.out.println("new objective: "+objective[0]+" "+objective[1]);
-//		   if (checkReachable(objective)) {
-			   nextMoves = astar(worldPosition, objective);
-//		   }
+		   if (!checkReachable(objective)) {
+//			   System.out.println("Not reachable");
+			   objective = findNearestTo(objective);
+			   
+			   
+			   System.out.println("Not reachable: "+objective[0]+" "+objective[1]);
+//			   System.exit(-1);
+		   }
+		   nextMoves = astar(worldPosition, objective);
+//		   System.out.println(worldPosition[0]+" "+worldPosition[1]+" "+objective[0]+" "+objective[1]);
 		   
 
 	   }
 //	   System.out.println(nextMoves);
-	   System.out.println(nextMoves.get(nextMoves.size()-1));
+	   System.out.println("Next move: "+nextMoves.get(nextMoves.size()-1));
 	   
 	   return nextMoves.remove(nextMoves.size()-1);
    }
