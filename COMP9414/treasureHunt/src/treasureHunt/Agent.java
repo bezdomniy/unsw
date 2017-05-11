@@ -29,11 +29,11 @@ public class Agent {
    private int lastMoveSuccessful = 0;
    private char lastMove = ' ';
    
-   private int[] objective = {2,2};
+   private Position objective = new Position(2,2);
    private List<Character> nextMoves = new ArrayList<Character>();
    Set<Character> obstacles = new HashSet<Character>();
    
-   private int[] worldPosition = {2,2};
+   private Position worldPosition = new Position(2,2);
    
    
    private int[] positionRelativeToStart = {0,0};
@@ -46,6 +46,11 @@ public class Agent {
    public class Position {
 	   private int row;
 	   private int col;
+	   
+	   public Position(int row, int col) {
+	       this.row = row;
+	       this.col = col;
+	    }
 	   
 	   @Override
 	   public boolean equals(Object object) {
@@ -97,12 +102,15 @@ public class Agent {
 	   }
 	   
 	   
-	   
-	   
-	   public Position(int row, int col) {
+	   public void setRow(int row) {
 	       this.row = row;
+	   }
+
+	   public void setCol(int col) {
 	       this.col = col;
-	    }
+	   }
+	   
+	   
 
 	   public int getRow() {
 	       return row;
@@ -116,7 +124,7 @@ public class Agent {
    }
    
    public class Node {
-	   private int[] position;
+	   private Position position;
 	   private int g;
 	   private int h;
 	   private int f;
@@ -130,7 +138,7 @@ public class Agent {
 	
 	   public Node() {}
 	   
-	   public Node(int[] position, Character symbol, int orientation) {
+	   public Node(Position position, Character symbol, int orientation) {
 		   this.position = position;
 		   this.symbol = symbol;
 		   this.orientation = orientation;
@@ -154,7 +162,7 @@ public class Agent {
 	   
 	   @Override
 	   public String toString() {
-		   return String.format("Pos: "+this.position[0]+" "+this.position[1]+", Ori: "+this.orientation);
+		   return String.format("Pos: "+this.position.getRow()+" "+this.position.getCol()+", Ori: "+this.orientation);
 		   
 	   }
 	   
@@ -194,7 +202,7 @@ public class Agent {
 		   return this.symbol;
 	   }
 	   
-	   public int[] getPosition() {
+	   public Position getPosition() {
 		   return this.position;
 	   }
 	   
@@ -301,7 +309,7 @@ public class Agent {
 	   
    
    
-   public List<Character> astar(int[] position, int[] Goal) {
+   public List<Character> astar(Position position, Position goal) {
 	   Node start = new Node(position,getValueAt(position),orientation);
 	   Set<Node> closed = new HashSet<Node>();
 	   Set<Node> open = new HashSet<Node>();
@@ -310,7 +318,7 @@ public class Agent {
 	   Map<Node,Node> origins = new HashMap<Node,Node>();
 	   
 	   start.setG(0);
-	   start.setH(manDistTo(position, Goal, start.getOrientation()));
+	   start.setH(manDistTo(position, goal, start.getOrientation()));
 	   start.updateF();
 	   
 	   while (!open.isEmpty()) {
@@ -320,14 +328,14 @@ public class Agent {
 //		   System.out.println("Fmin: "+current.toString());
 //		   
 //		   if (current.getSymbol() == getValueAt(Goal)) {
-		   if (Arrays.equals(current.position, Goal)) {
+		   if (current.getPosition().equals(goal)) {
 //			   System.out.println("****************************** "+current.getSymbol());
 			   return make_path(origins, current);
 		   }
 		   
 		   
-		   int[] forwardPosition = {current.getPosition()[0]+forward.get(current.orientation)[0],current.getPosition()[1]+forward.get(current.orientation)[1]};
-		   if (forwardPosition[0] >= 0 && forwardPosition[1] >= 0 && forwardPosition[0] < world.size() && forwardPosition[1] < world.get(0).size()) {
+		   Position forwardPosition = new Position(current.getPosition().getRow()+forward.get(current.orientation)[0],current.getPosition().getCol()+forward.get(current.orientation)[1]);
+		   if (forwardPosition.getRow() >= 0 && forwardPosition.getCol() >= 0 && forwardPosition.getRow() < world.size() && forwardPosition.getCol() < world.get(0).size()) {
 			   
 			   char forwardSymbol = getValueAt(forwardPosition) ;
 			   Node forw = new Node(forwardPosition,forwardSymbol,current.getOrientation());
@@ -372,7 +380,7 @@ public class Agent {
 //				   System.out.println("adding: "+current.toString()+" to: "+child.toString()+" with move: "+child.getMove());
 				   origins.put(child, current);
 				   child.setG(temp_g);
-				   child.setH(manDistTo(child.getPosition(), Goal, child.getOrientation()));
+				   child.setH(manDistTo(child.getPosition(), goal, child.getOrientation()));
 				   child.updateF();
 				   if (!open.contains(child)) {
 					   open.add(child);
@@ -385,37 +393,37 @@ public class Agent {
 	   return null;
 	}
 	   
-   public int manDistTo(int[] position, int[] objective, int orientation) {
+   public int manDistTo(Position position, Position objective, int orientation) {
 	   int manDist = 0;
 	   int turnCost = 0;
 	   
   
-	   manDist = Math.abs(position[0] - objective[0]) + Math.abs(position[1] - objective[1]);
+	   manDist = Math.abs(position.getRow() - objective.getRow()) + Math.abs(position.getCol() - objective.getCol());
 	   
 	   if (manDist == 0 || orientation == 9) return manDist;
 	   
-	   if (position[1] == objective[1] && orientation == 0 && position[0] > objective[0]) {
+	   if (position.getCol() == objective.getCol() && orientation == 0 && position.getRow() > objective.getRow()) {
 		   turnCost = 0;
 	   }
-	   else if (position[1] == objective[1] && orientation == 2 && position[0] < objective[0]) {
+	   else if (position.getCol() == objective.getCol() && orientation == 2 && position.getRow() < objective.getRow()) {
 		   turnCost = 0;
 	   }
-	   else if (position[0] == objective[0] && orientation == 3 && position[1] > objective[1]) {
+	   else if (position.getRow() == objective.getRow() && orientation == 3 && position.getCol() > objective.getCol()) {
 		   turnCost = 0;
 	   }
-	   else if (position[0] == objective[0] && orientation == 1 && position[1] < objective[1]) {
+	   else if (position.getRow() == objective.getRow() && orientation == 1 && position.getCol() < objective.getCol()) {
 		   turnCost = 0;
 	   }
-	   else if (position[0] >= objective[0] && (orientation == 0 )) {
+	   else if (position.getRow() >= objective.getRow() && (orientation == 0 )) {
 		   turnCost = 1;
 	   }
-	   else if (position[0] <= objective[0] && (orientation == 2)) {
+	   else if (position.getRow() <= objective.getRow() && (orientation == 2)) {
 		   turnCost = 1;
 	   }
-	   else if (position[1] <= objective[1] && (orientation == 1 )) {
+	   else if (position.getCol() <= objective.getCol() && (orientation == 1 )) {
 		   turnCost = 1;
 	   }
-	   else if (position[1] >= objective[1] && (orientation == 3)) {
+	   else if (position.getCol() >= objective.getCol() && (orientation == 3)) {
 		   turnCost = 1;
 	   }
 	   else {
@@ -426,7 +434,7 @@ public class Agent {
    
    }
    
-   public int distFromNearestEdge(int[] position) {
+   public int distFromNearestEdge(Position position) {
 //	   Set<Integer> distToEdge = new HashSet<Integer>();
 //	   
 //	   for (int i: new int[]{0,world.size()-1}) {
@@ -441,14 +449,14 @@ public class Agent {
 //	   }
 //	   
 //	   return Collections.min(distToEdge);
-	   int[] nearestEdge = findNearestReachableEdge(position);
+	   Position nearestEdge = findNearestReachableEdge(position);
 	   return manDistTo(position,nearestEdge,9);
 	   
 	   
    }
    
-   public int[] findNearestReachableEdge(int[] position) {
-	   int[] nearestEdge = new int[]{worldPosition[0],worldPosition[1]};
+   public Position findNearestReachableEdge(Position position) {
+	   Position nearestEdge = new Position(worldPosition.getRow(),worldPosition.getCol());
 	   
 	   int edgeDist = Integer.MAX_VALUE;
 	   
@@ -467,12 +475,12 @@ public class Agent {
 				   }
 			   }
 			   
-			   int[] nextEdge = new int[]{i,j};
+			   Position nextEdge = new Position(i,j);
 			   int nextEdgeDist = manDistTo(worldPosition, nextEdge, orientation);
 			   if (nextEdgeDist < edgeDist && !obstacles.contains(getValueAt(nextEdge)) && checkReachable(worldPosition,nextEdge)) {
 				   edgeDist = nextEdgeDist;
-				   nearestEdge[0] = i;
-				   nearestEdge[1] = j;
+				   nearestEdge.setRow(i);
+				   nearestEdge.setCol(j);
 			   }
 			   
 			   i = old_i;
@@ -493,12 +501,12 @@ public class Agent {
 				   }
 			   }
 			   
-			   int[] nextEdge =	new int[]{j,i};
+			   Position nextEdge =	new Position(j,i);
 			   int nextEdgeDist = manDistTo(worldPosition,nextEdge , orientation);
 			   if (nextEdgeDist < edgeDist && !obstacles.contains(getValueAt(nextEdge)) && checkReachable(worldPosition,nextEdge)) {
 				   edgeDist = nextEdgeDist;
-				   nearestEdge[0] = j;
-				   nearestEdge[1] = i;
+				   nearestEdge.setRow(j);
+				   nearestEdge.setCol(i);
 			   }
 			   
 			   i = old_i;
@@ -517,12 +525,12 @@ public class Agent {
 	   for (int i = 0; i < world.size(); i++) {
 		   for (int j = 0; j < world.get(i).size(); j++) {
 			   if (symbolValues.get(world.get(i).get(j)) != null) {
-				   nextValue =  ((double) symbolValues.get(world.get(i).get(j))) / manDistTo(worldPosition, new int[]{i,j}, orientation) ;
+				   nextValue =  ((double) symbolValues.get(world.get(i).get(j))) / manDistTo(worldPosition, new Position(i,j), orientation) ;
 				   if (nextValue > highestValue) {
 					   
 					   highestValue = nextValue;
-					   objective[0] = i;
-					   objective[1] = j;
+					   objective.setRow(i);
+					   objective.setCol(j);
 				   }
 			   }
 				   
@@ -541,13 +549,13 @@ public class Agent {
 
    }
    
-   public int[] findNearestTo(int[] objective) {
-	   Map<int[],Integer> manDistPositionsMap = new HashMap<int[],Integer>();
+   public Position findNearestTo(Position objective) {
+	   Map<Position,Integer> manDistPositionsMap = new HashMap<Position,Integer>();
 	   
 	   for (int i = 0; i < world.size(); i++) {
 		   for (int j = 0; j < world.get(i).size(); j++) {
-			   int[] nextPos = {i,j};
-			   if (i != j && !obstacles.contains(getValueAt(nextPos)) && checkReachable(worldPosition,nextPos) && !Arrays.equals(nextPos, worldPosition) ) {
+			   Position nextPos = new Position(i,j);
+			   if (i != j && !obstacles.contains(getValueAt(nextPos)) && checkReachable(worldPosition,nextPos) && !nextPos.equals(worldPosition)) {
 //				   System.out.println(nextPos[0]+" "+nextPos[1]+"Reachable: "+checkReachable(nextPos));
 				   int nextManDist = manDistTo(nextPos, objective, 0);
 				   int distFromEdge = distFromNearestEdge(nextPos);
@@ -582,35 +590,35 @@ public class Agent {
                Comparator.comparingInt(Entry::getValue)).getKey();
    }
    
-   public int exploreScore(int[] position) {
+   public int exploreScore(Position position) {
 	   int score = 0;
 	   
 	   try {
-		   for (int i = position[1] - 2; i <= position[1] + 2; i++) {
-			   if (getValueAt(new int[]{position[0] - 2,i}) == '#') {
+		   for (int i = position.getCol() - 2; i <= position.getCol() + 2; i++) {
+			   if (getValueAt(new int[]{position.getRow() - 2,i}) == '#') {
 				   score = 1;
-				   if (getValueAt(new int[]{position[0] - 1,i}) == '#') {
+				   if (getValueAt(new int[]{position.getRow() - 1,i}) == '#') {
 					   return 2;
 				   }
 			   }
-			   if (getValueAt(new int[]{position[0] + 2,i}) == '#') {
+			   if (getValueAt(new int[]{position.getRow() + 2,i}) == '#') {
 				   score = 1;
-				   if (getValueAt(new int[]{position[0] + 1,i}) == '#') {
+				   if (getValueAt(new int[]{position.getRow() + 1,i}) == '#') {
 					   return 2;
 				   }
 			   }
 		   }
 		   
-		   for (int i = position[0] - 2; i <= position[0] + 2; i++) {
-			   if (getValueAt(new int[]{i,position[1] - 2}) == '#') {
+		   for (int i = position.getRow() - 2; i <= position.getRow() + 2; i++) {
+			   if (getValueAt(new int[]{i,position.getCol() - 2}) == '#') {
 				   score = 1;
-				   if (getValueAt(new int[]{i,position[1] - 1}) == '#') {
+				   if (getValueAt(new int[]{i,position.getCol() - 1}) == '#') {
 					   return 2;
 				   }
 			   }
-			   if (getValueAt(new int[]{i,position[1] + 2}) == '#') {
+			   if (getValueAt(new int[]{i,position.getCol() + 2}) == '#') {
 				   score = 1;
-				   if (getValueAt(new int[]{i,position[1] + 1}) == '#') {
+				   if (getValueAt(new int[]{i,position.getCol() + 1}) == '#') {
 					   return 2;
 				   }
 			   }
@@ -624,15 +632,12 @@ public class Agent {
 	
    }
    
-   public boolean checkReachable(int[] from, int[] position) {
-	   
-	   Position pos = new Position(position[0],position[1]);
-	   Position wp = new Position(from[0],from[1]);
+   public boolean checkReachable(Position from, Position position) {
 	   
 	   Set<Position> open = new HashSet<Position>();
 	   Set<Position> closed = new HashSet<Position>();
 	   
-	   open.add(pos);
+	   open.add(position);
 
 	   while (!open.isEmpty()) {
 //		   System.out.println("Open: "+open.toString());
@@ -642,7 +647,7 @@ public class Agent {
 
 		   Position current = o.next();
 		   
-		   if (current.equals(wp)) {
+		   if (current.equals(from)) {
 //			   System.out.println("Reachable path");
 			   return true;
 		   }
@@ -675,15 +680,14 @@ public class Agent {
 	   return false;
    }
    
-   public List<Position> findBorder(int[] position) {
-	   Position pos = new Position(position[0],position[1]);
-	   
+   public List<Position> findBorder(Position position) {
+   
 	   Set<Position> open = new HashSet<Position>();
 	   Set<Position> closed = new HashSet<Position>();
 	   
 	   List<Position> border = new ArrayList<Position>();
 	   
-	   open.add(pos);
+	   open.add(position);
 
 	   while (!open.isEmpty()) {
 //		   System.out.println("Open: "+open.toString());
@@ -743,22 +747,22 @@ public class Agent {
 		   
 		   findObjective();
 		   
-		   System.out.println("new objective: "+objective[0]+" "+objective[1]);
+		   System.out.println("new objective: "+objective.toString());
 		   if (!checkReachable(worldPosition,objective)) {
 //			   objective = findNearestTo(objective);
 			   objective = findNearestReachableEdge(objective);
-			   System.out.println("Not reachable: "+objective[0]+" "+objective[1]);
+			   System.out.println("Not reachable: "+objective.toString());
 			   
-			   if (objective[0] == worldPosition[0] && objective[1] == worldPosition[1]) {
-				   List<Position> border = findBorder(objective);
-				   for (Position b: border) {
-					   if(b.north().getValueAt() == ' ' && b.south().getValueAt() == ' ') {
-						   
-					   }
-				   }
-				   
-				   System.out.println("Best border: "+objective[0]+" "+objective[1]);
-			   }
+//			   if (objective.equals(worldPosition)) {
+//				   List<Position> border = findBorder(objective);
+//				   for (Position b: border) {
+//					   if(b.north().getValueAt() == ' ' && b.south().getValueAt() == ' ') {
+//						   
+//					   }
+//				   }
+//				   
+//				   System.out.println("Best border: "+objective.toString());
+//			   }
 			   
 		   }
 
@@ -872,10 +876,10 @@ public class Agent {
    public void updateFOV(char view[][]) {
 	   int count = 0;
 	   if (orientation == 0) {
-		   List<Character> FOV = world.get(worldPosition[0] + forward.get(orientation)[0] * 2);
+		   List<Character> FOV = world.get(worldPosition.getRow() + forward.get(orientation)[0] * 2);
 
 		   for (int i = 0; i < FOV.size(); i++) {
-			   if (worldPosition[1]-2 <= i && i <= worldPosition[1]+2 && count < 5) {
+			   if (worldPosition.getCol()-2 <= i && i <= worldPosition.getCol()+2 && count < 5) {
 				   FOV.set(i, view[0][count]);
 				   count++;
 			   }
@@ -883,10 +887,10 @@ public class Agent {
 		   }
 	   }
 	   else if (orientation == 2) {
-		   List<Character> FOV = world.get(worldPosition[0] + forward.get(orientation)[0] * 2);
+		   List<Character> FOV = world.get(worldPosition.getRow() + forward.get(orientation)[0] * 2);
 
 		   for (int i = FOV.size() - 1; i >= 0; i--) {
-			   if (worldPosition[1]-2 <= i && i <= worldPosition[1]+2 && count < 5) {
+			   if (worldPosition.getCol()-2 <= i && i <= worldPosition.getCol()+2 && count < 5) {
 				   FOV.set(i, view[0][count]);
 				   count++;
 			   }
@@ -896,16 +900,16 @@ public class Agent {
 	   }
 	   else if (orientation == 1) {
 		   for (int i = 0; i < world.size(); i++) {
-			   if (worldPosition[0]-2 <= i && i <= worldPosition[0]+2 && count < 5) {
-				   world.get(i).set(worldPosition[1] + forward.get(orientation)[1] * 2, view[0][count]);
+			   if (worldPosition.getRow()-2 <= i && i <= worldPosition.getRow()+2 && count < 5) {
+				   world.get(i).set(worldPosition.getCol() + forward.get(orientation)[1] * 2, view[0][count]);
 				   count++;
 			   }
 		   }
 	   }
 	   else if (orientation == 3) {
 		   for (int i = world.size() - 1; i >=0; i--) {
-			   if (worldPosition[0]-2 <= i && i <= worldPosition[0]+2 && count < 5) {
-				   world.get(i).set(worldPosition[1] + forward.get(orientation)[1] * 2, view[0][count]);
+			   if (worldPosition.getRow()-2 <= i && i <= worldPosition.getRow()+2 && count < 5) {
+				   world.get(i).set(worldPosition.getCol() + forward.get(orientation)[1] * 2, view[0][count]);
 				   count++;
 			   }
 		   }
@@ -918,7 +922,8 @@ public class Agent {
 	   if (successfulMove != 0) {
 		   if (successfulMove == 2) {
 			   Integer[] position = forward.get(orientation);
-			   world.get(worldPosition[0] + position[0]).set(worldPosition[1] + position[1], ' ');   
+//			   System.out.println((worldPosition.getRow() + position[0])+" "+(worldPosition.getRow() + position[1]));
+			   world.get(worldPosition.getRow() + position[0]).set(worldPosition.getCol() + position[1], ' ');   
 		   }
 		   else {
 			   int count = 0;
@@ -933,7 +938,7 @@ public class Agent {
 					   List<Character> newRow = new ArrayList<Character>(Collections.nCopies(world.get(0).size(), '#'));
 
 					   for (int i = 0; i < newRow.size(); i++) {
-						   if (worldPosition[1]-2 <= i && i <= worldPosition[1]+2 && count < 5) {
+						   if (worldPosition.getCol()-2 <= i && i <= worldPosition.getCol()+2 && count < 5) {
 							   newRow.set(i, view[0][count]);
 							   count++;
 						   }
@@ -944,7 +949,7 @@ public class Agent {
 					   List<Character> newRow = new ArrayList<Character>(Collections.nCopies(world.get(0).size(), '#'));
 
 					   for (int i = newRow.size() -1 ; i >= 0 ; i--) {
-						   if (worldPosition[1]-2 <= i && i <= worldPosition[1]+2 && count < 5) {
+						   if (worldPosition.getCol()-2 <= i && i <= worldPosition.getCol()+2 && count < 5) {
 							   
 							   newRow.set(i, view[0][count]);
 							   count++;
@@ -954,7 +959,7 @@ public class Agent {
 				   }
 				   else if (orientation == 1) {
 					   for (int i = 0; i < world.size(); i++) {
-						   if (worldPosition[0]-2 <= i && i <= worldPosition[0]+2 && count < 5) {
+						   if (worldPosition.getRow()-2 <= i && i <= worldPosition.getRow()+2 && count < 5) {
 							   world.get(i).add(view[0][count]);
 							   count++;
 						   }
@@ -965,7 +970,7 @@ public class Agent {
 				   }
 				   else if (orientation == 3) {
 					   for (int i = world.size() - 1; i >=0; i--) {
-						   if (worldPosition[0]-2 <= i && i <= worldPosition[0]+2 && count < 5) {
+						   if (worldPosition.getRow()-2 <= i && i <= worldPosition.getRow()+2 && count < 5) {
 							   world.get(i).add(0, view[0][count]);
 							   count++;
 						   }
@@ -980,7 +985,7 @@ public class Agent {
 			   updateFOV(view);
 			   
 			   if (successfulMove == 3) {
-				   world.get(worldPosition[0]).set(worldPosition[1], ' ');
+				   world.get(worldPosition.getRow()).set(worldPosition.getCol(), ' ');
 			   }
 		   }
 		   
@@ -991,9 +996,9 @@ public class Agent {
 	   positionRelativeToStart[0] += forward.get(orientation)[0];
 	   positionRelativeToStart[1] += forward.get(orientation)[1];
 	   
-	   if (!((worldPosition[0] <= 2 && orientation == 0) ||  (worldPosition[1] <= 2 && orientation == 3) )) {
-		   worldPosition[0] += forward.get(orientation)[0];
-		   worldPosition[1] += forward.get(orientation)[1];
+	   if (!((worldPosition.getRow() <= 2 && orientation == 0) ||  (worldPosition.getCol() <= 2 && orientation == 3) )) {
+		   worldPosition.setRow(worldPosition.getRow() + forward.get(orientation)[0]);
+		   worldPosition.setCol(worldPosition.getCol() + forward.get(orientation)[1]);
 
 	   }
 
@@ -1048,6 +1053,7 @@ public class Agent {
             
             updateOrientation((char) ch);
             lastMoveSuccessful = successfulMove((char) ch, view);
+            System.out.println(lastMoveSuccessful);
             if (lastMoveSuccessful != 0 || ch == 'L' || ch == 'l' || ch == 'R' || ch == 'r') {
             	return((char) ch );          
             }
@@ -1095,7 +1101,7 @@ public class Agent {
       for( i=0; i < world.size(); i++ ) {
          System.out.print("|");
          for( j=0; j < world.get(0).size(); j++ ) {
-            if(( i == worldPosition[0] )&&( j == worldPosition[1] )) {
+            if(( i == worldPosition.getRow() )&&( j == worldPosition.getCol() )) {
                System.out.print(orientationSymbol[orientation]);
             }
             else {
