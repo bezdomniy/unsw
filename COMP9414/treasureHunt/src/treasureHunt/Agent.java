@@ -64,6 +64,10 @@ public class Agent {
 		   
 	   }
 	   
+	   public char getValueAt() {
+		   return world.get(this.row).get(this.col);
+	   }
+	   
 	   public Position north() {
 		   if (this.getRow()-1 >= 0) {
 			   return new Position(this.getRow()-1,this.getCol());
@@ -437,13 +441,13 @@ public class Agent {
 //	   }
 //	   
 //	   return Collections.min(distToEdge);
-	   int[] nearestEdge = findNearestEdge(position);
+	   int[] nearestEdge = findNearestReachableEdge(position);
 	   return manDistTo(position,nearestEdge,9);
 	   
 	   
    }
    
-   public int[] findNearestEdge(int[] position) {
+   public int[] findNearestReachableEdge(int[] position) {
 	   int[] nearestEdge = new int[]{worldPosition[0],worldPosition[1]};
 	   
 	   int edgeDist = Integer.MAX_VALUE;
@@ -463,8 +467,9 @@ public class Agent {
 				   }
 			   }
 			   
-			   int nextEdgeDist = manDistTo(worldPosition, new int[]{i,j}, orientation);
-			   if (nextEdgeDist < edgeDist && !obstacles.contains(getValueAt(new int[]{i,j}))) {
+			   int[] nextEdge = new int[]{i,j};
+			   int nextEdgeDist = manDistTo(worldPosition, nextEdge, orientation);
+			   if (nextEdgeDist < edgeDist && !obstacles.contains(getValueAt(nextEdge)) && checkReachable(worldPosition,nextEdge)) {
 				   edgeDist = nextEdgeDist;
 				   nearestEdge[0] = i;
 				   nearestEdge[1] = j;
@@ -488,8 +493,9 @@ public class Agent {
 				   }
 			   }
 			   
-			   int nextEdgeDist = manDistTo(worldPosition, new int[]{j,i}, orientation);
-			   if (nextEdgeDist < edgeDist && !obstacles.contains(getValueAt(new int[]{j,i}))) {
+			   int[] nextEdge =	new int[]{j,i};
+			   int nextEdgeDist = manDistTo(worldPosition,nextEdge , orientation);
+			   if (nextEdgeDist < edgeDist && !obstacles.contains(getValueAt(nextEdge)) && checkReachable(worldPosition,nextEdge)) {
 				   edgeDist = nextEdgeDist;
 				   nearestEdge[0] = j;
 				   nearestEdge[1] = i;
@@ -523,7 +529,8 @@ public class Agent {
 		   }
 	   }
 	   if (highestValue <= 0) {
-		   objective = findNearestEdge(worldPosition);
+		   System.out.println("finding edge");
+		   objective = findNearestReachableEdge(worldPosition);
 	   }
 //	   System.out.println(getValueAt(objective)+" "+symbolValues.get(world.get(objective[0]).get(objective[1])));
 	   
@@ -540,8 +547,8 @@ public class Agent {
 	   for (int i = 0; i < world.size(); i++) {
 		   for (int j = 0; j < world.get(i).size(); j++) {
 			   int[] nextPos = {i,j};
-			   if (i != j && !obstacles.contains(getValueAt(nextPos)) && checkReachable(nextPos) && !Arrays.equals(nextPos, worldPosition) ) {
-				   
+			   if (i != j && !obstacles.contains(getValueAt(nextPos)) && checkReachable(worldPosition,nextPos) && !Arrays.equals(nextPos, worldPosition) ) {
+//				   System.out.println(nextPos[0]+" "+nextPos[1]+"Reachable: "+checkReachable(nextPos));
 				   int nextManDist = manDistTo(nextPos, objective, 0);
 				   int distFromEdge = distFromNearestEdge(nextPos);
 				   int exploreScore = exploreScore(nextPos);
@@ -617,10 +624,10 @@ public class Agent {
 	
    }
    
-   public boolean checkReachable(int[] position) {
+   public boolean checkReachable(int[] from, int[] position) {
 	   
 	   Position pos = new Position(position[0],position[1]);
-	   Position wp = new Position(worldPosition[0],worldPosition[1]);
+	   Position wp = new Position(from[0],from[1]);
 	   
 	   Set<Position> open = new HashSet<Position>();
 	   Set<Position> closed = new HashSet<Position>();
@@ -668,6 +675,68 @@ public class Agent {
 	   return false;
    }
    
+   public List<Position> findBorder(int[] position) {
+	   Position pos = new Position(position[0],position[1]);
+	   
+	   Set<Position> open = new HashSet<Position>();
+	   Set<Position> closed = new HashSet<Position>();
+	   
+	   List<Position> border = new ArrayList<Position>();
+	   
+	   open.add(pos);
+
+	   while (!open.isEmpty()) {
+//		   System.out.println("Open: "+open.toString());
+//		   System.out.println("Closed: "+closed);
+		   
+		   Iterator<Position> o = open.iterator();
+
+		   Position current = o.next();
+		   
+   
+		   Position north = current.north();
+		   Position south = current.south();
+		   Position east = current.east();
+		   Position west = current.west();
+		   
+		   if (north != null && !obstacles.contains(getValueAt(north)) && !closed.contains(north)) {
+			   open.add(north);
+		   }
+		   else if(north != null && obstacles.contains(getValueAt(north)) && getValueAt(north) != '.' && getValueAt(north) != '#') {
+			   border.add(north);
+		   }
+
+		   if (south != null && !obstacles.contains(getValueAt(south)) && !closed.contains(south)) {
+			   open.add(south);
+		   }
+		   else if(south != null && obstacles.contains(getValueAt(south)) && getValueAt(south) != '.' && getValueAt(south) != '#') {
+			   border.add(south);
+		   }
+
+		   
+		   if (east != null && !obstacles.contains(getValueAt(east)) && !closed.contains(east)) {
+			   open.add(east);
+		   }
+		   else if(east != null && obstacles.contains(getValueAt(east)) && getValueAt(east) != '.' && getValueAt(east) != '#') {
+			   border.add(east);
+		   }
+
+		   
+		   if (west != null && !obstacles.contains(getValueAt(west)) && !closed.contains(west)) {
+			   open.add(west);
+		   }
+		   else if(west != null && obstacles.contains(getValueAt(west)) && getValueAt(west) != '.' && getValueAt(west) != '#') {
+			   border.add(west);
+		   }
+
+
+		   open.remove(current);
+		   closed.add(current);
+	   }
+	   
+	   return border;
+   }
+   
    
    public char move() {
 	   if (nextMoves == null || nextMoves.isEmpty()) {
@@ -675,15 +744,27 @@ public class Agent {
 		   findObjective();
 		   
 		   System.out.println("new objective: "+objective[0]+" "+objective[1]);
-		   if (!checkReachable(objective)) {
-//			   System.out.println("Not reachable");
-			   objective = findNearestTo(objective);
+		   if (!checkReachable(worldPosition,objective)) {
+//			   objective = findNearestTo(objective);
+			   objective = findNearestReachableEdge(objective);
 			   System.out.println("Not reachable: "+objective[0]+" "+objective[1]);
+			   
+			   if (objective[0] == worldPosition[0] && objective[1] == worldPosition[1]) {
+				   List<Position> border = findBorder(objective);
+				   for (Position b: border) {
+					   if(b.north().getValueAt() == ' ' && b.south().getValueAt() == ' ') {
+						   
+					   }
+				   }
+				   
+				   System.out.println("Best border: "+objective[0]+" "+objective[1]);
+			   }
+			   
 		   }
 
 		   nextMoves = astar(worldPosition, objective);
 //		   System.out.println("here");
-		   System.out.println(worldPosition[0]+" "+worldPosition[1]+" "+objective[0]+" "+objective[1]);
+//		   System.out.println(worldPosition[0]+" "+worldPosition[1]+" "+objective[0]+" "+objective[1]);
 		   
 
 	   }
