@@ -229,13 +229,17 @@ public class Agent {
 	   symbolValues.put('a', 2);
 	   symbolValues.put('d', 2);
 	   symbolValues.put('k', 2);
-	   symbolValues.put('T', 0);
 	   symbolValues.put('$', 10);
 	   
+	   symbolValues.put(' ', 0);
+	   symbolValues.put('#', 0);
+	   
+	   symbolValues.put('T', -1);
 	   symbolValues.put('*', -1);
 	   symbolValues.put('-', -1);
 	   symbolValues.put('~', -1);
-	   symbolValues.put(' ', 0);
+	   symbolValues.put('.', -1);
+	   
 	   
 	   forward.put(0, new Integer[]{-1,0});
 	   forward.put(1, new Integer[]{0,1});
@@ -246,6 +250,8 @@ public class Agent {
 	   obstacles.add('*');
 	   obstacles.add('T');
 	   obstacles.add('~');
+	   obstacles.add('#');
+	   obstacles.add('.');
 	   
 	   
 //	   int[] t = {1,2};
@@ -417,22 +423,86 @@ public class Agent {
    }
    
    public int distFromNearestEdge(int[] position) {
-	   Set<Integer> distToEdge = new HashSet<Integer>();
+//	   Set<Integer> distToEdge = new HashSet<Integer>();
+//	   
+//	   for (int i: new int[]{0,world.size()-1}) {
+//		   for (int j = 0; j < world.get(0).size(); j++) {
+//			   distToEdge.add(manDistTo(position,new int[]{i,j},9));
+//		   }
+//	   }
+//	   for (int i: new int[]{0,world.get(0).size()-1}) {
+//		   for (int j = 0; j < world.size(); j++) {
+//			   distToEdge.add(manDistTo(position,new int[]{j,i},9));
+//		   }
+//	   }
+//	   
+//	   return Collections.min(distToEdge);
+	   int[] nearestEdge = findNearestEdge(position);
+	   return manDistTo(position,nearestEdge,9);
+	   
+	   
+   }
+   
+   public int[] findNearestEdge(int[] position) {
+	   int[] nearestEdge = new int[]{worldPosition[0],worldPosition[1]};
+	   
+	   int edgeDist = Integer.MAX_VALUE;
 	   
 	   for (int i: new int[]{0,world.size()-1}) {
 		   for (int j = 0; j < world.get(0).size(); j++) {
-//			   System.out.println(i+" "+j+" "+manDistTo(position,new int[]{i,j},9));
-			   distToEdge.add(manDistTo(position,new int[]{i,j},9));
+			   int old_i = i;
+			   
+			   if (i == 0) {
+				   while (getValueAt(new int[]{i,j}) == '#') {
+					   i++;
+				   }
+			   }
+			   if (i == world.size()-1) {
+				   while (getValueAt(new int[]{i,j}) == '#') {
+					   i--;
+				   }
+			   }
+			   
+			   int nextEdgeDist = manDistTo(worldPosition, new int[]{i,j}, orientation);
+			   if (nextEdgeDist < edgeDist && !obstacles.contains(getValueAt(new int[]{i,j}))) {
+				   edgeDist = nextEdgeDist;
+				   nearestEdge[0] = i;
+				   nearestEdge[1] = j;
+			   }
+			   
+			   i = old_i;
 		   }
 	   }
 	   for (int i: new int[]{0,world.get(0).size()-1}) {
 		   for (int j = 0; j < world.size(); j++) {
-//			   System.out.println(i+" "+j+" "+manDistTo(position,new int[]{i,j},9));
-			   distToEdge.add(manDistTo(position,new int[]{i,j},9));
+			   int old_i = i;
+			   
+			   if (i == 0) {
+				   while (getValueAt(new int[]{j,i}) == '#') {
+					   i++;
+				   }
+			   }
+			   if (i == world.get(0).size()-1) {
+				   while (getValueAt(new int[]{j,i}) == '#') {
+					   i--;
+				   }
+			   }
+			   
+			   int nextEdgeDist = manDistTo(worldPosition, new int[]{j,i}, orientation);
+			   if (nextEdgeDist < edgeDist && !obstacles.contains(getValueAt(new int[]{j,i}))) {
+				   edgeDist = nextEdgeDist;
+				   nearestEdge[0] = j;
+				   nearestEdge[1] = i;
+			   }
+			   
+			   i = old_i;
 		   }
 	   }
+		   
 	   
-	   return Collections.min(distToEdge);
+	   
+	   return nearestEdge;
+	   
    }
    
    public void findObjective() {
@@ -443,6 +513,7 @@ public class Agent {
 			   if (symbolValues.get(world.get(i).get(j)) != null) {
 				   nextValue =  ((double) symbolValues.get(world.get(i).get(j))) / manDistTo(worldPosition, new int[]{i,j}, orientation) ;
 				   if (nextValue > highestValue) {
+					   
 					   highestValue = nextValue;
 					   objective[0] = i;
 					   objective[1] = j;
@@ -451,6 +522,10 @@ public class Agent {
 				   
 		   }
 	   }
+	   if (highestValue <= 0) {
+		   objective = findNearestEdge(worldPosition);
+	   }
+//	   System.out.println(getValueAt(objective)+" "+symbolValues.get(world.get(objective[0]).get(objective[1])));
 	   
 //	   if (Arrays.equals(objective, worldPosition)) {
 //		   Random rand = new Random();
@@ -469,7 +544,10 @@ public class Agent {
 				   
 				   int nextManDist = manDistTo(nextPos, objective, 0);
 				   int distFromEdge = distFromNearestEdge(nextPos);
-				   manDistPositionsMap.put(nextPos, nextManDist+distFromEdge);
+				   int exploreScore = exploreScore(nextPos);
+				   
+//				   manDistPositionsMap.put(nextPos, nextManDist + distFromEdge);
+				   manDistPositionsMap.put(nextPos, nextManDist + distFromEdge - exploreScore);
 			   }
 		   }
 	   }
@@ -497,12 +575,47 @@ public class Agent {
                Comparator.comparingInt(Entry::getValue)).getKey();
    }
    
-//   public int checkDirection(int[] position) {
-//	   
-//	   
-//	return c;
-//	   
-//   }
+   public int exploreScore(int[] position) {
+	   int score = 0;
+	   
+	   try {
+		   for (int i = position[1] - 2; i <= position[1] + 2; i++) {
+			   if (getValueAt(new int[]{position[0] - 2,i}) == '#') {
+				   score = 1;
+				   if (getValueAt(new int[]{position[0] - 1,i}) == '#') {
+					   return 2;
+				   }
+			   }
+			   if (getValueAt(new int[]{position[0] + 2,i}) == '#') {
+				   score = 1;
+				   if (getValueAt(new int[]{position[0] + 1,i}) == '#') {
+					   return 2;
+				   }
+			   }
+		   }
+		   
+		   for (int i = position[0] - 2; i <= position[0] + 2; i++) {
+			   if (getValueAt(new int[]{i,position[1] - 2}) == '#') {
+				   score = 1;
+				   if (getValueAt(new int[]{i,position[1] - 1}) == '#') {
+					   return 2;
+				   }
+			   }
+			   if (getValueAt(new int[]{i,position[1] + 2}) == '#') {
+				   score = 1;
+				   if (getValueAt(new int[]{i,position[1] + 1}) == '#') {
+					   return 2;
+				   }
+			   }
+		   }
+	   } catch (IndexOutOfBoundsException e) {
+		   
+	   }
+	   
+	   
+	   return score;
+	
+   }
    
    public boolean checkReachable(int[] position) {
 	   
@@ -565,18 +678,18 @@ public class Agent {
 		   if (!checkReachable(objective)) {
 //			   System.out.println("Not reachable");
 			   objective = findNearestTo(objective);
-			   
-			   
 			   System.out.println("Not reachable: "+objective[0]+" "+objective[1]);
-//			   System.exit(-1);
 		   }
+
 		   nextMoves = astar(worldPosition, objective);
-//		   System.out.println(worldPosition[0]+" "+worldPosition[1]+" "+objective[0]+" "+objective[1]);
+//		   System.out.println("here");
+		   System.out.println(worldPosition[0]+" "+worldPosition[1]+" "+objective[0]+" "+objective[1]);
 		   
 
 	   }
 //	   System.out.println(nextMoves);
 	   System.out.println("Next move: "+nextMoves.get(nextMoves.size()-1));
+	   
 	   
 	   return nextMoves.remove(nextMoves.size()-1);
    }
@@ -658,6 +771,7 @@ public class Agent {
    public boolean needExpansion() {
 
 //	   System.out.println("pos: "+positionRelativeToStart[0]);
+	      
 	   if (positionRelativeToStart[0] < 0 && Math.abs(positionRelativeToStart[0]) > expandedUpRightDownLeft[0]) {
 		   return true;
 	   }
@@ -719,6 +833,7 @@ public class Agent {
 	   
 
    public void updateWorld(char view[][], int successfulMove) {
+
 	   if (successfulMove != 0) {
 		   if (successfulMove == 2) {
 			   Integer[] position = forward.get(orientation);
@@ -850,7 +965,6 @@ public class Agent {
         	 ch = move();
 
             
-//            orientation = updateOrientation((char) ch);
             updateOrientation((char) ch);
             lastMoveSuccessful = successfulMove((char) ch, view);
             if (lastMoveSuccessful != 0 || ch == 'L' || ch == 'l' || ch == 'R' || ch == 'r') {
@@ -861,7 +975,7 @@ public class Agent {
 //      catch (IOException e) {
 //         System.out.println ("IO error:" + e );
 //      }
-
+//
       return 0;
    }
    
