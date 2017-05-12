@@ -18,7 +18,8 @@ public class Agent {
    private boolean have_axe     = false;
    private boolean have_key     = false;
    private boolean have_treasure= false;
-   private boolean have_raft    = false;
+   private boolean on_water = false;
+//   private boolean have_raft    = false;
    private int num_dynamites_held = 0;
 	
    private Map<Character, Integer> symbolValues = new HashMap<Character, Integer>();
@@ -27,7 +28,7 @@ public class Agent {
    private char[] orientationSymbol = {'^','>','v','<'};
    
    private int lastMoveSuccessful = 0;
-   private char lastMove = ' ';
+//   private char lastMove = ' ';
    
    private Position objective = new Position(2,2);
    private List<Character> nextMoves = new ArrayList<Character>();
@@ -242,7 +243,7 @@ public class Agent {
 	   symbolValues.put('a', 2);
 	   symbolValues.put('d', 2);
 	   symbolValues.put('k', 2);
-	   symbolValues.put('$', 10);
+	   symbolValues.put('$', 2);
 	   
 	   symbolValues.put(' ', 0);
 	   symbolValues.put('#', 0);
@@ -354,8 +355,8 @@ public class Agent {
 				   forw.setMove('C');
 				   current.addChild(forw);
 			   }
-			   else if (forwardSymbol == '*' && num_dynamites_held > 0 && manDistTo(forw.getPosition(),objective,orientation) == 0) {
-				   
+			   else if ((forwardSymbol == '*' || forwardSymbol == 'T') && num_dynamites_held > 0 && manDistTo(forw.getPosition(),objective,orientation) == 0) {
+				   System.out.println("bombing");
 				   forw.setMove('B');
 				   current.addChild(forw);
 			   }
@@ -532,7 +533,9 @@ public class Agent {
    }
    
    public void findObjective() {
-	   List<Position> candidates = new ArrayList<Position>();
+	   List<Position> allCandidates = new ArrayList<Position>();
+	   List<Position> reachableCandidates = new ArrayList<Position>();
+	   List<Position> unreachableCandidates = new ArrayList<Position>();
 	   
 	   double highestValue = 0d;
 	   double nextValue = 0d;
@@ -544,34 +547,60 @@ public class Agent {
 				   Position nextPosition = new Position(i,j);
 				   nextValue =  ((double) symbolValues.get(world.get(i).get(j)))  ;
 				   if (nextValue >= highestValue ) {
-					   if (nextValue > highestValue) {
-						   candidates = new ArrayList<Position>();
+//					   if (nextValue > highestValue) {
+					   if (highestValue == 0 && nextValue > highestValue) {
+						   allCandidates = new ArrayList<Position>();
 					   }
 					   highestValue = nextValue;
-					   candidates.add(nextPosition);
-					   
-//					   System.out.println(nextPosition+" "+nextValue);
-
+					   allCandidates.add(nextPosition);
 				   }
 			   }
 				   
 		   }
 	   }
-	   
-//	   / manDistTo(worldPosition, nextPosition, orientation)
-	   
-	   if (highestValue > 0) {
-//		   System.out.println("here"+candidates);
-		   objective = candidates.get(0);
-		   
-		   highestValue = ((double) symbolValues.get(objective.getValueAt()) / manDistTo(worldPosition, objective, orientation));
 
-		   for (Position p: candidates) {
-			   nextValue =  ((double) symbolValues.get(p.getValueAt()) / manDistTo(worldPosition, p, orientation)) ;
-			   if (!checkReachable(worldPosition, objective) && checkReachable(worldPosition, p) && nextValue >= highestValue) {
-				   objective = p;
+	   if (highestValue > 0) {
+		   System.out.println("here"+allCandidates);
+//		   objective = allCandidates.get(0);
+
+		   for (Position p: allCandidates) {
+			   if (checkReachable(worldPosition,p)) {
+				   reachableCandidates.add(p);
+			   }
+			   else {
+				   unreachableCandidates.add(p);
 			   }
 		   }
+		   
+		   
+		   
+		   if (!reachableCandidates.isEmpty()) {
+			   highestValue = 0d;
+			   nextValue = 0d;
+			   objective = reachableCandidates.get(0);
+			   
+			   for (Position p: reachableCandidates) {
+				   nextValue =  ((double) symbolValues.get(p.getValueAt()) / manDistTo(worldPosition, p, orientation)) ;
+				   if (nextValue >= highestValue) {
+					   objective = p;
+				   }
+			   }
+			   return;
+		   }
+		   else {
+			   highestValue = 0d;
+			   nextValue = 0d;
+			   objective = unreachableCandidates.get(0);
+			   
+			   for (Position p: unreachableCandidates) {
+				   nextValue =  ((double) symbolValues.get(p.getValueAt()) / manDistTo(worldPosition, p, orientation)) ;
+				   if (nextValue >= highestValue) {
+					   objective = p;
+				   }
+			   }
+			   
+		   }
+		   
 	   }
 	   else {
 		   System.out.println("finding edge");
@@ -821,11 +850,38 @@ public class Agent {
 	   return candidate;
    }
    
+   public Position bestExploreScore() {
+	   Position candidate = new Position(objective.getRow(),objective.getCol());
+	   int exploreScore = 0;
+	   
+	   for (int i = 0; i< world.size(); i++) {
+		   for (int j = 0; j < world.get(0).size(); j++) {
+			   Position nextPosition = new Position(i,j);
+			   int nextScore = exploreScore(nextPosition);
+//			   if (exploreScore(nextPosition) > 0) {
+//				   System.out.println(checkReachable(worldPosition,nextPosition)+" np "+nextPosition+" Explore Score: "+exploreScore(nextPosition));
+//			   }
+			   
+			   if (nextScore > exploreScore && !obstacles.contains(nextPosition.getValueAt()) && checkReachable(worldPosition,nextPosition)) {
+				   
+				   exploreScore = nextScore;
+				   candidate = nextPosition;
+			   }
+			   
+		   }
+	   }
+	   
+	   
+	   return candidate;
+	   
+   }
+   
    
    public char move() {
 	   if (have_treasure) {
 		   world.get(worldPosition.getRow()-positionRelativeToStart[0]).set(worldPosition.getCol()-positionRelativeToStart[1], 'S');
-		   symbolValues.put('S', Integer.MAX_VALUE);
+//		   symbolValues.put('S', Integer.MAX_VALUE);
+		   symbolValues.put('S', 2);
 //		   print_world();
 //		   System.out.println(positionRelativeToStart[0]+" "+positionRelativeToStart[1]);
 //		   System.exit(-1);
@@ -835,19 +891,26 @@ public class Agent {
 	   if (nextMoves == null || nextMoves.isEmpty()) {
 		   
 		   findObjective();
+		   Position initialObjective = new Position(objective.getRow(),objective.getCol());
 		   
 		   System.out.println("new objective: "+objective.toString());
 		   if (!checkReachable(worldPosition,objective)) {
 //			   objective = findNearestTo(objective);
 			   objective = findNearestReachableEdge(objective);
-			   System.out.println("Not reachable: "+objective.toString());
+			   System.out.println("Nearest Edge: "+objective.toString());
 			   
 			   if (objective.equals(worldPosition)) {
-				   findObjective();
-				   List<Position> border = findBorder(objective);
-//				   System.out.println("Border: "+border);
-				   objective = removeOptimalWall(border);
-				   System.out.println("Best border: "+objective.toString());
+				   objective = bestExploreScore();		
+				   System.out.println("Best Explore Score: "+objective.toString());
+				   
+				   if (objective.equals(worldPosition)) {
+					   System.out.println("Objective: "+initialObjective);
+					   List<Position> border = findBorder(initialObjective);
+					   System.out.println("Border: "+border);
+					   objective = removeOptimalWall(border);
+					   System.out.println("Best border: "+objective.toString());
+				   }
+
 				   
 				   
 			   }
@@ -860,7 +923,7 @@ public class Agent {
 		   
 
 	   }
-//	   System.out.println(nextMoves);
+	   System.out.println(nextMoves);
 	   System.out.println("Next move: "+nextMoves.get(nextMoves.size()-1));
 	   
 	   
@@ -868,17 +931,16 @@ public class Agent {
    }
    
    
-/*   public char move() {
+//   public char move() {
 //	   int r = -1;
 //		try {
 //			r = (char) System.in.read();
 //		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
+//
 //		}
 //		return (char) r;
-
-   }*/
+//
+//   }
    
    
    
@@ -895,14 +957,15 @@ public class Agent {
 		   if (view[1][2] == 'a') {
 			   have_axe = true;
 			   removable.add('T');
+//			   System.out.println("GOT AXE!");
 			   symbolValues.put('a',0);
-			   symbolValues.put('T',1);
+			   symbolValues.put('T',2);
 			   return 3;
 		   }
 		   else if (view[1][2] == 'k') {
 			   have_key = true;
 			   symbolValues.put('k',0);
-			   symbolValues.put('-',1);
+			   symbolValues.put('-',2);
 			   return 3;
 		   }
 		   else if (view[1][2] == '$') {
@@ -912,13 +975,26 @@ public class Agent {
 		   }
 		   else if (view[1][2] == 'd') {
 			   removable.add('*');
+			   removable.add('T');
+			   if (symbolValues.get('T') < 2) {
+				   symbolValues.put('T',1);
+			   }
+			   
 //			   System.out.println("GOT DYNAMITE!");
 			   num_dynamites_held++;
 			   return 3;
 		   }
 		   else if (view[1][2] == '~') {
 //			   symbolValues.put('~',0);
-			   symbolValues.put('T',1);
+			   on_water = true;
+			   return 1;
+		   }
+		   else if (view[1][2] == ' ' && on_water == true) {
+			   System.out.println("here11");
+			   on_water = false;
+			   symbolValues.put('~',-1);
+			   obstacles.add('~');
+			   symbolValues.put('T',2);
 			   return 3;
 		   }
 		   else if (view[1][2] == '$') {
@@ -940,12 +1016,18 @@ public class Agent {
 		   symbolValues.put('T',0);
 		   return 2;
 	   }
-	   else if (view[1][2] == '*' && num_dynamites_held > 0 && (move == 'b' || move == 'B')) {
+	   else if ((view[1][2] == '*' || view[1][2] == 'T' || view[1][2] == '-') && num_dynamites_held > 0 && (move == 'b' || move == 'B')) {
 		   num_dynamites_held--;
 		   System.out.println("BOOM");
 		   if (num_dynamites_held == 0) {
 			   System.out.println("No more dynamite :(");
 			   removable.remove('*');
+			   if (!have_axe) {
+				   removable.remove('T');
+			   }
+			   if (!have_key) {
+				   removable.remove('-');
+			   }
 		   }
 		   return 2;
 	   }
