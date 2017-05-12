@@ -32,6 +32,7 @@ public class Agent {
    private Position objective = new Position(2,2);
    private List<Character> nextMoves = new ArrayList<Character>();
    Set<Character> obstacles = new HashSet<Character>();
+   Set<Character> removable = new HashSet<Character>();
    
    private Position worldPosition = new Position(2,2);
    
@@ -694,11 +695,9 @@ public class Agent {
 //		   System.out.println("Closed: "+closed);
 		   
 		   Iterator<Position> o = open.iterator();
-
 		   Position current = o.next();
 		   
-   
-		   Position north = current.north();
+ 		   Position north = current.north();
 		   Position south = current.south();
 		   Position east = current.east();
 		   Position west = current.west();
@@ -732,6 +731,9 @@ public class Agent {
 		   else if(west != null && obstacles.contains(getValueAt(west)) && getValueAt(west) != '.' && getValueAt(west) != '#') {
 			   border.add(west);
 		   }
+		   
+//		   System.out.println("o: "+open);		   
+//		   System.out.println("b: "+border);
 
 
 		   open.remove(current);
@@ -753,16 +755,55 @@ public class Agent {
 			   objective = findNearestReachableEdge(objective);
 			   System.out.println("Not reachable: "+objective.toString());
 			   
-//			   if (objective.equals(worldPosition)) {
-//				   List<Position> border = findBorder(objective);
-//				   for (Position b: border) {
-//					   if(b.north().getValueAt() == ' ' && b.south().getValueAt() == ' ') {
-//						   
-//					   }
-//				   }
-//				   
-//				   System.out.println("Best border: "+objective.toString());
-//			   }
+			   if (objective.equals(worldPosition)) {
+				   findObjective();
+				   List<Position> border = findBorder(objective);
+//				   System.out.println("Border: "+border);
+				   Position candidate = null;
+				   int candidateManDist = Integer.MAX_VALUE;
+				   
+				   for (Position b: border) {
+//					   System.out.println(b+" "+b.north().getValueAt()+" "+b.south().getValueAt()+b.east().getValueAt()+" "+b.west().getValueAt());
+					   if (removable.contains(b.getValueAt())) {
+						   if (b.north() != null && b.south() != null) {
+//							   System.out.println(b);
+//							   System.out.println(b.north().getValueAt()+" "+b.south().getValueAt());
+							   if(!obstacles.contains(b.north().getValueAt()) && !obstacles.contains(b.south().getValueAt())) {
+//								   System.out.println("yes");
+								   if (		(checkReachable(b.north(), objective) && manDistTo(worldPosition, b.south(),orientation) < candidateManDist) ||
+										   	(checkReachable(b.south(), objective) && manDistTo(worldPosition, b.north(),orientation) < candidateManDist)) 
+								   {
+//									   System.out.println("yes2 wp "+worldPosition+" b "+b.south()+" "+manDistTo(worldPosition, b.south(),9));
+									   candidate = b;
+									   candidateManDist = manDistTo(worldPosition, b,orientation);
+								   }
+							   }
+						   }
+						   
+						   if (b.east() != null && b.west() != null) {
+//							   System.out.println(b);
+//							   System.out.println(b.east().getValueAt()+" "+b.west().getValueAt());
+							   if(!obstacles.contains(b.east().getValueAt()) && !obstacles.contains(b.west().getValueAt())) {
+								   if (		(checkReachable(b.east(), objective) && manDistTo(worldPosition, b.west(),orientation) < candidateManDist) ||
+										   	(checkReachable(b.west(), objective) && manDistTo(worldPosition, b.east(),orientation) < candidateManDist)) 
+								   {
+									   candidate = b;
+									   candidateManDist = manDistTo(worldPosition, b,orientation);
+								   }
+							   }
+						   }
+					   }
+					   
+					   
+					   
+				   }
+				   
+				   if (!candidate.equals(worldPosition)) {
+					   objective = candidate;
+				   }
+				   
+				   System.out.println("Best border: "+objective.toString());
+			   }
 			   
 		   }
 
@@ -806,6 +847,7 @@ public class Agent {
 	   if (view[1][2] != '*' && view[1][2] != '-' && view[1][2] != 'T' && (move == 'f' || move == 'F')) {
 		   if (view[1][2] == 'a') {
 			   have_axe = true;
+			   removable.add('T');
 			   symbolValues.put('a',0);
 			   symbolValues.put('T',1);
 			   return 3;
@@ -822,6 +864,7 @@ public class Agent {
 			   return 3;
 		   }
 		   else if (view[1][2] == 'd') {
+			   removable.add('*');
 			   num_dynamites_held++;
 			   return 3;
 		   }
@@ -836,6 +879,10 @@ public class Agent {
 		   return 2;
 	   }
 	   else if (view[1][2] == '*' && num_dynamites_held > 0 && (move == 'b' || move == 'B')) {
+		   num_dynamites_held--;
+		   if (num_dynamites_held == 0) {
+			   removable.remove('*');
+		   }
 		   return 2;
 	   }
 
@@ -928,9 +975,7 @@ public class Agent {
 		   else {
 			   int count = 0;
 			   updateWorldPosition();
-			   
-			   
-			  
+
 			   if (needExpansion()) {
 				   expandedUpRightDownLeft[orientation]++;
 
