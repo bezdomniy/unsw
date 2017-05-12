@@ -304,7 +304,7 @@ public class Agent {
 	   
 
 	   
-//	   System.out.println(path);
+//	   System.out.println("Path: "+path);
 	   return path;
    }
 	   
@@ -330,7 +330,7 @@ public class Agent {
 //		   
 //		   if (current.getSymbol() == getValueAt(Goal)) {
 		   if (current.getPosition().equals(goal)) {
-//			   System.out.println("****************************** "+current.getSymbol());
+			   System.out.println("****************************** "+current.getSymbol());
 			   return make_path(origins, current);
 		   }
 		   
@@ -341,12 +341,22 @@ public class Agent {
 			   char forwardSymbol = getValueAt(forwardPosition) ;
 			   Node forw = new Node(forwardPosition,forwardSymbol,current.getOrientation());
 			   
-			   if (forwardSymbol != '*' && forwardSymbol != '-' && forwardSymbol != 'T' && forwardSymbol != '~' && forwardSymbol != '#' ) {
+//			   if (forwardSymbol != '*' && forwardSymbol != '-' && forwardSymbol != 'T' && forwardSymbol != '~' && forwardSymbol != '#' ) {
+			   if (!obstacles.contains(forwardSymbol)) {
 				   forw.setMove('F');
 				   current.addChild(forw);
 			   }
 			   else if (forwardSymbol == '-' && have_key) {
 				   forw.setMove('U');
+				   current.addChild(forw);
+			   }
+			   else if (forwardSymbol == 'T' && have_axe) {
+				   forw.setMove('C');
+				   current.addChild(forw);
+			   }
+			   else if (forwardSymbol == '*' && num_dynamites_held > 0 && manDistTo(forw.getPosition(),objective,orientation) == 0) {
+				   
+				   forw.setMove('B');
 				   current.addChild(forw);
 			   }
 		   }
@@ -380,6 +390,7 @@ public class Agent {
 			   if (temp_g < child.getG() || !open.contains(child) ) {
 //				   System.out.println("adding: "+current.toString()+" to: "+child.toString()+" with move: "+child.getMove());
 				   origins.put(child, current);
+//				   System.out.println(origins);
 				   child.setG(temp_g);
 				   child.setH(manDistTo(child.getPosition(), goal, child.getOrientation()));
 				   child.updateF();
@@ -521,32 +532,51 @@ public class Agent {
    }
    
    public void findObjective() {
+	   List<Position> candidates = new ArrayList<Position>();
+	   
 	   double highestValue = 0d;
 	   double nextValue = 0d;
+	   
+	   
 	   for (int i = 0; i < world.size(); i++) {
 		   for (int j = 0; j < world.get(i).size(); j++) {
 			   if (symbolValues.get(world.get(i).get(j)) != null) {
-				   nextValue =  ((double) symbolValues.get(world.get(i).get(j))) / manDistTo(worldPosition, new Position(i,j), orientation) ;
-				   if (nextValue > highestValue) {
-					   
+				   Position nextPosition = new Position(i,j);
+				   nextValue =  ((double) symbolValues.get(world.get(i).get(j)))  ;
+				   if (nextValue >= highestValue ) {
+					   if (nextValue > highestValue) {
+						   candidates = new ArrayList<Position>();
+					   }
 					   highestValue = nextValue;
-					   objective.setRow(i);
-					   objective.setCol(j);
+					   candidates.add(nextPosition);
+					   
+//					   System.out.println(nextPosition+" "+nextValue);
+
 				   }
 			   }
 				   
 		   }
 	   }
-	   if (highestValue <= 0) {
+	   
+//	   / manDistTo(worldPosition, nextPosition, orientation)
+	   
+	   if (highestValue > 0) {
+//		   System.out.println("here"+candidates);
+		   objective = candidates.get(0);
+		   
+		   highestValue = ((double) symbolValues.get(objective.getValueAt()) / manDistTo(worldPosition, objective, orientation));
+
+		   for (Position p: candidates) {
+			   nextValue =  ((double) symbolValues.get(p.getValueAt()) / manDistTo(worldPosition, p, orientation)) ;
+			   if (!checkReachable(worldPosition, objective) && checkReachable(worldPosition, p) && nextValue >= highestValue) {
+				   objective = p;
+			   }
+		   }
+	   }
+	   else {
 		   System.out.println("finding edge");
 		   objective = findNearestReachableEdge(worldPosition);
 	   }
-//	   System.out.println(getValueAt(objective)+" "+symbolValues.get(world.get(objective[0]).get(objective[1])));
-	   
-//	   if (Arrays.equals(objective, worldPosition)) {
-//		   Random rand = new Random();
-//		   rand.nextInt(bound);
-//	   }
 
    }
    
@@ -743,8 +773,65 @@ public class Agent {
 	   return border;
    }
    
+   public Position removeOptimalWall(List<Position> border) {
+
+	   Position candidate = null;
+	   int candidateManDist = Integer.MAX_VALUE;
+	   
+	   for (Position b: border) {
+//		   System.out.println(removable+" b: "+b);
+		   if (removable.contains(b.getValueAt())) {
+//			   System.out.println(b);
+			   if (b.north() != null && b.south() != null) {
+//				   System.out.println(b);
+//				   System.out.println(b.north().getValueAt()+" "+b.south().getValueAt());
+				   if(!obstacles.contains(b.north().getValueAt()) && !obstacles.contains(b.south().getValueAt())) {
+//					   System.out.println("yes");
+					   if (		(checkReachable(b.north(), objective) && manDistTo(worldPosition, b.south(),orientation) < candidateManDist) ||
+							   	(checkReachable(b.south(), objective) && manDistTo(worldPosition, b.north(),orientation) < candidateManDist)) 
+					   {
+//						   System.out.println("yes2 wp "+worldPosition+" b "+b.south()+" "+manDistTo(worldPosition, b.south(),9));
+						   candidate = b;
+						   candidateManDist = manDistTo(worldPosition, b,orientation);
+					   }
+				   }
+			   }
+			   
+			   if (b.east() != null && b.west() != null) {
+//				   System.out.println(b);
+//				   System.out.println(b.east().getValueAt()+" "+b.west().getValueAt());
+				   if(!obstacles.contains(b.east().getValueAt()) && !obstacles.contains(b.west().getValueAt())) {
+					   if (		(checkReachable(b.east(), objective) && manDistTo(worldPosition, b.west(),orientation) < candidateManDist) ||
+							   	(checkReachable(b.west(), objective) && manDistTo(worldPosition, b.east(),orientation) < candidateManDist)) 
+					   {
+						   candidate = b;
+						   candidateManDist = manDistTo(worldPosition, b,orientation);
+					   }
+				   }
+			   }
+		   }
+		   
+		   
+		   
+	   }
+	   
+//	   if (!candidate.equals(worldPosition)) {
+//		   objective = candidate;
+//	   }
+	   return candidate;
+   }
+   
    
    public char move() {
+	   if (have_treasure) {
+		   world.get(worldPosition.getRow()-positionRelativeToStart[0]).set(worldPosition.getCol()-positionRelativeToStart[1], 'S');
+		   symbolValues.put('S', Integer.MAX_VALUE);
+//		   print_world();
+//		   System.out.println(positionRelativeToStart[0]+" "+positionRelativeToStart[1]);
+//		   System.exit(-1);
+	   }
+	   
+	   
 	   if (nextMoves == null || nextMoves.isEmpty()) {
 		   
 		   findObjective();
@@ -759,56 +846,16 @@ public class Agent {
 				   findObjective();
 				   List<Position> border = findBorder(objective);
 //				   System.out.println("Border: "+border);
-				   Position candidate = null;
-				   int candidateManDist = Integer.MAX_VALUE;
-				   
-				   for (Position b: border) {
-//					   System.out.println(b+" "+b.north().getValueAt()+" "+b.south().getValueAt()+b.east().getValueAt()+" "+b.west().getValueAt());
-					   if (removable.contains(b.getValueAt())) {
-						   if (b.north() != null && b.south() != null) {
-//							   System.out.println(b);
-//							   System.out.println(b.north().getValueAt()+" "+b.south().getValueAt());
-							   if(!obstacles.contains(b.north().getValueAt()) && !obstacles.contains(b.south().getValueAt())) {
-//								   System.out.println("yes");
-								   if (		(checkReachable(b.north(), objective) && manDistTo(worldPosition, b.south(),orientation) < candidateManDist) ||
-										   	(checkReachable(b.south(), objective) && manDistTo(worldPosition, b.north(),orientation) < candidateManDist)) 
-								   {
-//									   System.out.println("yes2 wp "+worldPosition+" b "+b.south()+" "+manDistTo(worldPosition, b.south(),9));
-									   candidate = b;
-									   candidateManDist = manDistTo(worldPosition, b,orientation);
-								   }
-							   }
-						   }
-						   
-						   if (b.east() != null && b.west() != null) {
-//							   System.out.println(b);
-//							   System.out.println(b.east().getValueAt()+" "+b.west().getValueAt());
-							   if(!obstacles.contains(b.east().getValueAt()) && !obstacles.contains(b.west().getValueAt())) {
-								   if (		(checkReachable(b.east(), objective) && manDistTo(worldPosition, b.west(),orientation) < candidateManDist) ||
-										   	(checkReachable(b.west(), objective) && manDistTo(worldPosition, b.east(),orientation) < candidateManDist)) 
-								   {
-									   candidate = b;
-									   candidateManDist = manDistTo(worldPosition, b,orientation);
-								   }
-							   }
-						   }
-					   }
-					   
-					   
-					   
-				   }
-				   
-				   if (!candidate.equals(worldPosition)) {
-					   objective = candidate;
-				   }
-				   
+				   objective = removeOptimalWall(border);
 				   System.out.println("Best border: "+objective.toString());
+				   
+				   
 			   }
 			   
 		   }
 
 		   nextMoves = astar(worldPosition, objective);
-//		   System.out.println("here");
+//		   System.out.println(nextMoves);
 //		   System.out.println(worldPosition[0]+" "+worldPosition[1]+" "+objective[0]+" "+objective[1]);
 		   
 
@@ -841,7 +888,7 @@ public class Agent {
 	   		1 - normal move forward
 	   		2 - open, blowup or chop
 	   		3 - move forward over key, dynamite or axe
-						
+			4 - got the treasure, let's go home
 	   	*/
 	   
 	   if (view[1][2] != '*' && view[1][2] != '-' && view[1][2] != 'T' && (move == 'f' || move == 'F')) {
@@ -865,9 +912,21 @@ public class Agent {
 		   }
 		   else if (view[1][2] == 'd') {
 			   removable.add('*');
+//			   System.out.println("GOT DYNAMITE!");
 			   num_dynamites_held++;
 			   return 3;
 		   }
+		   else if (view[1][2] == '~') {
+//			   symbolValues.put('~',0);
+			   symbolValues.put('T',1);
+			   return 3;
+		   }
+		   else if (view[1][2] == '$') {
+			   have_treasure = true;
+			   return 3;
+		   }
+		   
+//		   ADD THIS: If the current tile is water, and you move to land, then symbolValues.put('~',-1) and obstacles.add('~');
 		   
 		   return 1;
 	   }
@@ -876,11 +935,16 @@ public class Agent {
 	   }
 	   else if (view[1][2] == 'T' && have_axe && (move == 'c' || move == 'C')) {
 		   symbolValues.put('~',0);
+		   obstacles.remove('~');
+//		   have_raft = true;
+		   symbolValues.put('T',0);
 		   return 2;
 	   }
 	   else if (view[1][2] == '*' && num_dynamites_held > 0 && (move == 'b' || move == 'B')) {
 		   num_dynamites_held--;
+		   System.out.println("BOOM");
 		   if (num_dynamites_held == 0) {
+			   System.out.println("No more dynamite :(");
 			   removable.remove('*');
 		   }
 		   return 2;
@@ -1030,6 +1094,7 @@ public class Agent {
 			   updateFOV(view);
 			   
 			   if (successfulMove == 3) {
+				   
 				   world.get(worldPosition.getRow()).set(worldPosition.getCol(), ' ');
 			   }
 		   }
