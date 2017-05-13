@@ -264,7 +264,7 @@ public class Agent {
 	   obstacles.add('*');
 	   obstacles.add('T');
 	   obstacles.add('~');
-	   obstacles.add('#');
+//	   obstacles.add('#');
 	   obstacles.add('.');
 	   
 	   
@@ -341,22 +341,25 @@ public class Agent {
 			   
 			   char forwardSymbol = getValueAt(forwardPosition) ;
 			   Node forw = new Node(forwardPosition,forwardSymbol,current.getOrientation());
-			   
+//			   System.out.println("symbol: "+forwardSymbol);
 //			   if (forwardSymbol != '*' && forwardSymbol != '-' && forwardSymbol != 'T' && forwardSymbol != '~' && forwardSymbol != '#' ) {
 			   if (!obstacles.contains(forwardSymbol)) {
+//				   System.out.println("adding1");
 				   forw.setMove('F');
 				   current.addChild(forw);
 			   }
 			   else if (forwardSymbol == '-' && have_key) {
+//				   System.out.println("adding2");
 				   forw.setMove('U');
 				   current.addChild(forw);
 			   }
 			   else if (forwardSymbol == 'T' && have_axe) {
+//				   System.out.println("adding3");
 				   forw.setMove('C');
 				   current.addChild(forw);
 			   }
 			   else if ((forwardSymbol == '*' || forwardSymbol == 'T') && num_dynamites_held > 0 && manDistTo(forw.getPosition(),objective,orientation) == 0) {
-				   System.out.println("bombing");
+//				   System.out.println("adding4");
 				   forw.setMove('B');
 				   current.addChild(forw);
 			   }
@@ -582,6 +585,8 @@ public class Agent {
 			   for (Position p: reachableCandidates) {
 				   nextValue =  ((double) symbolValues.get(p.getValueAt()) / manDistTo(worldPosition, p, orientation)) ;
 				   if (nextValue >= highestValue) {
+					   System.out.println("reachable"+p);
+					   highestValue=nextValue;
 					   objective = p;
 				   }
 			   }
@@ -595,6 +600,8 @@ public class Agent {
 			   for (Position p: unreachableCandidates) {
 				   nextValue =  ((double) symbolValues.get(p.getValueAt()) / manDistTo(worldPosition, p, orientation)) ;
 				   if (nextValue >= highestValue) {
+					   System.out.println("unreachable"+p+" value: "+nextValue);
+					   highestValue=nextValue;
 					   objective = p;
 				   }
 			   }
@@ -877,7 +884,7 @@ public class Agent {
    }
    
    
-   public char move() {
+   public char move(char[][] view) {
 	   if (have_treasure) {
 		   world.get(worldPosition.getRow()-positionRelativeToStart[0]).set(worldPosition.getCol()-positionRelativeToStart[1], 'S');
 //		   symbolValues.put('S', Integer.MAX_VALUE);
@@ -885,6 +892,12 @@ public class Agent {
 //		   print_world();
 //		   System.out.println(positionRelativeToStart[0]+" "+positionRelativeToStart[1]);
 //		   System.exit(-1);
+	   }
+	   
+	   
+	   if (!nextMoves.isEmpty() && nextMoves.get(nextMoves.size()-1) == 'F' && obstacles.contains(getValueAt(new int[]{worldPosition.getRow() + forward.get(orientation)[0],worldPosition.getCol() + forward.get(orientation)[1]}))) {
+		   nextMoves = null;
+//		   move();
 	   }
 	   
 	   
@@ -911,8 +924,6 @@ public class Agent {
 					   System.out.println("Best border: "+objective.toString());
 				   }
 
-				   
-				   
 			   }
 			   
 		   }
@@ -926,8 +937,13 @@ public class Agent {
 	   System.out.println(nextMoves);
 	   System.out.println("Next move: "+nextMoves.get(nextMoves.size()-1));
 	   
+	   char move = nextMoves.remove(nextMoves.size()-1);
 	   
-	   return nextMoves.remove(nextMoves.size()-1);
+     updateOrientation(move);
+     lastMoveSuccessful = successfulMove(move, view);
+     System.out.println(on_water+" "+lastMoveSuccessful+" "+view[1][2]);
+	   
+	   return move;
    }
    
    
@@ -960,17 +976,42 @@ public class Agent {
 //			   System.out.println("GOT AXE!");
 			   symbolValues.put('a',0);
 			   symbolValues.put('T',2);
+			   
+			   if (on_water == true) {
+				   System.out.println("lost raft");
+				   on_water = false;
+				   symbolValues.put('~',-1);
+				   obstacles.add('~');
+				   symbolValues.put('T',2);
+			   }
+			   
 			   return 3;
 		   }
 		   else if (view[1][2] == 'k') {
 			   have_key = true;
 			   symbolValues.put('k',0);
 			   symbolValues.put('-',2);
+			   if (on_water == true) {
+				   System.out.println("lost raft");
+				   on_water = false;
+				   symbolValues.put('~',-1);
+				   obstacles.add('~');
+				   symbolValues.put('T',2);
+			   }
+			   
 			   return 3;
 		   }
 		   else if (view[1][2] == '$') {
 			   symbolValues.put('$',0);
 			   have_treasure = true;
+			   
+			   if (on_water == true) {
+				   System.out.println("lost raft");
+				   on_water = false;
+				   symbolValues.put('~',-1);
+				   obstacles.add('~');
+				   symbolValues.put('T',2);
+			   }
 			   return 3;
 		   }
 		   else if (view[1][2] == 'd') {
@@ -980,27 +1021,34 @@ public class Agent {
 				   symbolValues.put('T',1);
 			   }
 			   
+			   if (on_water == true) {
+				   System.out.println("lost raft");
+				   on_water = false;
+				   symbolValues.put('~',-1);
+				   obstacles.add('~');
+				   symbolValues.put('T',2);
+			   }
+			   
 //			   System.out.println("GOT DYNAMITE!");
 			   num_dynamites_held++;
 			   return 3;
 		   }
+//		   else if ((view[1][2] == ' ' || view[1][2] == '$' || view[1][2] == 'a' || view[1][2] == 'd' || view[1][2] == 'k') 
+//				   && on_water == true) {
+//			   System.out.println("lost raft");
+//			   on_water = false;
+//			   symbolValues.put('~',-1);
+//			   obstacles.add('~');
+//			   symbolValues.put('T',2);
+//			   return 3;
+//		   }
 		   else if (view[1][2] == '~') {
 //			   symbolValues.put('~',0);
+//			   System.out.println("here4");
 			   on_water = true;
 			   return 1;
 		   }
-		   else if (view[1][2] == ' ' && on_water == true) {
-			   System.out.println("here11");
-			   on_water = false;
-			   symbolValues.put('~',-1);
-			   obstacles.add('~');
-			   symbolValues.put('T',2);
-			   return 3;
-		   }
-		   else if (view[1][2] == '$') {
-			   have_treasure = true;
-			   return 3;
-		   }
+
 		   
 //		   ADD THIS: If the current tile is water, and you move to land, then symbolValues.put('~',-1) and obstacles.add('~');
 		   
@@ -1240,12 +1288,12 @@ public class Agent {
             // read character from keyboard
 //            ch  = System.in.read();
         	 
-        	 ch = move();
+        	 ch = move(view);
 
             
-            updateOrientation((char) ch);
-            lastMoveSuccessful = successfulMove((char) ch, view);
-            System.out.println(lastMoveSuccessful);
+//            updateOrientation((char) ch);
+//            lastMoveSuccessful = successfulMove((char) ch, view);
+//            System.out.println(lastMoveSuccessful);
             if (lastMoveSuccessful != 0 || ch == 'L' || ch == 'l' || ch == 'R' || ch == 'r') {
             	return((char) ch );          
             }
@@ -1350,7 +1398,7 @@ public class Agent {
                   }
                }
             }
-//            agent.print_view( view ); // COMMENT THIS OUT BEFORE SUBMISSION
+            agent.print_view( view ); // COMMENT THIS OUT BEFORE SUBMISSION
             
             if (agent.world.get(0).isEmpty()) {
             	agent.initialiseWorld(view);
