@@ -48,9 +48,9 @@ public class Agent {
    private Map<Integer, Integer[]> forward = new HashMap<Integer,Integer[]>();
    
    public Agent() {
-	   symbolValues.put('a', 2);
-	   symbolValues.put('d', 2);
-	   symbolValues.put('k', 2);
+	   symbolValues.put('a', 0);
+	   symbolValues.put('d', 0);
+	   symbolValues.put('k', 0);
 	   symbolValues.put('$', Integer.MAX_VALUE);
 	   
 	   symbolValues.put(' ', 0);
@@ -86,6 +86,7 @@ public class Agent {
    public class Position {
 	   private int row;
 	   private int col;
+	   private boolean reachable = false;
 	   
 	   public Position(int row, int col) {
 	       this.row = row;
@@ -107,6 +108,14 @@ public class Agent {
 	   public String toString() {
 		   return String.format("["+this.row+","+this.col+"]");
 		   
+	   }
+	   
+	   public boolean isReachable() {
+		   return this.reachable;
+	   }
+	   
+	   public void setReachable(boolean b) {
+		   this.reachable = b;
 	   }
 	   
 	   public char getValueAt() {
@@ -608,13 +617,13 @@ public class Agent {
    
    
    public List<Character> astar(Position position, Position goal, boolean exploring) {
-	   int aStarTime = 2;
-	   if (goal.getValueAt() == '$') {
-		   aStarTime = 60;
-	   }
-
-	   long startTime = System.currentTimeMillis();
-	   long endTime = startTime + aStarTime*1000; // 5 seconds * 1000 ms/sec
+//	   int aStarTime = 2;
+//	   if (goal.getValueAt() == '$') {
+//		   aStarTime = 60;
+//	   }
+//
+//	   long startTime = System.currentTimeMillis();
+//	   long endTime = startTime + aStarTime*1000; // 5 seconds * 1000 ms/sec
 
 		   
 	   
@@ -629,7 +638,7 @@ public class Agent {
 	   start.setH(manDistTo(position, goal, start.getOrientation()));
 	   start.updateF();
 	   
-	   while (!open.isEmpty() && System.currentTimeMillis() < endTime) {
+	   while (!open.isEmpty() /*&& System.currentTimeMillis() < endTime*/) {
 
 		   Node current = Collections.min(open, new fScoreComparator());
 //		   System.out.println("open: "+open);
@@ -763,11 +772,11 @@ public class Agent {
 			   
 			   
 			   if (current.getSymbol() == '~' && child.getSymbol() == ' ') {
-				   moveCost = 3;
+				   moveCost = 5;
 			   }
 			   
 			   if (current.getSymbol() == '~' && child.getMove() == 'C') {
-				   moveCost = 3;
+				   moveCost = 1000;
 			   }
 			   
 			   int temp_g = current.getG() + moveCost;
@@ -783,7 +792,7 @@ public class Agent {
 //				   System.out.println(origins);
 				   child.setG(temp_g);
 				   child.setH(manDistTo(child.getPosition(), goal, child.getOrientation()));
-				   child.updateF(1.99f);
+				   child.updateF(1f);
 //				   child.updateF();
 				   if (!open.contains(child)) {
 					   open.add(child);
@@ -1107,6 +1116,11 @@ public class Agent {
    }
    
    public boolean checkReachable(Position from, Position position) {
+//	   ************* maybe add a condition that if you're on water, shore is unreachable and vis-versa to avoid losing boats
+	   
+	   if (obstacles.contains(position) &&  !(getValueAt(position) == '-' && have_key)) {
+		   return false;
+	   }
 	   
 	   Set<Position> open = new HashSet<Position>();
 	   Set<Position> closed = new HashSet<Position>();
@@ -1131,19 +1145,23 @@ public class Agent {
 		   Position east = current.east();
 		   Position west = current.west();
 		   
-		   if (north != null && !obstacles.contains(getValueAt(north)) && !closed.contains(north)) {
+		   if (north != null && (!obstacles.contains(getValueAt(north)) || (getValueAt(north) == '-' && have_key)) && 
+				   !closed.contains(north)) {
 			   open.add(north);
 		   }
 
-		   if (south != null && !obstacles.contains(getValueAt(south)) && !closed.contains(south)) {
+		   if (south != null && (!obstacles.contains(getValueAt(south)) || (getValueAt(south) == '-' && have_key)) && 
+				   !closed.contains(south)) {
 			   open.add(south);
 		   }
 		   
-		   if (east != null && !obstacles.contains(getValueAt(east)) && !closed.contains(east)) {
+		   if (east != null && (!obstacles.contains(getValueAt(east)) || (getValueAt(east) == '-' && have_key)) && 
+				   !closed.contains(east)) {
 			   open.add(east);
 		   }
 		   
-		   if (west != null && !obstacles.contains(getValueAt(west)) && !closed.contains(west)) {
+		   if (west != null && (!obstacles.contains(getValueAt(west)) || (getValueAt(west) == '-' && have_key)) && 
+				   !closed.contains(west)) {
 			   open.add(west);
 		   }
 
@@ -1264,28 +1282,34 @@ public class Agent {
 	   return candidate;
    }
    
+   
+
+   
    public Position bestExploreScore() {
-	   Position candidate = new Position(objective.getRow(),objective.getCol());
-	   Map<Double, Position> candidates = new HashMap<Double, Position>();
+//	   Position candidate = new Position(objective.getRow(),objective.getCol());
+	   Map<Double, Position> allCandidates = new HashMap<Double, Position>();
+	   List<Position> reachableCandidates = new ArrayList<Position>();
+	   List<Position> unreachableCandidates = new ArrayList<Position>();
 	   
-	   double exploreScore = 0d;
+//	   double exploreScore = 0d;
+	   double nextScore = 0d;
 	   
 	   for (int i = 0; i< world.size(); i++) {
 		   for (int j = 0; j < world.get(0).size(); j++) {
 			   Position nextPosition = new Position(i,j);
-			   Double nextScore = (double) exploreScore(nextPosition) / manDistTo(worldPosition,nextPosition,orientation);
+			   nextScore = (double) exploreScore(nextPosition) / manDistTo(worldPosition,nextPosition,orientation);
 			   
-			   if (nextScore > 0d && on_water && (nextPosition.getValueAt() == ' ' || 
-					   (nextPosition.getValueAt() == 'k' && have_key) || 
-					   (nextPosition.getValueAt() == 'a' && have_axe) ||
-					   (nextPosition.getValueAt() == '$' && have_treasure) 
-					   )) 
-			   {
-				   nextScore /= 2d;
-			   }
-			   else if (nextScore > 0d && !on_water && (nextPosition.getValueAt() == '~')) {
-				   nextScore /= 2d;
-			   }
+//			   if (nextScore > 0d && on_water && (nextPosition.getValueAt() == ' ' || 
+//					   (nextPosition.getValueAt() == 'k' && have_key) || 
+//					   (nextPosition.getValueAt() == 'a' && have_axe) ||
+//					   (nextPosition.getValueAt() == '$' && have_treasure) 
+//					   )) 
+//			   {
+//				   nextScore /= 2d;
+//			   }
+//			   else if (nextScore > 0d && !on_water && (nextPosition.getValueAt() == '~')) {
+//				   nextScore /= 2d;
+//			   }
 
 //			   if (nextScore > 0d) {
 //				   System.out.println(nextPosition+" Explore Score: "+nextScore);
@@ -1294,19 +1318,19 @@ public class Agent {
 			   
 			   
 //			   if (nextScore > exploreScore && !obstacles.contains(nextPosition.getValueAt()) && checkReachable(worldPosition,nextPosition)) {
-			   if (nextScore > exploreScore /* && ((!obstacles.contains(nextPosition.getValueAt())) || nextPosition.getValueAt() == '#')*/ ) {
+			   if (nextScore > 0 /* && ((!obstacles.contains(nextPosition.getValueAt())) || nextPosition.getValueAt() == '#')*/ ) {
 //				   System.out.println("checking");
-				   exploreScore = nextScore;
-				   candidate = nextPosition;
-				   candidates.put(nextScore, nextPosition);
+//				   exploreScore = nextScore;
+//				   candidate = nextPosition;
+				   allCandidates.put(nextScore, nextPosition);
 
 			   }
 		   }
 	   }
 	   
-	   candidates = candidates.entrySet()
+	   allCandidates = allCandidates.entrySet()
 	              .stream()
-	              .sorted(Map.Entry.comparingByKey(Collections.reverseOrder()))
+	              .sorted(Map.Entry.comparingByKey(/*Collections.reverseOrder()*/))
 	              .collect(Collectors.toMap(
 	                Map.Entry::getKey, 
 	                Map.Entry::getValue, 
@@ -1314,15 +1338,37 @@ public class Agent {
 	                LinkedHashMap::new
 	              ));
 	   
-	   for (Position e: candidates.values()) {
-		   if (checkReachable(worldPosition,e)) {
-			   return e;
+//	   for (Position e: allCandidates.values()) {
+//		   if (checkReachable(worldPosition,e)) {
+//			   return e;
+//		   }
+//		   else if (astar(worldPosition, e, true) != null) {
+//			   return e;
+//		   } 
+//			   
+//	   }
+	   
+	   for (Position p: allCandidates.values()) {
+		   if (checkReachable(p,worldPosition)) {
+			   reachableCandidates.add(p);
 		   }
-		   else if (astar(worldPosition, e, true) != null) {
-			   return e;
-		   } 
-			   
+		   else {
+			   unreachableCandidates.add(p);
+		   }
 	   }
+   
+	   if (!reachableCandidates.isEmpty()) {
+		   Position objective = reachableCandidates.get(reachableCandidates.size()-1);
+		   objective.setReachable(true);
+		   return objective;
+	   }
+	   else if (!unreachableCandidates.isEmpty()) {
+//		   bring in astar check for unreachable candidates before outputting
+		   Position objective = unreachableCandidates.get(unreachableCandidates.size()-1);
+		   objective.setReachable(false);
+		   return objective;
+	   }
+
 	   return null;
 				   
 	   
@@ -1383,7 +1429,7 @@ public class Agent {
 			   objective = findNearestReachableEdge(objective);
 			   if (objective.equals(worldPosition)) {
 				   objective = bestExploreScore();
-				   System.out.println("using explore score ");
+				   System.out.println("using explore score "+objective.isReachable());
 			   }
 
 			   nextMoves = astar(worldPosition, objective, true);
@@ -1392,6 +1438,20 @@ public class Agent {
 			   
 			   System.out.println("moves: "+nextMoves);
 			   move = nextMoves.remove(nextMoves.size()-1);
+			   
+			   
+//			   objective = bestExploreScore();
+			   
+			   
+			   
+			   
+			   
+			   
+			   
+			   
+			   
+			   
+			   
 //			   objective = findNearestReachableEdge(objective);
 			   
 			   
@@ -1477,6 +1537,7 @@ public class Agent {
 		   }
 		   else if (view[1][2] == 'k') {
 			   have_key = true;
+//			   obstacles.remove('-');
 			   symbolValues.put('k',0);
 			   if (on_water == true) {
 				   System.out.println("lost raft");
