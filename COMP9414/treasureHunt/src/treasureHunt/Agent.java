@@ -178,6 +178,46 @@ public class Agent {
 		   
 	   }
 	   
+	   @Override
+	   public boolean equals(Object object)
+	   {
+		   try {
+			   if (object != null && object instanceof WorldState) {
+		    	   for (int i = 0; i < this.numRows(); i++) {
+					   for (int j = 0 ; j < this.numCols(); j++) {
+						   if (this.getCell(i, j) != ((WorldState) object).getCell(i, j)) {
+							   return false;
+						   }
+
+					   }
+				   }
+		       }
+		   }
+		   catch (IndexOutOfBoundsException e) {
+			   return false;
+		   }
+
+	       return true;
+	   }
+	   
+	   @Override
+	    public int hashCode() {
+		   StringBuilder str = new StringBuilder();
+		   
+		   
+		   for (int i = 0; i < this.numRows(); i++) {
+			   for (int j = 0 ; j < this.numCols(); j++) {
+				   str.append(this.getCell(i, j));
+
+			   }
+		   }
+		   
+		   str.toString();
+		   
+	        return Objects.hash(str.toString());
+      
+	    }
+	   
 	   public char getCell(int row, int col) {
 		   try {
 			   
@@ -241,7 +281,7 @@ public class Agent {
 
 	   private int g;
 	   private int h;
-	   private int f;
+	   private float f;
 	   private int orientation;
 	   private Character symbol;
 	   
@@ -279,8 +319,20 @@ public class Agent {
 	       if (object != null && object instanceof Node)
 	       {
 	    	   if (this.getForwardPosition() != null) {
+	    		   
+//	    		   System.out.println(this.getForwardPosition() +" "+ ((Node) object).getForwardPosition());
+//	    		   System.out.println(this.getForwardPosition().getValueAt() +" "+ ((Node) object).getForwardPosition().getValueAt());
+//	    		   System.out.println(this.getMove() +" "+ ((Node) object).getMove());
+//	    		   System.out.println(this.nodeWorld.getCell(2, 4) +" "+ ((Node) object).nodeWorld.getCell(2, 4));
+	    		   
 	    		   return this.position.equals(((Node) object).getPosition()) && this.orientation == ((Node) object).getOrientation() 
-		        		   && this.getForwardPosition().getValueAt() == ((Node) object).getForwardPosition().getValueAt();
+	    				   && this.nodeWorld.equals(((Node) object).nodeWorld);
+	    				   
+	    				   
+//		        		   && this.nodeWorld.getCell(this.getForwardPosition().getRow(),this.getForwardPosition().getCol()) 
+//		        		   == ((Node) object).nodeWorld.getCell(this.getForwardPosition().getRow(),this.getForwardPosition().getCol());
+	    		   
+	    		   
 	    	   }
 	           return this.position.equals(((Node) object).getPosition()) && this.orientation == ((Node) object).getOrientation();
 	       }
@@ -291,7 +343,8 @@ public class Agent {
 	   @Override
 	    public int hashCode() {
 		   if (this.getForwardPosition() != null) {
-			   return Objects.hash(this.position,this.orientation,this.getForwardPosition().getValueAt());
+//			   return Objects.hash(this.position,this.orientation,this.nodeWorld.getCell(this.getForwardPosition().getRow(),this.getForwardPosition().getCol()));
+			   return Objects.hash(this.position,this.orientation,this.nodeWorld);
 		   }
 	        return Objects.hash(this.position,this.orientation);
        
@@ -309,8 +362,14 @@ public class Agent {
 			   return forwardPosition;
 		   }
 		   return null;
-			   
-		   
+	   }
+	   
+	   public Position getBackwardPosition() {
+		   Position backwardPosition = new Position(this.position.getRow()-forward.get(this.orientation)[0],this.position.getCol()-forward.get(this.orientation)[1]);
+		   if (backwardPosition.getRow() >= 0 && backwardPosition.getCol() >= 0 && backwardPosition.getRow() < this.nodeWorld.numRows() && backwardPosition.getCol() < this.nodeWorld.numCols()) {
+			   return backwardPosition;
+		   }
+		   return null;
 	   }
 	   
 //	   public void setValue(Character c) {
@@ -366,6 +425,11 @@ public class Agent {
 		   this.f = this.g + this.h;
 	   }
 	   
+	   public void updateF(float w) {
+		   this.f = (2 - w) * this.g +  w * this.h;
+	   }
+	   
+  
 	   public int getH() {
 		   return this.h;
 	   }
@@ -374,7 +438,7 @@ public class Agent {
 		   return this.g;
 	   }
 	   
-	   public int getF() {
+	   public float getF() {
 		   return this.f;
 	   }
 	   
@@ -441,8 +505,8 @@ public class Agent {
    public class fScoreComparator implements Comparator<Node> {  
 	@Override
 	public int compare(Node n1, Node n2){  
-		   Integer f1=(Integer)n1.getF();  
-		   Integer f2=(Integer)n2.getF();  
+		   Float f1=(Float)n1.getF();  
+		   Float f2=(Float)n2.getF();  
 		     
 		   return f1.compareTo(f2);  
 	   }
@@ -459,11 +523,11 @@ public class Agent {
 	   symbolValues.put(' ', 0);
 	   symbolValues.put('#', 0);
 	   
-	   symbolValues.put('T', -1);
-	   symbolValues.put('*', -1);
-	   symbolValues.put('-', -1);
-	   symbolValues.put('~', -1);
-	   symbolValues.put('.', -1);
+//	   symbolValues.put('T', -1);
+//	   symbolValues.put('*', -1);
+//	   symbolValues.put('-', -1);
+//	   symbolValues.put('~', -1);
+//	   symbolValues.put('.', -1);
 	   
 	   
 	   forward.put(0, new Integer[]{-1,0});
@@ -499,6 +563,9 @@ public class Agent {
 
    
    public List<Character> make_path(Map<Node,Node> origins, Node position) {
+	   
+//	   Position originalPos = new Position(position.getPosition().getRow(),position.getPosition().getCol());
+	   
 	   List<Character> path = new ArrayList<Character>();
 	   path.add(position.getMove());
 	   
@@ -516,7 +583,7 @@ public class Agent {
 	   
 
 	   
-	   System.out.println("Path: "+path);
+//	   System.out.println("Path: "+path+" to: "+originalPos);
 	   return path;
    }
 	   
@@ -566,7 +633,8 @@ public class Agent {
 				   
 				   if (forwardSymbol == 'd') {
 					   forw.addDynamite();
-					   System.out.println("adding dynamite");
+//					   System.out.println("adding dynamite");
+					   forw.nodeWorld.updateCell(forwardPosition.getRow(), forwardPosition.getCol(), ' ');
 				   }
 				   else if (forwardSymbol == 'k') {
 					   forw.setHaveKey(true);;
@@ -578,17 +646,27 @@ public class Agent {
 					   forw.setHaveTreasure(true);
 				   }
 				   
+				   if (forw.nodeWorld.getCell(forwardPosition.getRow(), forwardPosition.getCol()) != '~') {
+					   forw.nodeWorld.updateCell(forwardPosition.getRow(), forwardPosition.getCol(), ' ');
+				   }
+				   
 				   current.addChild(forw);
 				   
 				   
 			   }
 			   else if (forwardSymbol == '-' && current.haveKey) {
 //				   System.out.println("adding2");
+				   forw.nodeWorld.updateCell(forw.getPosition().getRow(), forw.getPosition().getCol(), ' ');
+				   forw.setPosition(current.getPosition());
+				   
 				   forw.setMove('U');
 				   current.addChild(forw);
 			   }
 			   else if (forwardSymbol == 'T' && current.haveAxe) {
 //				   System.out.println("adding3");
+				   forw.nodeWorld.updateCell(forw.getPosition().getRow(), forw.getPosition().getCol(), ' ');
+				   forw.setPosition(current.getPosition());
+				   
 				   forw.setMove('C');
 				   current.addChild(forw);
 			   }
@@ -597,29 +675,17 @@ public class Agent {
 				   
 
 				   forw.removeDynamite();
-				   forw.nodeWorld.updateCell(forw.getPosition().getRow(), forw.getPosition().getCol(), '@');
+				   forw.nodeWorld.updateCell(forw.getPosition().getRow(), forw.getPosition().getCol(), ' ');
 				   forw.setPosition(current.getPosition());
 
-				   
-//				   forw.setValue(' ');
-				   
-				   
-//				   System.out.println("*******************************************************************");
-//				   forw.printWorld();
-
-				   
-				   
-//				   if (planned_dynamite == 0) {
-//					   planned_obstacles.add('*');
-//				   }
-				   
 				   forw.setMove('B');
 				   current.addChild(forw);
 			   }
-			   System.out.println("\n*************** adding *************** ");
-			   System.out.println(forw.getMove());
-			   current.printWorld();
-			   System.out.println("*************** end adding *************** ");
+			   
+//			   System.out.println("\n*************** adding *************** ");
+//			   System.out.println(forw.getMove());
+//			   current.printWorld();
+//			   System.out.println("*************** end adding *************** ");
 		   }
 
 		   Node left = new Node(current.getPosition(),current.getSymbol(),checkOrientation('L',current.getOrientation()),current);
@@ -633,12 +699,33 @@ public class Agent {
 		   open.remove(current);
 		   closed.add(current);
 		   
+//		   System.out.println("\n*************** current *************** ");
+//		   System.out.println(current.getMove());
+//		   current.printWorld();
+//		   System.out.println("*************** end current *************** ");
+		   
 		   for (Node child: current.getChildren()) {
 			   if (closed.contains(child)) { 
+//				   System.out.println("\n*************** closed *************** ");
+//				   System.out.println(child.getMove());
+//				   child.printWorld();
+//				   System.out.println("*************** end closed *************** ");
 				   continue;
 			   }
-
-			   int temp_g = current.getG() + 1;
+			   
+			   int moveCost = 1;
+			   if (child.getMove() == 'B') {
+				   moveCost = 2;
+			   }
+//			   if (current.getSymbol() == '~' && child.getSymbol() == ' ') {
+//				   moveCost = 1000;
+//			   }
+			   int temp_g = current.getG() + moveCost;
+			   
+//			   System.out.println("\n*************** update *************** ");
+//			   System.out.println(child.getMove());
+//			   child.printWorld();
+//			   System.out.println("*************** end update *************** ");
 			   
 			   if (temp_g < child.getG() || !open.contains(child) ) {
 //				   System.out.println("adding: "+current.toString()+" to: "+child.toString()+" with move: "+child.getMove());
@@ -646,7 +733,8 @@ public class Agent {
 //				   System.out.println(origins);
 				   child.setG(temp_g);
 				   child.setH(manDistTo(child.getPosition(), goal, child.getOrientation()));
-				   child.updateF();
+				   child.updateF(1.99f);
+//				   child.updateF();
 				   if (!open.contains(child)) {
 					   open.add(child);
 				   }
@@ -786,8 +874,8 @@ public class Agent {
    
    public List<Position> findObjective() {
 	   List<Position> allCandidates = new ArrayList<Position>();
-	   List<Position> reachableCandidates = new ArrayList<Position>();
-	   List<Position> unreachableCandidates = new ArrayList<Position>();
+//	   List<Position> reachableCandidates = new ArrayList<Position>();
+//	   List<Position> unreachableCandidates = new ArrayList<Position>();
 	   
 	   double highestValue = 0d;
 	   double nextValue = 0d;
@@ -797,7 +885,7 @@ public class Agent {
 		   for (int j = 0; j < world.get(i).size(); j++) {
 			   if (symbolValues.get(world.get(i).get(j)) != null) {
 				   Position nextPosition = new Position(i,j);
-				   nextValue =  ((double) symbolValues.get(world.get(i).get(j)))  ;
+				   nextValue =  ((double) symbolValues.get(world.get(i).get(j))) / manDistTo(worldPosition, nextPosition, orientation)  ;
 				   if (nextValue >= highestValue ) {
 //					   if (nextValue > highestValue) {
 					   if (highestValue == 0 && nextValue > highestValue) {
@@ -1131,14 +1219,26 @@ public class Agent {
 		   for (int j = 0; j < world.get(0).size(); j++) {
 			   Position nextPosition = new Position(i,j);
 			   int nextScore = exploreScore(nextPosition);
-			   if (nextScore > 0) {
-//				   System.out.println(checkReachable(worldPosition,nextPosition)+" np "+nextPosition+" Explore Score: "+nextScore);
-			   }
 			   
-			   if (nextScore > exploreScore && !obstacles.contains(nextPosition.getValueAt()) && checkReachable(worldPosition,nextPosition)) {
+			   if (nextScore > 0 && on_water && nextPosition.getValueAt() == ' ') {
+				   nextScore = 1;
+			   }
+
+			   System.out.println(nextPosition+" Explore Score: "+nextScore);
+			   
+//			   if (nextScore > exploreScore && !obstacles.contains(nextPosition.getValueAt()) && checkReachable(worldPosition,nextPosition)) {
+			   if (nextScore > exploreScore && !obstacles.contains(nextPosition.getValueAt()) ) {
 				   
-				   exploreScore = nextScore;
-				   candidate = nextPosition;
+				   if (checkReachable(worldPosition,nextPosition)) {
+					   exploreScore = nextScore;
+					   candidate = nextPosition;
+				   }
+				   else if (astar(worldPosition, nextPosition) != null) {
+					   exploreScore = nextScore;
+					   candidate = nextPosition;
+				   }
+				   
+				   
 			   }
 			   
 		   }
@@ -1190,16 +1290,18 @@ public class Agent {
 			   }
 		   }
 		   System.out.println("new objective: "+objective.toString());
+		   System.out.println("moves: "+nextMoves);
 		   
 //		   Position initialObjective = new Position(objective.getRow(),objective.getCol());
 //		   
 		   
 //		   if (!checkReachable(worldPosition,objective)) {
-		   if (nextMoves == null) {
+		   if (nextMoves == null || nextMoves.isEmpty()) {
 //			   objective = findNearestTo(objective);
 			   objective = bestExploreScore();
 			   System.out.println("Nearest Edge: "+objective.toString());
 			   nextMoves = astar(worldPosition, objective);
+			   System.out.println("moves: "+nextMoves);
 			   move = nextMoves.remove(nextMoves.size()-1);
 //			   objective = findNearestReachableEdge(objective);
 			   
@@ -1269,12 +1371,15 @@ public class Agent {
 			   removable.add('T');
 //			   System.out.println("GOT AXE!");
 			   symbolValues.put('a',0);
-			   symbolValues.put('T',2);
+			   
+			   if (have_raft == false) {
+				   symbolValues.put('T',2);
+			   }
+//			   
 			   
 			   if (on_water == true) {
 				   System.out.println("lost raft");
 				   on_water = false;
-				   symbolValues.put('~',-1);
 				   obstacles.add('~');
 				   symbolValues.put('T',2);
 			   }
@@ -1284,11 +1389,9 @@ public class Agent {
 		   else if (view[1][2] == 'k') {
 			   have_key = true;
 			   symbolValues.put('k',0);
-			   symbolValues.put('-',2);
 			   if (on_water == true) {
 				   System.out.println("lost raft");
 				   on_water = false;
-				   symbolValues.put('~',-1);
 				   obstacles.add('~');
 				   symbolValues.put('T',2);
 			   }
@@ -1302,7 +1405,6 @@ public class Agent {
 			   if (on_water == true) {
 				   System.out.println("lost raft");
 				   on_water = false;
-				   symbolValues.put('~',-1);
 				   obstacles.add('~');
 				   symbolValues.put('T',2);
 			   }
@@ -1311,14 +1413,14 @@ public class Agent {
 		   else if (view[1][2] == 'd') {
 			   removable.add('*');
 			   removable.add('T');
-			   if (symbolValues.get('T') < 2) {
-				   symbolValues.put('T',1);
-			   }
+//			   if (symbolValues.get('T') < 2) {
+//				   symbolValues.put('T',1);
+//			   }
 			   
 			   if (on_water == true) {
 				   System.out.println("lost raft");
 				   on_water = false;
-				   symbolValues.put('~',-1);
+//				   symbolValues.put('~',-1);
 				   obstacles.add('~');
 				   symbolValues.put('T',2);
 			   }
@@ -1330,14 +1432,13 @@ public class Agent {
 		   else if (view[1][2] == ' ' && on_water == true) {
 			   System.out.println("lost raft");
 			   on_water = false;
-			   symbolValues.put('~',-1);
+			   have_raft = false;
 			   obstacles.add('~');
 			   symbolValues.put('T',2);
 			   return 3;
 		   }
 		   else if (view[1][2] == '~') {
-//			   symbolValues.put('~',0);
-//			   System.out.println("here4");
+
 			   on_water = true;
 			   return 1;
 		   }
@@ -1353,7 +1454,7 @@ public class Agent {
 	   else if (view[1][2] == 'T' && have_axe && (move == 'c' || move == 'C')) {
 		   symbolValues.put('~',0);
 		   obstacles.remove('~');
-//		   have_raft = true;
+		   have_raft = true;
 		   symbolValues.put('T',0);
 		   return 2;
 	   }
