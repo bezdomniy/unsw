@@ -25,11 +25,13 @@ public class Agent {
    
    private boolean newItems = false;
    private boolean failedToFindPathToObjective = false;
+   private boolean exploring = true;
    
    private int numberOfTrees = 0;
    private int numberOfAxes = 0;
    private int numberOfDynamite = 0;
    private int numberOfKeys = 0;
+   private int numberOfTreasures = 0;
 	
    private Map<Character, Integer> symbolValues = new HashMap<Character, Integer>();
    private List<List<Character>> world = new ArrayList<List<Character>>();
@@ -61,7 +63,7 @@ public class Agent {
 	   symbolValues.put('a', 0);
 	   symbolValues.put('d', 0);
 	   symbolValues.put('k', 0);
-	   symbolValues.put('$', Integer.MAX_VALUE);
+	   symbolValues.put('$', 2);
 	   
 	   symbolValues.put(' ', 0);
 	   symbolValues.put('#', 0);
@@ -625,68 +627,13 @@ public class Agent {
 	   System.out.println("Path: "+path);
 	   return path;
    }
-   
-   public boolean checkForNewUsefulItems() {
-	   int numberOfTreesUpdate = 0;
-	   int numberOfAxesUpdate = 0;
-	   int numberOfDynamiteUpdate = 0;
-	   int numberOfKeysUpdate = 0;
-	   
-	   boolean newItems = false;
-	   
-	   for(int i=0; i < world.size(); i++ ) {
-	         for(int j=0; j < world.get(0).size(); j++ ) {
-	        	 char nextSymbol = world.get(i).get(j);
-	        	 
-	        	 if (nextSymbol == 'T') {
-	        		 numberOfTreesUpdate++;
-	        	 }
-	        	 if (nextSymbol == 'a') {
-	        		 numberOfAxesUpdate++;
-	        	 }
-	        	 if (nextSymbol == 'd') {
-	        		 numberOfDynamiteUpdate++;
-	        	 }
-	        	 if (nextSymbol == 'k') {
-	        		 numberOfKeysUpdate++;
-	        	 }
-	         }
-	   }
-	   
-	 if (numberOfTreesUpdate > numberOfTrees) {
-		 numberOfTrees = numberOfTreesUpdate;
-//		 newItems = true;
-  	 }
-  	 if (numberOfAxesUpdate > numberOfAxes) {
-  		numberOfAxes = numberOfAxesUpdate;
-  		if (!have_axe) {
-  			newItems = true;
-  		}
-  		
-  	 }
-  	 if (numberOfDynamiteUpdate > numberOfDynamite) {
-  		numberOfDynamite = numberOfDynamiteUpdate;
-  		newItems = true;
-  	 }
-  	 if (numberOfKeysUpdate > numberOfKeys) {
-  		numberOfKeys = numberOfKeysUpdate;
-  		if (!have_key) {
-  			newItems = true;
-  		}
-  	 }
-	   
-	   
-	return newItems;
-	   
-   }
-	   
-   
+
    
    public List<Character> astar(Position position, Position goal, boolean exploring, float w, int timeCutoff) {
 
-//	   if (goal.getValueAt() == '$') {
-//		   aStarTime = 60;
-//	   }
+	   if (goal.getValueAt() == '$') {
+		   timeCutoff *= 1;
+	   }
 
 	   long startTime = System.currentTimeMillis();
 	   long endTime = startTime + timeCutoff*1000; 
@@ -738,6 +685,12 @@ public class Agent {
 //				   System.out.println("adding1");
 				   forw.setMove('F');
 				   
+//				   System.out.println("******** Current: "+current.haveRaft);
+//				   current.printWorld();
+//				   System.out.println("******** Forward: ");
+//				   forw.printWorld();
+//				   System.out.println("****************");
+				   
 				   if (forwardSymbol == 'd') {
 					   forw.addDynamite();
 //					   System.out.println("adding dynamite");
@@ -754,7 +707,8 @@ public class Agent {
 				   }
 				   else if (current.getSymbol() == '~' && (forwardSymbol == ' ' || forwardSymbol == '$' ||
 						   forwardSymbol == 'a' || forwardSymbol == 'd' || forwardSymbol == 'k' /*|| forwardSymbol == '#'*/ )) {
-//					   forw.addObstacle('~');
+					   forw.addObstacle('~');
+					   
 					   forw.setHaveRaft(false);
 				   }
 				   
@@ -832,20 +786,24 @@ public class Agent {
 			   
 			   int moveCost = 1;
 			   if (child.getMove() == 'B') {
-				   moveCost = 10;
+				   moveCost = 100;
+				   if (current.getSymbol() == '~') {
+					   moveCost = 10000;
+				   }
 			   }
 			   else if (child.getMove() == 'C' && child.haveRaft) {
-				   moveCost = 5;
+				   moveCost = 100;
+				   
+				   if (current.getSymbol() == '~') {
+					   moveCost = 10000;
+				   }
 			   }
 			   
 			   
 			   if (current.getSymbol() == '~' && child.getSymbol() == ' ') {
 				   moveCost = 10;
 			   }
-			   
-			   if (current.getSymbol() == '~' && child.getMove() == 'C') {
-				   moveCost = 10;
-			   }
+
 			   
 			   int temp_g = current.getG() + moveCost;
 			   
@@ -872,7 +830,84 @@ public class Agent {
 	   
 	   return null;
 	}
+
+   public boolean checkForNewUsefulItems() {
+	   int numberOfTreesUpdate = 0;
+	   int numberOfAxesUpdate = 0;
+	   int numberOfDynamiteUpdate = 0;
+	   int numberOfKeysUpdate = 0;
+	   int numberOfTreasuresUpdate = 0;
 	   
+	   boolean newItems = false;
+	   
+	   for(int i=0; i < world.size(); i++ ) {
+	         for(int j=0; j < world.get(0).size(); j++ ) {
+	        	 char nextSymbol = world.get(i).get(j);
+	        	 
+	        	 if (nextSymbol == 'T') {
+	        		 numberOfTreesUpdate++;
+	        	 }
+	        	 if (nextSymbol == 'a') {
+	        		 numberOfAxesUpdate++;
+	        	 }
+	        	 if (nextSymbol == 'd') {
+	        		 numberOfDynamiteUpdate++;
+	        	 }
+	        	 if (nextSymbol == 'k') {
+	        		 numberOfKeysUpdate++;
+	        	 }
+	        	 if (nextSymbol == '$') {
+	        		 numberOfTreasuresUpdate++;
+	        	 }
+	         }
+	   }
+	   
+	 if (numberOfTreesUpdate > numberOfTrees) {
+		 numberOfTrees = numberOfTreesUpdate;
+//		 if (numberOfTrees < 5) {
+//			 newItems = true;
+//		 }
+		 
+  	 }
+  	 if (numberOfAxesUpdate > numberOfAxes) {
+  		numberOfAxes = numberOfAxesUpdate;
+  		if (!have_axe) {
+  			newItems = true;
+  		}
+  		
+  	 }
+  	 if (numberOfDynamiteUpdate > numberOfDynamite) {
+  		numberOfDynamite = numberOfDynamiteUpdate;
+  		newItems = true;
+  	 }
+  	 if (numberOfKeysUpdate > numberOfKeys) {
+  		numberOfKeys = numberOfKeysUpdate;
+  		if (!have_key) {
+  			newItems = true;
+  		}
+  	 }
+  	if (numberOfTreasuresUpdate > numberOfTreasures) {
+  		numberOfTreasures = numberOfTreasuresUpdate;
+  		if (!have_treasure) {
+  			newItems = true;
+  		}
+  		
+  	 }
+	   
+	   
+	return newItems;
+	   
+   }
+   
+   public boolean areTrapped(WorldState w) {
+	   
+	   return false;
+	   
+   }
+   
+   
+   
+   
    public int manDistTo(Position position, Position objective, int orientation) {
 	   int manDist = 0;
 	   int turnCost = 0;
@@ -1130,26 +1165,26 @@ public class Agent {
 //		   System.out.println("for pos: "+p+" symbol: "+p.getValueAt());
 		   if (p != null && p.getValueAt() == '#') {
 //			   System.out.println("1 for east #");
-			   score += 1;
+			   score += 1*manDistTo(worldPosition,p,orientation);
 		   }
 		   
 		   if (east != null && east.getValueAt() == '#' /*&& out[0]*/) {
-			   score += 1;
+			   score += 1*manDistTo(worldPosition,east,orientation);;
 		   }
 			   
 		   if (easteast != null && easteast.getValueAt() == '#'  /*&& out[1]*/) {
 //			   System.out.println("1 for east east #");
-			   score += 1;
+			   score += 1*manDistTo(worldPosition,easteast,orientation);;
 		   }   
 		   
 		   if (west != null && west.getValueAt() == '#'  /*&& out[2]*/) {
 //			   System.out.println("1 for west #");
-			   score += 1;
+			   score += 1*manDistTo(worldPosition,west,orientation);;
 		   }
 		   
 		   if (westwest != null && westwest.getValueAt() == '#'  /*&& out[3]*/) {
 //			   System.out.println("1 for west west #");
-			   score += 1;
+			   score += 1*manDistTo(worldPosition,westwest,orientation);;
 		   }   
 		   
 	   }
@@ -1343,12 +1378,21 @@ public class Agent {
 	   for (int i = 0; i< world.size(); i++) {
 		   for (int j = 0; j < world.get(0).size(); j++) {
 			   Position nextPosition = new Position(i,j);
-			   nextScore = (double) exploreScore(nextPosition) / manDistTo(worldPosition,nextPosition,orientation);
+			   
+			   if ((getValueAt(worldPosition) == '~' && getValueAt(nextPosition) != '~') ||
+					   (getValueAt(worldPosition) != '~' && getValueAt(nextPosition) == '~')) 
+			   {
+				   nextScore = 0.001d;
+			   }
+			   else {
+				   nextScore = (double) exploreScore(nextPosition) / manDistTo(worldPosition,nextPosition,orientation);
+			   }
+			   
+			   
 //			   System.out.println("candidate: "+nextPosition+" score: "+nextScore);
 			   if (nextScore > 0d ) {
-
+//				   System.out.println(nextPosition+" score: "+nextScore);
 				   allCandidates.put(nextPosition,nextScore);
-
 			   }
 		   }
 	   }
@@ -1366,6 +1410,7 @@ public class Agent {
 	   
 	   for (Position p: allCandidates.keySet()) {
 		   if (checkReachable(p,worldPosition)) {
+			   
 			   reachableCandidates.add(p);
 		   }
 		   else {
@@ -1401,6 +1446,8 @@ public class Agent {
    
    
    public Character move(char[][] view) {
+//	   System.out.println(obstacles);
+	   
 //	   List<Position> objectives = new ArrayList<Position>();
 	   Character move = null; 
 	   
@@ -1414,52 +1461,77 @@ public class Agent {
 //		   System.exit(-1);
 	   }
 	   
-	   
-	   if (!nextMoves.isEmpty() && nextMoves.get(nextMoves.size()-1) == 'F' && obstacles.contains(getValueAt(new int[]{worldPosition.getRow() + forward.get(orientation)[0],worldPosition.getCol() + forward.get(orientation)[1]}))) {
-		   nextMoves = null;
-		   System.out.println("finding new move set ");
-//		   move();
+	   char forwardSymbol = getValueAt(new int[]{worldPosition.getRow() + forward.get(orientation)[0],worldPosition.getCol() + forward.get(orientation)[1]});
+	   if (!nextMoves.isEmpty() && nextMoves.get(nextMoves.size()-1) == 'F') {
+		   if (obstacles.contains(forwardSymbol) && 
+				   !((on_water && forwardSymbol == '~') || (forwardSymbol == '~' && have_raft))) {
+			   nextMoves = null;
+			   System.out.println("finding new move set: obstacle ");
+		   }
+		   
+		   if (exploring &&  ((getValueAt(worldPosition) == '~' && forwardSymbol != '~') ||
+				   (getValueAt(worldPosition) != '~' && forwardSymbol == '~'))) {
+			   nextMoves = null;
+			   System.out.println("finding new move set: changing between land and water ");
+		   }
 	   }
+			   
+
+	   
+	   newItems = checkForNewUsefulItems();
+	   System.out.println("new items: "+newItems);
 	   
 	   
-	   if (nextMoves == null || nextMoves.isEmpty()) {
+	   if (nextMoves == null || nextMoves.isEmpty() || newItems) {
 		   
 //		   failedToFindPathToObjective = false;
 		   
+		   
 		   if (!failedToFindPathToObjective || (failedToFindPathToObjective && newItems)) {
+			   nextMoves = null;
+			   objective = null;
+			   System.out.println("finding objective...");
 			   objectives = findObjective();
 			   for (Position o: objectives) {
 				   System.out.println("o: "+o);
 				   
-				   nextMoves = astar(worldPosition, o, false, 1.5f,120);
+				   nextMoves = astar(worldPosition, o, false, 1.99f,2);
 				   
 				   System.out.println(nextMoves);
 				   if (!(nextMoves == null) && !nextMoves.isEmpty()) {
+					   exploring = false;
 					   objective = o;
 					   move = nextMoves.remove(nextMoves.size()-1);
 					   failedToFindPathToObjective = false;
+					   
+					   System.out.println("new objective: "+objective.toString());
+					   System.out.println("next move: "+move);
+					   System.out.println("remaining moves: "+nextMoves);
+					   
+					   break;
 
 				   }
+				   
 			   }
-			   System.out.println("new objective: "+objective.toString());
-			   System.out.println("moves: "+nextMoves);
+			   
 			   
 		   }
 		   
 		   
 
 //		   if (!checkReachable(worldPosition,objective)) {
-		   if (nextMoves == null || nextMoves.isEmpty()) {
+		   if (nextMoves == null || (nextMoves.isEmpty()  && move == null )) {
+			   
 			   
 			   if (!objectives.isEmpty()) {
 				   failedToFindPathToObjective = true;
 			   }
-			   
+			   exploring = true;
 
 			   objective = bestExploreScore();
 			   System.out.println("explore objective: "+objective.toString());
 			   System.out.println("reachable: "+objective.isReachable()+" have raft "+have_raft);   
-			   nextMoves = astar(worldPosition, objective, true, 1.99f,2);
+			   nextMoves = astar(worldPosition, objective, true, 1.5f,2);
 
 //			   System.out.println("obstacles: "+obstacles);
 			   
@@ -1528,7 +1600,7 @@ public class Agent {
 				   System.out.println("lost raft");
 				   on_water = false;
 				   have_raft = false;
-//				   obstacles.add('~');
+				   obstacles.add('~');
 //				   symbolValues.put('T',2);
 			   }
 			   
@@ -1543,13 +1615,14 @@ public class Agent {
 				   System.out.println("lost raft");
 				   on_water = false;
 				   have_raft = false;
-//				   obstacles.add('~');
+				   obstacles.add('~');
 //				   symbolValues.put('T',2);
 			   }
 			   
 			   return 3;
 		   }
 		   else if (view[1][2] == '$') {
+			   numberOfTreasures--;
 			   symbolValues.put('$',0);
 			   have_treasure = true;
 			   
@@ -1557,7 +1630,7 @@ public class Agent {
 				   System.out.println("lost raft");
 				   on_water = false;
 				   have_raft = false;
-//				   obstacles.add('~');
+				   obstacles.add('~');
 //				   symbolValues.put('T',2);
 			   }
 			   return 3;
@@ -1579,7 +1652,7 @@ public class Agent {
 				   on_water = false;
 				   have_raft = false;
 //				   symbolValues.put('~',-1);
-//				   obstacles.add('~');
+				   obstacles.add('~');
 //				   symbolValues.put('T',2);
 			   }
 			   
@@ -1591,12 +1664,12 @@ public class Agent {
 			   System.out.println("lost raft");
 			   on_water = false;
 			   have_raft = false;
-//			   obstacles.add('~');
+			   obstacles.add('~');
 //			   symbolValues.put('T',2);
 			   return 3;
 		   }
 		   else if (view[1][2] == '~') {
-
+			   obstacles.remove('~');
 			   on_water = true;
 			   return 1;
 		   }
@@ -1784,7 +1857,7 @@ public class Agent {
 		   
 	   }
 	   
-	   newItems = checkForNewUsefulItems();
+	   
    }
    
    public void updateWorldPosition() {
