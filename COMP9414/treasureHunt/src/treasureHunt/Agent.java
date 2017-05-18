@@ -34,7 +34,10 @@ public class Agent {
    private int numberOfTreasures = 0;
 	
    private Map<Character, Integer> symbolValues = new HashMap<Character, Integer>();
-   private List<List<Position>> world = new ArrayList<List<Position>>();
+//   private List<List<Position>> world = new ArrayList<List<Position>>();
+   
+   private WorldState world;
+   
    private int orientation = 0;
    private char[] orientationSymbol = {'^','>','v','<'};
    
@@ -87,10 +90,14 @@ public class Agent {
 	   obstacles.add('#');
 	   obstacles.add('.');
 	   
+	   List<List<Position>> w = new ArrayList<List<Position>>();
+	   
 	   for(int i = 0; i < 5; i++)  {
 		   List<Position> nextRow = new ArrayList<Position>(5);
-		   world.add(i, nextRow);
+		   w.add(i, nextRow);
 	   }
+	   world = new WorldState(w);
+	   
    }
    
    public class Position {
@@ -166,23 +173,23 @@ public class Agent {
 	   public Position north() {
 		   if (this.getRow()-1 >= 0) {
 //			   return new Position(this.getRow()-1,this.getCol());
-			   return world.get(this.getRow()-1).get(this.getCol());
+			   return world.getCell(this.getRow()-1, this.getCol());
 		   }
 		   return null;
 	   }
 	   
 	   public Position south() {
-		   if (this.getRow()+1 < world.size()) {
+		   if (this.getRow()+1 < world.numRows()) {
 //			   return new Position(this.getRow()+1,this.getCol());
-			   return world.get(this.getRow()+1).get(this.getCol());
+			   return world.getCell(this.getRow()+1, this.getCol());
 		   }
 		   return null;
 	   }
 	   
 	   public Position east() {
-		   if (this.getCol()+1 < world.get(0).size()) {
+		   if (this.getCol()+1 < world.numCols()) {
 //			   return new Position(this.getRow(),this.getCol()+1);
-			   return world.get(this.getRow()).get(this.getCol()+1);
+			   return world.getCell(this.getRow(), this.getCol()+1);
 		   }
 		   return null;
 	   }
@@ -190,7 +197,7 @@ public class Agent {
 	   public Position west() {
 		   if (this.getCol()-1 >= 0) {
 //			   return new Position(this.getRow(),this.getCol() - 1);
-			   return world.get(this.getRow()).get(this.getCol()-1);
+			   return world.getCell(this.getRow(), this.getCol()-1);
 		   }
 		   return null;
 	   }
@@ -311,6 +318,29 @@ public class Agent {
 		   }
 		   catch (IndexOutOfBoundsException e) {
 			   return (Position) null;
+		   }
+		   
+	   }
+	   
+	   public List<Position> getRow(int row) {
+		   return this.worldModel.get(row);
+		   
+	   }
+	   
+	   public void addPosition(int row, int col, Position pos) {
+		   this.worldModel.get(row).add(col,pos);
+	   }
+	   
+	   public void addPosition(int row, Position pos) {
+		   this.worldModel.get(row).add(pos);
+	   }
+	   
+	   public void addRow(char edge, List<Position> row) {
+		   if (edge == 'T') {
+			   this.worldModel.add(0,row);
+		   }
+		   else if (edge == 'B') {
+			   this.worldModel.add(row);
 		   }
 		   
 	   }
@@ -622,11 +652,11 @@ public class Agent {
 
    
    public char getValueAt(int[] position) {
-	   return world.get(position[0]).get(position[1]).getValue();
+	   return world.getCell(position[0], position[1]).getValue();
    }
    
    public char getValueAt(Position position) {
-	   return world.get(position.getRow()).get(position.getCol()).getValue();
+	   return world.getCell(position.getRow(), position.getCol()).getValue();
    }
 
    
@@ -878,9 +908,9 @@ public class Agent {
 	   
 	   boolean newItems = false;
 	   
-	   for(int i=0; i < world.size(); i++ ) {
-	         for(int j=0; j < world.get(0).size(); j++ ) {
-	        	 char nextSymbol = world.get(i).get(j).getValue();
+	   for(int i=0; i < world.numRows(); i++ ) {
+	         for(int j=0; j < world.numCols(); j++ ) {
+	        	 char nextSymbol = world.getCell(i, j).getValue();
 	        	 
 	        	 if (nextSymbol == 'T') {
 	        		 numberOfTreesUpdate++;
@@ -1013,8 +1043,8 @@ public class Agent {
 	   
 	   int edgeDist = Integer.MAX_VALUE;
 	   
-	   for (int i: new int[]{0,world.size()-1}) {
-		   for (int j = 0; j < world.get(0).size(); j++) {
+	   for (int i: new int[]{0,world.numRows()-1}) {
+		   for (int j = 0; j < world.numCols(); j++) {
 			   int old_i = i;
 			   
 			   if (i == 0) {
@@ -1022,7 +1052,7 @@ public class Agent {
 					   i++;
 				   }
 			   }
-			   if (i == world.size()-1) {
+			   if (i == world.numRows()-1) {
 				   while (getValueAt(new int[]{i,j}) == '#') {
 					   i--;
 				   }
@@ -1039,8 +1069,8 @@ public class Agent {
 			   i = old_i;
 		   }
 	   }
-	   for (int i: new int[]{0,world.get(0).size()-1}) {
-		   for (int j = 0; j < world.size(); j++) {
+	   for (int i: new int[]{0,world.numCols()-1}) {
+		   for (int j = 0; j < world.numRows(); j++) {
 			   int old_i = i;
 			   
 			   if (i == 0) {
@@ -1048,7 +1078,7 @@ public class Agent {
 					   i++;
 				   }
 			   }
-			   if (i == world.get(0).size()-1) {
+			   if (i == world.numCols()-1) {
 				   while (getValueAt(new int[]{j,i}) == '#') {
 					   i--;
 				   }
@@ -1081,11 +1111,11 @@ public class Agent {
 	   double nextValue = 0d;
 	   
 	   
-	   for (int i = 0; i < world.size(); i++) {
-		   for (int j = 0; j < world.get(i).size(); j++) {
-			   if (symbolValues.get(world.get(i).get(j)) != null) {
+	   for (int i = 0; i < world.numRows(); i++) {
+		   for (int j = 0; j < world.numCols(); j++) {
+			   if (symbolValues.get(world.getCell(i, j)) != null) {
 				   Position nextPosition = new Position(i,j);
-				   nextValue =  ((double) symbolValues.get(world.get(i).get(j))) /* / manDistTo(worldPosition, nextPosition, orientation)*/  ;
+				   nextValue =  ((double) symbolValues.get(world.getCell(i, j))) /* / manDistTo(worldPosition, nextPosition, orientation)*/  ;
 //				   System.out.println("position: "+nextPosition+" value: "+nextValue);
 				   if (nextValue > 0d ) {
 					   highestValue = nextValue;
@@ -1560,8 +1590,8 @@ public class Agent {
 
 	   double nextScore = 0d;
 	   
-	   for (int i = 0; i< world.size(); i++) {
-		   for (int j = 0; j < world.get(0).size(); j++) {
+	   for (int i = 0; i< world.numRows(); i++) {
+		   for (int j = 0; j < world.numCols(); j++) {
 			   Position nextPosition = new Position(i,j);
 			   
 			   if ((getValueAt(worldPosition) == '~' && getValueAt(nextPosition) != '~') ||
@@ -1646,7 +1676,7 @@ public class Agent {
 	   
 	   
 	   if (have_treasure) {
-		   world.get(worldPosition.getRow()-positionRelativeToStart[0]).get(worldPosition.getCol()-positionRelativeToStart[1]).setValue('S');
+		   world.getCell(worldPosition.getRow()-positionRelativeToStart[0], worldPosition.getCol()-positionRelativeToStart[1]).setValue('S');
 //		   symbolValues.put('S', Integer.MAX_VALUE);
 		   symbolValues.put('S', 2);
 //		   print_world();
@@ -1928,7 +1958,8 @@ public class Agent {
 		   for(int j = 0; j < 5; j++)  {
 			   Position p = new Position(i,j);
 			   p.setValue(view[i][j]);
-			   world.get(i).add(j,p);
+			   world.addPosition(i, j, p);
+			   
 		   }	   
 	    }
 	   
@@ -1959,7 +1990,7 @@ public class Agent {
    public void updateFOV(char view[][]) {
 	   int count = 0;
 	   if (orientation == 0) {
-		   List<Position> FOV = world.get(worldPosition.getRow() + forward.get(orientation)[0] * 2);
+		   List<Position> FOV = world.getRow(worldPosition.getRow() + forward.get(orientation)[0] * 2);
 
 		   for (int i = 0; i < FOV.size(); i++) {
 			   if (worldPosition.getCol()-2 <= i && i <= worldPosition.getCol()+2 && count < 5) {
@@ -1970,7 +2001,7 @@ public class Agent {
 		   }
 	   }
 	   else if (orientation == 2) {
-		   List<Position> FOV = world.get(worldPosition.getRow() + forward.get(orientation)[0] * 2);
+		   List<Position> FOV = world.getRow(worldPosition.getRow() + forward.get(orientation)[0] * 2);
 
 		   for (int i = FOV.size() - 1; i >= 0; i--) {
 			   if (worldPosition.getCol()-2 <= i && i <= worldPosition.getCol()+2 && count < 5) {
@@ -1982,17 +2013,17 @@ public class Agent {
 		   
 	   }
 	   else if (orientation == 1) {
-		   for (int i = 0; i < world.size(); i++) {
+		   for (int i = 0; i < world.numRows(); i++) {
 			   if (worldPosition.getRow()-2 <= i && i <= worldPosition.getRow()+2 && count < 5) {
-				   world.get(i).get(worldPosition.getCol() + forward.get(orientation)[1] * 2).setValue(view[0][count]);
+				   world.getCell(i, worldPosition.getCol() + forward.get(orientation)[1] * 2).setValue(view[0][count]);
 				   count++;
 			   }
 		   }
 	   }
 	   else if (orientation == 3) {
-		   for (int i = world.size() - 1; i >=0; i--) {
+		   for (int i = world.numRows() - 1; i >=0; i--) {
 			   if (worldPosition.getRow()-2 <= i && i <= worldPosition.getRow()+2 && count < 5) {
-				   world.get(i).get(worldPosition.getCol() + forward.get(orientation)[1] * 2).setValue(view[0][count]);
+				   world.getCell(i, worldPosition.getCol() + forward.get(orientation)[1] * 2).setValue(view[0][count]);
 				   count++;
 			   }
 		   }
@@ -2006,7 +2037,7 @@ public class Agent {
 		   if (successfulMove == 2) {
 			   Integer[] position = forward.get(orientation);
 //			   System.out.println((worldPosition.getRow() + position[0])+" "+(worldPosition.getRow() + position[1]));
-			   world.get(worldPosition.getRow() + position[0]).get(worldPosition.getCol() + position[1]).setValue(' '); 
+			   world.getCell(worldPosition.getRow() + position[0],worldPosition.getCol() + position[1]).setValue(' '); 
 		   }
 		   else {
 			   int count = 0;
@@ -2017,7 +2048,7 @@ public class Agent {
 
 				   if (orientation == 0 ) {
 					   List<Position> newRow = new ArrayList<Position>();
-					   for (int i = 0; i < world.get(0).size(); i++) {
+					   for (int i = 0; i < world.numCols(); i++) {
 						   newRow.add(new Position('#'));
 					   }
 
@@ -2035,11 +2066,11 @@ public class Agent {
 					   
 					   
 
-					   world.add(0, newRow);
+					   world.addRow('T', newRow);
 				   }
 				   else if (orientation == 2) {
 					   List<Position> newRow = new ArrayList<Position>();
-					   for (int i = 0; i < world.get(0).size(); i++) {
+					   for (int i = 0; i < world.numCols(); i++) {
 						   newRow.add(new Position('#'));
 					   }
 
@@ -2049,22 +2080,23 @@ public class Agent {
 							   count++;
 						   }
 					   }
-					   world.add(newRow);
+					   world.addRow('B',newRow);
 				   }
 				   else if (orientation == 1) {
-					   for (int i = 0; i < world.size(); i++) {
+					   for (int i = 0; i < world.numRows(); i++) {
 						   Position p = new Position('#');
 						   if (worldPosition.getRow()-2 <= i && i <= worldPosition.getRow()+2 && count < 5) {
 							   p.setValue(view[0][count]);
 							   
 							   count++;
 						   }
+						   
+						   world.addPosition(i, p);
 
-						   world.get(i).add(p);
 					   }
 				   }
 				   else if (orientation == 3) {
-					   for (int i = world.size() - 1; i >=0; i--) {
+					   for (int i = world.numRows() - 1; i >=0; i--) {
 						   Position p = new Position('#');
 						   if (worldPosition.getRow()-2 <= i && i <= worldPosition.getRow()+2 && count < 5) {
 							   p.setValue(view[0][count]);
@@ -2074,7 +2106,7 @@ public class Agent {
 							   count++;
 						   }
 
-						   world.get(i).add(0,p);
+						   world.addPosition(i, 0, p);
 					   }
 					   
 //					   for (int i = 0; i < world.size(); i++) {
@@ -2090,10 +2122,10 @@ public class Agent {
 		   
 			   }
 			   
-			   for (int i = 0; i < world.size(); i++) {
-				   for (int j = 0; j < world.get(0).size(); j++) {
-					   world.get(i).get(j).setRow(i);
-					   world.get(i).get(j).setCol(j);
+			   for (int i = 0; i < world.numRows(); i++) {
+				   for (int j = 0; j < world.numCols(); j++) {
+					   world.getCell(i, j).setRow(i);
+					   world.getCell(i, j).setCol(j);
 				   }
 			   }
 			   
@@ -2102,7 +2134,7 @@ public class Agent {
 			   
 			   if (successfulMove == 3) {
 				   
-				   world.get(worldPosition.getRow()).get(worldPosition.getCol()).setValue(' ');
+				   world.getCell(worldPosition.getRow(), worldPosition.getCol()).setValue(' ');
 			   }
 		   }
 		   
@@ -2215,19 +2247,19 @@ public class Agent {
    {
       int i,j;
       
-      char[] dashArray = new char[world.get(0).size()];
+      char[] dashArray = new char[world.numCols()];
       Arrays.fill(dashArray, '-');
       String dashes = new String(dashArray);
       
       System.out.println("\n+"+dashes+"+");
-      for( i=0; i < world.size(); i++ ) {
+      for( i=0; i < world.numRows(); i++ ) {
          System.out.print("|");
-         for( j=0; j < world.get(0).size(); j++ ) {
+         for( j=0; j < world.numCols(); j++ ) {
             if(( i == worldPosition.getRow() )&&( j == worldPosition.getCol() )) {
                System.out.print(orientationSymbol[orientation]);
             }
             else {
-               System.out.print( world.get(i).get(j).getValue() );
+               System.out.print( world.getCell(i, j).getValue() );
             }
          }
          System.out.println("|");
@@ -2282,7 +2314,7 @@ public class Agent {
             }
             agent.print_view( view ); // COMMENT THIS OUT BEFORE SUBMISSION
             
-            if (agent.world.get(0).isEmpty()) {
+            if (agent.world.getRow(0).isEmpty()) {
             	agent.initialiseWorld(view);
             }
             else {
