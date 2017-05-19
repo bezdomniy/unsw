@@ -106,6 +106,7 @@ public class Agent {
 	   private int reachableClass;
 	   private Character value;
 	   private boolean reachable = false;
+	   private double exploreScore;
 	   
 	   public Position(int row, int col) {
 	       this.row = row;
@@ -116,6 +117,7 @@ public class Agent {
 	       this.row = row;
 	       this.col = col;
 	       this.value = value;
+	       
 	    }
 	   
 	   public Position(Character value) {
@@ -211,14 +213,56 @@ public class Agent {
 	       this.col = col;
 	   }
 	   
-	   
-
 	   public int getRow() {
 	       return row;
 	   }
 
 	   public int getCol() {
 	       return col;
+	   }
+	   
+	   public double getExploreScore() {
+		   return this.exploreScore;
+	   }
+	   
+	   public double findExploreScore() {
+//		   System.out.println(this);
+		   this.exploreScore = 0d;
+		   if (world != null) {
+			   for (int i = this.getRow() - 2; i <= this.getRow() + 2; i++) {
+				   for (int j = this.getCol() - 2; j <= this.getCol() + 2; j++) {
+					   if (i == 0 || i == world.numRows() -1 || i == world.numRows() -2) {
+						   long boundaryTiles = world.getRow(i).stream().map(Position::getValue).filter(c -> '.' == c).count();
+						   if (boundaryTiles > 4d) {
+							   i++;
+							   break;
+						   }
+						   
+					   }
+					   
+					   
+					   if (i < 0 || i >= world.numRows()) {
+//						   System.out.println("adding 5");
+						   this.exploreScore+=5d;
+						   break;
+					   }
+					   else {
+						   
+					   }
+
+					   if (j < 0 || j >= world.numCols()) {
+//						   System.out.println("adding 1 for col");
+						   this.exploreScore+=1d;
+					   }
+					   else if (world.getCell(i, j).getValue() == '#') {
+//						   System.out.println("adding 1 for hash");
+						   this.exploreScore+=1d;
+					   }
+				   }
+			   }
+		   }
+		   
+		   return this.exploreScore /*/ (double) manDistTo(worldPosition,this,orientation)*/;
 	   }
 	   
 	   
@@ -367,7 +411,6 @@ public class Agent {
 		         System.out.print("|");
 		         for( j=0; j < this.numCols(); j++ ) {
 		            if(( i == worldPosition.getRow() )&&( j == worldPosition.getCol() )) {
-//		            	System.out.print("X");
 		               System.out.print(orientationSymbol[orientation]);
 		            }
 		            else {
@@ -405,9 +448,6 @@ public class Agent {
 	   private Character moveToReach = null;
 	   
 	   private List<Node> children = new ArrayList<Node>();
-	
-	
-
 	   
 	   public Node(Position position, Character symbol, int orientation, Node parent) {
 		   this.position = position;
@@ -1017,91 +1057,7 @@ public class Agent {
    
    }
    
-   public int distFromNearestEdge(Position position) {
-//	   Set<Integer> distToEdge = new HashSet<Integer>();
-//	   
-//	   for (int i: new int[]{0,world.size()-1}) {
-//		   for (int j = 0; j < world.get(0).size(); j++) {
-//			   distToEdge.add(manDistTo(position,new int[]{i,j},9));
-//		   }
-//	   }
-//	   for (int i: new int[]{0,world.get(0).size()-1}) {
-//		   for (int j = 0; j < world.size(); j++) {
-//			   distToEdge.add(manDistTo(position,new int[]{j,i},9));
-//		   }
-//	   }
-//	   
-//	   return Collections.min(distToEdge);
-	   Position nearestEdge = findNearestReachableEdge(position);
-	   return manDistTo(position,nearestEdge,9);
-	   
-	   
-   }
-   
-   public Position findNearestReachableEdge(Position position) {
-	   Position nearestEdge = new Position(worldPosition.getRow(),worldPosition.getCol());
-	   
-	   int edgeDist = Integer.MAX_VALUE;
-	   
-	   for (int i: new int[]{0,world.numRows()-1}) {
-		   for (int j = 0; j < world.numCols(); j++) {
-			   int old_i = i;
-			   
-			   if (i == 0) {
-				   while (getValueAt(new int[]{i,j}) == '#') {
-					   i++;
-				   }
-			   }
-			   if (i == world.numRows()-1) {
-				   while (getValueAt(new int[]{i,j}) == '#') {
-					   i--;
-				   }
-			   }
-			   
-			   Position nextEdge = new Position(i,j);
-			   int nextEdgeDist = manDistTo(worldPosition, nextEdge, orientation);
-			   if (nextEdgeDist < edgeDist && !obstacles.contains(getValueAt(nextEdge)) && checkReachable(worldPosition,nextEdge)) {
-				   edgeDist = nextEdgeDist;
-				   nearestEdge.setRow(i);
-				   nearestEdge.setCol(j);
-			   }
-			   
-			   i = old_i;
-		   }
-	   }
-	   for (int i: new int[]{0,world.numCols()-1}) {
-		   for (int j = 0; j < world.numRows(); j++) {
-			   int old_i = i;
-			   
-			   if (i == 0) {
-				   while (getValueAt(new int[]{j,i}) == '#') {
-					   i++;
-				   }
-			   }
-			   if (i == world.numCols()-1) {
-				   while (getValueAt(new int[]{j,i}) == '#') {
-					   i--;
-				   }
-			   }
-			   
-			   Position nextEdge =	new Position(j,i);
-			   int nextEdgeDist = manDistTo(worldPosition,nextEdge , orientation);
-			   if (nextEdgeDist < edgeDist && !obstacles.contains(getValueAt(nextEdge)) && checkReachable(worldPosition,nextEdge)) {
-				   edgeDist = nextEdgeDist;
-				   nearestEdge.setRow(j);
-				   nearestEdge.setCol(i);
-			   }
-			   
-			   i = old_i;
-		   }
-	   }
-		   
-	   
-	   
-	   return nearestEdge;
-	   
-   }
-   
+     
    public List<Position> findObjective() {
 	   List<Position> allCandidates = new ArrayList<Position>();
 //	   List<Position> reachableCandidates = new ArrayList<Position>();
@@ -1113,9 +1069,9 @@ public class Agent {
 	   
 	   for (int i = 0; i < world.numRows(); i++) {
 		   for (int j = 0; j < world.numCols(); j++) {
-			   if (symbolValues.get(world.getCell(i, j)) != null) {
-				   Position nextPosition = new Position(i,j);
-				   nextValue =  ((double) symbolValues.get(world.getCell(i, j))) /* / manDistTo(worldPosition, nextPosition, orientation)*/  ;
+			   if (symbolValues.get(world.getCell(i, j).getValue()) != null) {
+				   Position nextPosition = world.getCell(i, j);
+				   nextValue =  ((double) symbolValues.get(nextPosition.getValue())) /* / manDistTo(worldPosition, nextPosition, orientation)*/  ;
 //				   System.out.println("position: "+nextPosition+" value: "+nextValue);
 				   if (nextValue > 0d ) {
 					   highestValue = nextValue;
@@ -1253,7 +1209,7 @@ public class Agent {
 			   
 		   }
 		   if (!position.equals(current)) {
-			   score = exploreScore(current);
+			   score = /*(double)*/ current.findExploreScore();
 		   }
 		   
 		   if (score != null && score > 0d) {
@@ -1278,139 +1234,6 @@ public class Agent {
    }
    
  
-   public Double exploreScore(Position position) {
-	   int score = 0;
-	   
-//	   System.out.println("******** POSITION: "+position+" *********** ");
-	   if (position.getValue() != '~' && obstacles.contains(position.getValue())) {
-		   return 0d;
-	   }
-	   
-	   List<Position> northSouth = new ArrayList<Position>();
-	   northSouth.add(position);
-
-	   if (position.north() == null) {
-//		   System.out.println("10 for north null");
-		   score += 10;
-	   }
-	   else if (position.north().north() == null) {
-//		   System.out.println("5 for north north null");
-		   northSouth.add(position.north());
-		   score += 5;
-		   
-	   }
-	   else {
-		   northSouth.add(position.north());
-		   northSouth.add(position.north().north());
-	   }
-	   
-	   if (position.south() == null) {
-		   score += 10;
-//		   System.out.println("10 for south null");
-	   }
-	   else if (position.south().south() == null) {
-//		   System.out.println("5 for south south null");
-		   score += 5;
-		   northSouth.add(position.south());
-	   }
-	   else {
-		   northSouth.add(position.south());
-		   northSouth.add(position.south().south());
-	   }
-
-	   if (position.east() == null) {
-//		   System.out.println("10 for east null");
-		   score += 10;
-	   }
-	   else if (position.east().east() == null) {
-//		   System.out.println("5 for east east null");
-		   score += 5;
-	   }
-
-	   if (position.west() == null) {
-//		   System.out.println("10 for west null");
-		   score += 10;
-	   }   
-	   else if (position.west().west() == null) {
-//		   System.out.println("5 for west west null");
-		   score += 5;
-	   }
-	   
-	   
-	   
-
-	   for (Position p: northSouth) {
-		   
-//		   boolean[] out = {true,true,true,true};
-		   
-		   Position easteast = null;
-		   Position westwest = null;
-		   Position east = p.east();
-		   if (east != null) {
-			    easteast = p.east().east();
-		   }
-		   Position west = p.west();
-		   if (west != null) {
-			   westwest = p.west().west();
-		   }
-		   
-		   
-		   
-//		   Position[] neighbours = {east,easteast,west,westwest};
-//		   
-//		   for (int i = 0; i < 4; i++) {
-//			   for (List<Character> worldRow: world) {
-////				   System.out.println(worldRow);
-////				   System.out.println(neighbours[i]);
-//				   
-//				   if (neighbours[i] != null && worldRow.get(neighbours[i].getCol()) != null && worldRow.get(neighbours[i].getCol()) == '.') {
-//					   out[i] = false;
-//				   }
-//				   
-//			   }
-//			   
-//		   }
-		   
-		   
-//		   System.out.println("for pos: "+p+" symbol: "+p.getValueAt());
-		   if (p != null && p.getValue() == '#') {
-//			   System.out.println("1 for east #");
-			   score += 1;
-		   }
-		   
-		   if (east != null && east.getValue() == '#' /*&& out[0]*/) {
-			   score += 1;
-		   }
-			   
-		   if (easteast != null && easteast.getValue() == '#'  /*&& out[1]*/) {
-//			   System.out.println("1 for east east #");
-			   score += 1;
-		   }   
-		   
-		   if (west != null && west.getValue() == '#'  /*&& out[2]*/) {
-//			   System.out.println("1 for west #");
-			   score += 1;
-		   }
-		   
-		   if (westwest != null && westwest.getValue() == '#'  /*&& out[3]*/) {
-//			   System.out.println("1 for west west #");
-			   score += 1;
-		   }   
-		   
-	   }
-
-//	   if (manDistTo(worldPosition,position,orientation) < 5) {
-//		   score *=manDistTo(worldPosition,position,orientation);
-//	   }
-	   
-//	   score /=manDistTo(worldPosition,position,orientation);
-
-//	   System.out.println(position+" score: "+score);
-	   Double out = ((double) score) /*/ manDistTo(worldPosition,position,orientation)*/;
-	   
-	   return out;
-	
-   }
    
    public boolean checkReachable(Position from, Position position) {
 //	   ************* maybe add a condition that if you're on water, shore is unreachable and vis-versa to avoid losing boats
@@ -1600,7 +1423,9 @@ public class Agent {
 				   nextScore = 0.001d;
 			   }
 			   else {
-				   nextScore = (double) exploreScore(nextPosition) / manDistTo(worldPosition,nextPosition,orientation);
+//				   nextScore = (double) exploreScore(nextPosition) / manDistTo(worldPosition,nextPosition,orientation);
+				   
+				   nextScore = (double) nextPosition.getExploreScore() / manDistTo(worldPosition,nextPosition,orientation);
 			   }
 			   
 			   
@@ -1764,15 +1589,27 @@ public class Agent {
 			   
 			   System.out.println(reachables);
 			   
-			   objective = reachables.get(reachables.size()-1);
+			   if (reachables.isEmpty()) {
+				   objectives = findObjective();
+				   objective = objectives.get(objectives.size()-1);
+				   
+			   }
+			   else {
+				   objective = reachables.get(reachables.size()-1);
+			   }
+			   
+			   
+			   
+			   System.out.println("objective: "+objective+" score "+objective.getExploreScore());
+			   
 			   nextMoves = astar(worldPosition, objective, true, 1.5f,2);
 			   move = nextMoves.remove(nextMoves.size()-1);
 
 //			   Entry<Position,List<Character>> bestExplore = bestExploreScore().entrySet().iterator().next();
 //			   objective = bestExplore.getKey();
 //			   nextMoves = bestExplore.getValue();
-//			   System.out.println(obstacles);
-			   System.out.println("explore objective: "+objective.toString());
+			   System.out.println(obstacles);
+			   System.out.println("explore objective: "+objective.toString()+" "+objective.getExploreScore());
 			   System.out.println("reachable: "+objective.isReachable()+" have raft "+have_raft);   
 
 //			   System.out.println("obstacles: "+obstacles);
@@ -2062,9 +1899,6 @@ public class Agent {
 							   count++;
 						   }
 					   }
-					   
-					   
-					   
 
 					   world.addRow('T', newRow);
 				   }
@@ -2321,7 +2155,8 @@ public class Agent {
             	agent.updateWorld(view, agent.lastMoveSuccessful);
             }
             
-            agent.print_world();
+            agent.world.print();
+//            agent.print_world();
             action = agent.get_action( view );
             out.write( action );
             
