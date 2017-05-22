@@ -1181,26 +1181,22 @@ public class Agent {
 		   boundaries.get(2).remove('~');
 	   }
 	   
-//	   boundaries.put(3, new HashSet<Character>());
-//	   
-//	   for (Character c: boundaries.get(1)) {
-//		   boundaries.get(2).add(c);
-//	   }
-//	   boundaries.get(2).remove('*');
+	   boundaries.put(3, new HashSet<Character>());
 	   
-//	   System.out.println(boundaries.get(0));
-//	   System.out.println(boundaries.get(1));
-//	   System.out.println(boundaries.get(2));
+	   boundaries.put(3, new HashSet<Character>());
+	   for (Character c: obstacles) {
+		   boundaries.get(3).add(c);
+		   
+	   }
+	   boundaries.get(3).add('#');
+	   boundaries.get(3).remove('*');
+	   boundaries.get(3).remove('-');
+	   boundaries.get(3).remove('T');
+	   if (!have_raft) {
+		   boundaries.get(3).add('~');
+	   }
 	   
-	   
-//	   boundaries.put(3, new HashSet<Character>());
-//	   for (Character c: obstacles) {
-//		   if (c != 'T') {
-//			   boundaries.get(1).add(c);
-//		   }
-//	   }
-	   
-	   
+
 	   if (boundaries.get(iteration).contains(position) ) {
 		   return null;
 	   }
@@ -1213,27 +1209,15 @@ public class Agent {
 	   Double score = null;
 
 	   while (!open.isEmpty()) {
-//		   System.out.println("Open: "+open.toString());
-//		   System.out.println("Closed: "+closed);
-		   
 		   Iterator<Position> o = open.iterator();
 
 		   Position current = o.next();
-		   
-//		   if (current.equals(from)) {
-////			   System.out.println("Reachable path");
-//			   return output;
-//		   }
-		   
+
 		   Position north = current.north();
 		   Position south = current.south();
 		   Position east = current.east();
 		   Position west = current.west();
-		   
-//		   if (current != null) {
-//			   System.out.println(getValueAt(current)+" "+current);
-//		   }
-		   
+
 		   if (iteration != 2 || (on_water && getValueAt(current) == '~') || (!on_water && getValueAt(current) != '~')) {
 			   if (north != null && (!boundaries.get(iteration).contains(getValueAt(north)) ) && 
 					   !closed.contains(north)) {
@@ -1597,7 +1581,18 @@ public class Agent {
 			   }
 			   
    
-			   System.out.println("objective: "+objective+" score "+objective.getExploreScore()+" symbol "+objective.getValue());
+			   if (objective == null) {
+				   
+				   reachables = findReachableTiles(worldPosition,3);
+				   objective = reachables.get(reachables.size()-1);
+				   System.out.println("iter3: "+objective+" "+objective.getValue());
+				   nextMoves = astar(worldPosition, objective,orientation, false, 1.5f,2,false);
+				   nextMoves.remove(nextMoves.size()-1);
+				   System.out.println("iter3: "+objective);
+			   }
+			   System.out.println("objective: "+objective);
+			   System.out.println("score "+objective.getExploreScore());
+			   System.out.println("symbol "+objective.getValue());
 			   
 			   
 			   move = nextMoves.remove(nextMoves.size()-1);
