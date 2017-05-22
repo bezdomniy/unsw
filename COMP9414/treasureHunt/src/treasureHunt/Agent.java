@@ -896,15 +896,15 @@ public class Agent {
 				   if (child.getMove() == 'B') {
 					   moveCost = 10;
 					   if (current.getSymbol() == '~') {
-						   moveCost = 100;
+						   moveCost = +10;
 					   }
 
 				   }
 				   else if (child.getMove() == 'C' && child.haveRaft) {
-					   moveCost = 5;
+					   moveCost = 10;
 					   
 					   if (current.getSymbol() == '~') {
-						   moveCost += 10;
+						   moveCost += 15;
 					   }
 				   }
 				   
@@ -914,6 +914,9 @@ public class Agent {
 				   }
 				   if (current.getSymbol() == ' ' && child.getSymbol() == '~') {
 					   moveCost += 10;
+				   }
+				   if (child.getSymbol() == '#') {
+					   moveCost += 5;
 				   }
 			   }
 			   else {
@@ -1542,6 +1545,8 @@ public class Agent {
 			   if (reachables.isEmpty()) {
 				   failedToFindPathToObjective = false;
 				   symbolValues.put('d', 1);
+				   symbolValues.put('a', 1);
+				   symbolValues.put('k', 1);
 				   objectives = findObjective();
 				   
 				   for (Position o: objectives) {
@@ -1549,20 +1554,31 @@ public class Agent {
 					   objective = o;
 					   Position nearestReachable = findNearestReachable(objective);
 					   System.out.println(nearestReachable);
-//					   nextMoves = astar(worldPosition, objective, false, 1.2f,15,true);
 					   
-					   List<Character> positionToNearest = astar(worldPosition, nearestReachable,orientation, true, 1.2f,2,false);
-					   int startOrientation = (int) positionToNearest.remove(positionToNearest.size()-1);
-//					   System.out.println(startOrientation);
-					   nextMoves = astar(nearestReachable, objective,startOrientation, false, 1.2f,15,false);
-					   nextMoves.remove(nextMoves.size()-1);
 					   
-					   if (nextMoves.get(0) != null) {
-						   nextMoves.addAll(positionToNearest);
+					   nextMoves = astar(worldPosition, objective,orientation, false, 1.2f,10,false);
+					   
+					   if (nextMoves == null) {
+						   System.out.println("last try!");
+						   List<Character> positionToNearest = astar(worldPosition, nearestReachable,orientation, true, 1.2f,2,false);
+						   int startOrientation = (int) positionToNearest.remove(positionToNearest.size()-1);
+//						   System.out.println(startOrientation);
+						   nextMoves = astar(nearestReachable, objective,startOrientation, false, 1.2f,15,false);
+						   
+						   if (nextMoves == null) {
+							   continue;
+						   }
+						   nextMoves.remove(nextMoves.size()-1);
+						   
+						   if (nextMoves.get(0) != null) {
+							   nextMoves.addAll(positionToNearest);
+						   }
+						   else {
+							   nextMoves = positionToNearest;
+						   }
 					   }
-					   else {
-						   nextMoves = positionToNearest;
-					   }
+					   
+					   
 					   
 					   
 					   if (!(nextMoves == null) && !nextMoves.isEmpty()) {
@@ -1575,7 +1591,8 @@ public class Agent {
 			   }
 			   else {
 				   objective = reachables.get(reachables.size()-1);
-				   nextMoves = astar(worldPosition, objective,orientation, true, 1.5f,1,false);
+//				   System.out.println(worldPosition+" "+objective+" "+obstacles+" "+on_water);
+				   nextMoves = astar(worldPosition, objective,orientation, true, 1.5f,2,false);
 				   nextMoves.remove(nextMoves.size()-1);
 			   }
 			   
