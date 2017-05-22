@@ -1,0 +1,236 @@
+public class Pair<A,B> {
+	    public final A a;
+	    public final B b;
+
+	    public Pair(A a, B b) {
+	        this.a = a;
+	        this.b = b;
+	    }
+	};
+   
+   public List<Character> makePathIDA(Map<Node,Node> origins, Node position) {
+	   
+//	   Position originalPos = new Position(position.getPosition().getRow(),position.getPosition().getCol());
+	   
+	   List<Character> path = new ArrayList<Character>();
+	   path.add(position.getMove());
+	   
+	   while (origins.containsKey(position)) {
+		   position = origins.get(position);
+//		   System.out.println(position.getMove());
+		   
+		   if (position.getPosition().equals(worldPosition) ) {
+//			   path.add(0, lastM);
+			   break;
+		   }
+		   
+		   path.add(position.getMove());
+	   }
+	   
+
+	   
+	   System.out.println("Path: "+path);
+	   return path;
+   }
+   
+
+	
+	   public List<Character> idastar(Position position, Position goal,boolean exploringAstar ,float w,  int timeCutoff)   {
+
+		   if (goal.getValue() == '$') {
+			   timeCutoff *= 3;
+		   }
+
+		   long startTime = System.currentTimeMillis();
+		   long endTime = startTime + timeCutoff*1000; 
+		   
+		   
+		   
+		   
+		   
+		   
+
+
+		   Float threshold=0f;
+		   while(System.currentTimeMillis() < endTime)             //run until timecutoff
+		   {
+			   Map<Node,Node> origins = new HashMap<Node,Node>();
+			   Node start = new Node(position,getValueAt(position),orientation,null);
+			   start.setG(0);
+			   start.setH(manDistTo(position, goal, start.getOrientation()));
+			   start.updateF();
+			   
+			   Pair<Float,Node> temp = search(start,goal, origins, exploringAstar, w,threshold); //function search(node,g score,threshold)
+			   if(temp.b != null) {
+				   return makePathIDA(origins, temp.b);
+			   }
+			   threshold = temp.a; 
+		                                                         
+//		   if(temp == inf)                               //Threshold larger than maximum possible f value
+//		            return;                               //or set Time limit exceeded
+		   
+
+		   }
+		return null;
+
+	   }
+
+   
+   public Pair<Float,Node> search(Node current, Position goal, Map<Node,Node> origins, boolean exploringAstar, float w, Float threshold) {
+   
+//	   System.out.println("here"+current.getF());
+	   if (current.getF() > threshold) {
+		   return new Pair<Float,Node>(current.getF(),null);
+	   }
+	   
+	   if (current.getPosition().equals(goal)) {
+		   return new Pair<Float,Node>(threshold,current);
+	   }
+
+	   current.removeObstacle(' ');
+	   if (!exploringAstar) {
+		   current.addObstacle('#');
+	   }
+
+	   findChildren(current,goal,exploringAstar);
+	   
+//	   System.out.println(current.getChildren());
+	   
+	   Float min = Float.MIN_VALUE;
+	   
+	   
+	   for (Node child: current.getChildren()) {
+
+		   int temp_g = current.getG() + moveCost(current, child);
+		   
+//		   if (temp_g < child.getG() ) {
+			   origins.put(child, current);
+			   child.setG(temp_g);
+			   child.setH(manDistTo(child.getPosition(), goal, child.getOrientation()));
+			   child.updateF(w);
+//		   }
+		   
+		   Pair<Float,Node> temp = search(child, goal, origins, exploringAstar, w, threshold);
+		   
+		   if (temp.b != null && temp.b.getPosition().equals(goal)) {
+			   return new Pair<Float,Node>(temp.a,temp.b);
+		   }
+		   if (temp.a < min) {
+			   min = temp.a;
+		   }
+		   
+	   }
+	   
+	   return new Pair<Float,Node>(min,null);
+	}
+   
+
+   
+   public int moveCost(Node current, Node child) {
+	   int moveCost = 1;
+//	   if (child.getMove() == 'B') {
+//		   moveCost = 10;
+//		   if (current.getSymbol() == '~') {
+//			   moveCost = 10000;
+//		   }
+//
+//	   }
+//	   else if (child.getMove() == 'C' && child.haveRaft) {
+//		   moveCost = 10;
+//		   
+//		   if (current.getSymbol() == '~') {
+//			   moveCost += 10;
+//		   }
+//	   }
+//	   
+//	   
+//	   if (current.getSymbol() == '~' && child.getSymbol() == ' ') {
+//		   moveCost += 10;
+//	   }
+//	   if (current.getSymbol() == ' ' && child.getSymbol() == '~') {
+//		   moveCost += 10;
+//	   }
+	   
+	   return moveCost;
+   }
+   
+   public void findChildren(Node current, Position goal, boolean exploringAstar) {
+	   Position forwardPosition = current.getForwardPosition();
+	   if (forwardPosition != null) {
+		   char forwardSymbol = current.nodeWorld.getCell(forwardPosition.getRow(), forwardPosition.getCol()).getValue() ;
+		   
+		   Node forw = new Node(forwardPosition,forwardSymbol,current.getOrientation(),current);
+
+		   if (!current.nodeObstacles.contains(forwardSymbol) ||
+				   (forwardSymbol == '~' && current.haveRaft) || 
+				   (forwardPosition.equals(goal) && goal.getValue() == '#')) {
+			   forw.setMove('F');
+			   
+			   if (forwardSymbol == 'd') {
+				   forw.addDynamite();
+				   forw.nodeWorld.updateCell(forwardPosition.getRow(), forwardPosition.getCol(), ' ');
+			   }
+			   else if (forwardSymbol == 'k') {
+				   forw.setHaveKey(true);
+			   }
+			   else if (forwardSymbol == 'a') {
+				   forw.setHaveAxe(true);
+			   }
+			   else if (forwardSymbol == '$') {
+				   forw.setHaveTreasure(true);
+			   }
+			   else if (current.getSymbol() == '~' && (forwardSymbol == ' ' || forwardSymbol == '$' ||
+					   forwardSymbol == 'a' || forwardSymbol == 'd' || forwardSymbol == 'k' /*|| forwardSymbol == '#'*/ )) {
+				   forw.addObstacle('~');
+				   
+				   forw.setHaveRaft(false);
+			   }
+			   
+			   if (forw.nodeWorld.getCell(forwardPosition.getRow(), forwardPosition.getCol()).getValue() != '~') {
+				   forw.nodeWorld.updateCell(forwardPosition.getRow(), forwardPosition.getCol(), ' ');
+			   }
+
+			   current.addChild(forw);
+
+		   }
+		   else if (forwardSymbol == '-' && current.haveKey) {
+//			   System.out.println("adding2");
+			   forw.nodeWorld.updateCell(forw.getPosition().getRow(), forw.getPosition().getCol(), ' ');
+			   forw.setPosition(current.getPosition());
+			   
+			   forw.setMove('U');
+			   current.addChild(forw);
+		   }
+		   else if (forwardSymbol == 'T' && current.haveAxe) {
+	   
+			   
+//			   System.out.println("adding3");
+			   forw.nodeWorld.updateCell(forw.getPosition().getRow(), forw.getPosition().getCol(), ' ');
+			   forw.setPosition(current.getPosition());
+
+//			   forw.removeObstacle('~');
+			   forw.setHaveRaft(true);
+			   
+			   forw.setMove('C');
+			   current.addChild(forw);
+		   }
+		   else if (!exploringAstar && (forwardSymbol == '*' || forwardSymbol == 'T' || forwardSymbol == '-') && forw.numDynamitesHeld > 0 /*&& manDistTo(forw.getPosition(),objective,orientation) == 0*/) {
+//			   System.out.println("adding4");
+			   forw.removeDynamite();
+			   forw.nodeWorld.updateCell(forw.getPosition().getRow(), forw.getPosition().getCol(), ' ');
+			   forw.setPosition(current.getPosition());
+
+			   forw.setMove('B');
+			   current.addChild(forw);
+		   }
+
+	   }
+
+	   Node left = new Node(current.getPosition(),current.getSymbol(),checkOrientation('L',current.getOrientation()),current);
+	   Node right = new Node(current.getPosition(),current.getSymbol(),checkOrientation('R',current.getOrientation()),current);
+	   left.setMove('L');
+	   right.setMove('R');
+
+	   current.addChild(left);
+	   current.addChild(right);
+   }

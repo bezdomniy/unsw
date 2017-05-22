@@ -103,7 +103,6 @@ public class Agent {
    public class Position {
 	   private int row;
 	   private int col;
-	   private int reachableClass;
 	   private Character value;
 	   private boolean reachable = false;
 	   private double exploreScore;
@@ -147,14 +146,7 @@ public class Agent {
 		   
 	   }
 	   
-	   public int getReachableClass() {
-		   return this.reachableClass;
-	   }
-	   
-	   public void getReachableClass(int reachableClass) {
-		   this.reachableClass = reachableClass;
-	   }
-	   
+
 	   public boolean isReachable() {
 		   return this.reachable;
 	   }
@@ -706,7 +698,7 @@ public class Agent {
    
    public List<Character> make_path(Map<Node,Node> origins, Node position) {
 	   
-//	   Position originalPos = new Position(position.getPosition().getRow(),position.getPosition().getCol());
+	   int goalOrientation = position.getOrientation();
 	   
 	   List<Character> path = new ArrayList<Character>();
 	   path.add(position.getMove());
@@ -724,16 +716,19 @@ public class Agent {
 	   }
 	   
 
-	   
+	   path.add((char) goalOrientation);
 	   System.out.println("Path: "+path);
 	   return path;
    }
-
    
-   public List<Character> astar(Position position, Position goal, boolean exploringAstar, float w, int timeCutoff) {
+   
+   
+   
+   
+   public List<Character> astar(Position position, Position goal, int startOrientation, boolean exploringAstar, float w, int timeCutoff, boolean showMaps) {
 
 	   if (goal.getValue() == '$') {
-		   timeCutoff *= 3;
+		   timeCutoff *= 2;
 	   }
 
 	   long startTime = System.currentTimeMillis();
@@ -741,7 +736,7 @@ public class Agent {
 
 		   
 	   
-	   Node start = new Node(position,getValueAt(position),orientation,null);
+	   Node start = new Node(position,getValueAt(position),startOrientation,null);
 	   
 	   start.removeObstacle(' ');
 	   
@@ -897,31 +892,40 @@ public class Agent {
 			   }
 			   
 			   int moveCost = 1;
-			   if (child.getMove() == 'B') {
-				   moveCost = 10;
-				   if (current.getSymbol() == '~') {
-					   moveCost = 10000;
+			   if (exploringAstar) {
+				   if (child.getMove() == 'B') {
+					   moveCost = 10;
+					   if (current.getSymbol() == '~') {
+						   moveCost = 100;
+					   }
+
+				   }
+				   else if (child.getMove() == 'C' && child.haveRaft) {
+					   moveCost = 5;
+					   
+					   if (current.getSymbol() == '~') {
+						   moveCost += 10;
+					   }
 				   }
 				   
-//				   if (child.getSymbol() == 'T' && current.haveAxe) {
-//					   moveCost = 10000;
-//				   }
-			   }
-			   else if (child.getMove() == 'C' && child.haveRaft) {
-				   moveCost = 10;
 				   
-				   if (current.getSymbol() == '~') {
+				   if (current.getSymbol() == '~' && child.getSymbol() == ' ') {
+					   moveCost += 10;
+				   }
+				   if (current.getSymbol() == ' ' && child.getSymbol() == '~') {
 					   moveCost += 10;
 				   }
 			   }
-			   
-			   
-			   if (current.getSymbol() == '~' && child.getSymbol() == ' ') {
-				   moveCost += 10;
+			   else {
+				   if (child.getMove() == 'B') {
+					   moveCost = 3;
+					   if (current.getSymbol() == '~') {
+						   moveCost = 100;
+					   }
+				   }
 			   }
-			   if (current.getSymbol() == ' ' && child.getSymbol() == '~') {
-				   moveCost += 10;
-			   }
+
+			   
 
 			   
 			   int temp_g = current.getG() + moveCost;
@@ -935,16 +939,21 @@ public class Agent {
 //				   System.out.println("adding: "+current.toString()+" to: "+child.toString()+" with move: "+child.getMove());
 				   origins.put(child, current);
 				   
-//				   System.out.println("******** Current: "+current.haveRaft);
-//				   current.printWorld();
-//				   System.out.println("******** child: ");
-//				   child.printWorld();
-//				   System.out.println("****************");
+				   if (showMaps) {
+					   System.out.println("******** Current: "+current.numDynamitesHeld);
+					   current.printWorld();
+					   System.out.println("******** child: "+child.numDynamitesHeld);
+					   child.printWorld();
+					   System.out.println("****************");
+				   }
+				   
+
 				   
 				   
 //				   System.out.println(origins);
 				   child.setG(temp_g);
-				   child.setH(manDistTo(child.getPosition(), goal, child.getOrientation()));
+//				   child.setH(manDistTo(child.getPosition(), goal, child.getOrientation()));
+				   child.setH(manDistTo(child.getPosition(), goal, 9));
 				   child.updateF(w);
 //				   child.updateF();
 				   if (!open.contains(child)) {
@@ -1118,14 +1127,18 @@ public class Agent {
 //	   0: No chop, blow, or move to water
 //	   1: Allow chop
 //	   2: Allow move to water or from water
-//	   ** not yet 3: Allow blow
+//	   3: Allow blow
 	   
 	   Map<Integer,Set<Character>> boundaries = new HashMap<Integer,Set<Character>>();
 	   
 	   boundaries.put(0, new HashSet<Character>());
 	   for (Character c: obstacles) {
 		   boundaries.get(0).add(c);
-		   boundaries.get(0).add('#');
+		   
+	   }
+	   boundaries.get(0).add('#');
+	   if (have_key) {
+		   boundaries.get(0).remove('-');
 	   }
 	   
 	   if (!on_water) {
@@ -1164,6 +1177,13 @@ public class Agent {
 	   else {
 		   boundaries.get(2).remove('~');
 	   }
+	   
+//	   boundaries.put(3, new HashSet<Character>());
+//	   
+//	   for (Character c: boundaries.get(1)) {
+//		   boundaries.get(2).add(c);
+//	   }
+//	   boundaries.get(2).remove('*');
 	   
 //	   System.out.println(boundaries.get(0));
 //	   System.out.println(boundaries.get(1));
@@ -1261,8 +1281,6 @@ public class Agent {
  
    
    public boolean checkReachable(Position from, Position position) {
-//	   ************* maybe add a condition that if you're on water, shore is unreachable and vis-versa to avoid losing boats
-	   
 	   if (obstacles.contains(position) &&  !(getValueAt(position) == '-' && have_key)) {
 		   return false;
 	   }
@@ -1376,7 +1394,7 @@ public class Agent {
 	   if (!reachableCandidates.isEmpty()) {
 		   Position objective = reachableCandidates.get(reachableCandidates.size()-1);
 		   objective.setReachable(true);
-		   List<Character> search = astar(worldPosition, objective, true, 1f,20);
+		   List<Character> search = astar(worldPosition, objective,orientation, true, 1f,20,false);
 		   Map<Position,List<Character>> ret = new HashMap<Position,List<Character>>();
 		   ret.put(objective, search);
 		   return ret;
@@ -1389,7 +1407,7 @@ public class Agent {
 		   for (int i = unreachableCandidates.size() - 1; i >= 0; i--) {
 			   Position nextUnreachable = unreachableCandidates.get(i);
 			   System.out.println("trying: "+nextUnreachable);
-			   List<Character> search = astar(worldPosition, nextUnreachable, true, 1.5f,1);
+			   List<Character> search = astar(worldPosition, nextUnreachable,orientation, true, 1.5f,1,false);
 			   if (search != null) {
 //				   System.out.println("success!");
 				   Map<Position,List<Character>> ret = new HashMap<Position,List<Character>>();
@@ -1403,6 +1421,24 @@ public class Agent {
 	   return null;
 				   
 	   
+   }
+   
+   public Position findNearestReachable(Position goal) {
+	   int dist = Integer.MAX_VALUE;
+	   Position ret = null;
+	   for (int i = 0; i< world.numRows(); i++) {
+		   for (int j = 0; j < world.numCols(); j++) {
+			   Position temp = world.getCell(i, j);
+			   int tempDist = manDistTo(temp,goal,9);
+			   
+			   if (tempDist < dist && checkReachable(temp, worldPosition)) {
+				   ret = temp;
+				   dist = tempDist;
+			   }
+		   }
+	   }
+	   return ret;
+		   
    }
    
    
@@ -1425,6 +1461,7 @@ public class Agent {
 	   Position forwardPosition = world.getCell(worldPosition.getRow() + forward.get(orientation)[0], worldPosition.getCol() + forward.get(orientation)[1]);
 	   char forwardSymbol = forwardPosition.getValue();
 //	   char forwardSymbol = getValueAt(new int[]{worldPosition.getRow() + forward.get(orientation)[0],worldPosition.getCol() + forward.get(orientation)[1]});
+	   System.out.println(nextMoves);
 	   if (!nextMoves.isEmpty() && nextMoves.get(nextMoves.size()-1) == 'F') {
 		   if (obstacles.contains(forwardSymbol) && 
 				   !((on_water && forwardSymbol == '~') || (forwardSymbol == '~' && have_raft))) {
@@ -1460,10 +1497,13 @@ public class Agent {
 				   
 //				   System.out.println("obstacles: "+obstacles);
 				   
-				   nextMoves = astar(worldPosition, o, false, 1.2f,2);
+				   nextMoves = astar(worldPosition, o,orientation, false, 1.2f,1,false);
 				   
 				   System.out.println(nextMoves);
 				   if (!(nextMoves == null) && !nextMoves.isEmpty()) {
+					   
+					   nextMoves.remove(nextMoves.size()-1);
+					   
 					   objective = o;
 					   move = nextMoves.remove(nextMoves.size()-1);
 					   failedToFindPathToObjective = false;
@@ -1501,11 +1541,30 @@ public class Agent {
 			   
 			   if (reachables.isEmpty()) {
 				   failedToFindPathToObjective = false;
+				   symbolValues.put('d', 1);
 				   objectives = findObjective();
 				   
 				   for (Position o: objectives) {
+					   System.out.println("checking "+o);
 					   objective = o;
-					   nextMoves = astar(worldPosition, objective, false, 2f,10);
+					   Position nearestReachable = findNearestReachable(objective);
+					   System.out.println(nearestReachable);
+//					   nextMoves = astar(worldPosition, objective, false, 1.2f,15,true);
+					   
+					   List<Character> positionToNearest = astar(worldPosition, nearestReachable,orientation, true, 1.2f,2,false);
+					   int startOrientation = (int) positionToNearest.remove(positionToNearest.size()-1);
+//					   System.out.println(startOrientation);
+					   nextMoves = astar(nearestReachable, objective,startOrientation, false, 1.2f,15,false);
+					   nextMoves.remove(nextMoves.size()-1);
+					   
+					   if (nextMoves.get(0) != null) {
+						   nextMoves.addAll(positionToNearest);
+					   }
+					   else {
+						   nextMoves = positionToNearest;
+					   }
+					   
+					   
 					   if (!(nextMoves == null) && !nextMoves.isEmpty()) {
 						   break;
 					   }
@@ -1516,7 +1575,8 @@ public class Agent {
 			   }
 			   else {
 				   objective = reachables.get(reachables.size()-1);
-				   nextMoves = astar(worldPosition, objective, true, 1.5f,2);
+				   nextMoves = astar(worldPosition, objective,orientation, true, 1.5f,1,false);
+				   nextMoves.remove(nextMoves.size()-1);
 			   }
 			   
    
