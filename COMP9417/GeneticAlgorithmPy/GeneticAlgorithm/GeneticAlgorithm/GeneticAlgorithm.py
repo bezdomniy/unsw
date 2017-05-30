@@ -17,6 +17,9 @@ mutationRate = 0.05
 variableVal = {'00':'LW','01':'LD','10':'RW','11':'RD'}
 operatorVal = {'00':'+','01':'-','10':'/','11':'*'}
 
+variable = ('LW','RW','LD','RD')
+operator = ('+','-','/','*')
+
 exampleOrder = {'LW':0,'LD':1,'RW':2,'RD':3}
 
 
@@ -62,6 +65,56 @@ class Individual():
     def __repr__(self):
         return self.__str__()
 
+class scaleIndividual():
+    def __init__(self):
+        self.root = Node(random.choice(operator))
+        self.root.left = Node(random.choice(operator))
+        self.root.right = Node(random.choice(operator))
+
+        self.root.left.left = Node(random.choice(variable))
+        self.root.left.right = Node(random.choice(variable))
+        self.root.right.left = Node(random.choice(variable))
+        self.root.right.right = Node(random.choice(variable))
+
+        self.fitness = 0
+
+    def setFitness(self,fitness):
+        self.fitness = fitness
+
+    def inorder(node):
+        if node is not None:
+            inorder(node.left)
+            print(node.value,end=' ')
+            inorder(node.right)
+
+    def evaluate(self,example):
+        return _evaluate(self)
+
+    def _evaluate(node):
+        if node is None:
+            return 0
+        if node.left is None and node.right is None:
+            return int(node.value)
+
+        leftEval = _evaluate(node.left)
+        righEval = _evaluate(node.right)
+
+        if node.value == '+':
+            return leftEval + righEval
+        elif node.value == '-':
+            return leftEval - righEval
+        elif node.value == '*':
+            return leftEval * righEval
+        else:
+            return leftEval / righEval
+
+    def __str__(self):
+        scaleIndividual.inorder(self.root)
+        return ''
+
+    def __repr__(self):
+        return self.__str__()
+
     
 
 class Population():
@@ -85,9 +138,6 @@ class Population():
                 self.maxFitness = fitness
 
         self.individuals.sort(key=lambda x: x.fitness ,reverse=True)
-
-    
-
 
 def fitnessScale(individual):
     fitness = 0
