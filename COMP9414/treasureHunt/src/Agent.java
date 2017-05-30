@@ -2,6 +2,8 @@
 /*********************************************
  *  Agent.java 
  *  Agent for Text-Based Adventure Game
+ *  Ilia Chibaev z3218424
+ *  
  *  COMP9414 Artificial Intelligence
  *  UNSW Session 1, 2017
  *  
@@ -15,9 +17,9 @@
  *  
  *  Once the treasure is sighted an A* search is initiated to find a path to the objective. The A* algorithm places each Position into a Node
  *  which holds the Position, the WorldState at that node, and the agent's inventory (raft, key, etc.) at that point. For the purpose of the A*
- *  algorithm a Node is equal to another if its Position, agent orientation, and WorldState are equal. Each valid action in the game is a possible
- *  new Node in the graph, with the exception of placing a bomb if the method is called with the argument exploringAstar = true . The move cost (g)
- *  is set to 1 for each move, but in order to discourage unnecessary use of finite items, costs for certain types of actions are higher. 
+ *  algorithm a Node is equal to another if its Position, agent orientation, and WorldState are equal. Each valid move to the north, south, east,
+ *  or west in the game is a possible new Node in the graph. The move cost (g) is set to 1 for each move, but in order to discourage unnecessary 
+ *  use of finite items, costs for certain types of actions are higher. 
  *  
  *  If no path is found then the agent does not attempt to reach the treasure again until a new useful item (key, axe, dynamite etc.) is found, 
  *  or it has exhausted all possible Positions for exploration. If no path to the treasure is found at this stage, the algorithm sets other
@@ -28,7 +30,7 @@
  *  Before submitting, I tested it on the CSE machines and found they are significantly slower at running my A* algorithm, so I have found that
  *  it may not work for all maps. This is due to the algorithm trying to find paths to the treasure by first picking up objects (like dynamite) 
  *  required to attain the path. This leads to the expansion of a couple of thousand nodes for some searches which seems to be too much for the
- *  CSE machines. I could not thing of another way to implement this, which works for maps such as s8 and s9 which require walls to be bombed in
+ *  CSE machines. I could not think of another way to implement this, which works for maps such as s8 and s9 which require walls to be bombed in
  *  a correct order.
 */
 
@@ -168,7 +170,7 @@ public class Agent {
 			this.reachable = b;
 		}
 
-		public char getValue() {
+		public Character getValue() {
 			return this.value;
 		}
 
@@ -224,6 +226,8 @@ public class Agent {
 			return this.exploreScore;
 		}
 
+		// Returns a score for how many positions will be revealed by landing on
+		// this position
 		public double findExploreScore() {
 			this.exploreScore = 0d;
 			if (world != null) {
@@ -258,7 +262,7 @@ public class Agent {
 				this.exploreScore += 2;
 			}
 
-			return this.exploreScore / (double) manDistTo(worldPosition, this, orientation);
+			return this.exploreScore / (double) manDistTo(worldPosition, this, 9);
 		}
 
 	}
@@ -424,7 +428,7 @@ public class Agent {
 		private int orientation;
 		private Character symbol;
 
-		private Character moveToReach = null;
+		private List<Character> moveToReach = new ArrayList<Character>();
 
 		private List<Node> children = new ArrayList<Node>();
 
@@ -462,11 +466,13 @@ public class Agent {
 				if (this.getForwardPosition() != null) {
 
 					return this.position.equals(((Node) object).getPosition())
-							&& this.orientation == ((Node) object).getOrientation()
+							// && this.orientation == ((Node)
+							// object).getOrientation()
 							&& this.nodeWorld.equals(((Node) object).nodeWorld);
 				}
 				return this.position.equals(((Node) object).getPosition())
-						&& this.orientation == ((Node) object).getOrientation();
+				// && this.orientation == ((Node) object).getOrientation()
+				;
 			}
 
 			return false;
@@ -475,9 +481,13 @@ public class Agent {
 		@Override
 		public int hashCode() {
 			if (this.getForwardPosition() != null) {
-				return Objects.hash(this.position, this.orientation, this.nodeWorld);
+				return Objects.hash(this.position,
+						// this.orientation,
+						this.nodeWorld);
 			}
-			return Objects.hash(this.position, this.orientation);
+			return Objects.hash(this.position
+			// , this.orientation
+			);
 
 		}
 
@@ -538,11 +548,21 @@ public class Agent {
 			this.numDynamitesHeld--;
 		}
 
-		public void setMove(Character c) {
-			this.moveToReach = c;
+		public void addMove(Character c) {
+			try {
+				this.moveToReach.add(c);
+			} catch (NullPointerException e) {
+			}
 		}
 
-		public Character getMove() {
+		public void addMove(int pos, Character c) {
+			try {
+				this.moveToReach.add(pos, c);
+			} catch (NullPointerException e) {
+			}
+		}
+
+		public List<Character> getMove() {
 			return this.moveToReach;
 		}
 
@@ -600,7 +620,17 @@ public class Agent {
 		}
 
 		public void addChild(Node node) {
-			this.children.add(node);
+			if (node != null) {
+				this.children.add(node);
+			}
+
+		}
+
+		public void removeChild(Node node) {
+			if (node != null) {
+				this.children.remove(node);
+			}
+
 		}
 
 		public List<Node> getChildren() {
@@ -649,6 +679,7 @@ public class Agent {
 		}
 	}
 
+	// Returns the character at a position in the world
 	public char getValueAt(int[] position) {
 		return world.getCell(position[0], position[1]).getValue();
 	}
@@ -662,16 +693,24 @@ public class Agent {
 		int goalOrientation = position.getOrientation();
 
 		List<Character> path = new ArrayList<Character>();
-		path.add(position.getMove());
+
+		List<Character> moves = position.getMove();
+
+		for (Character m : moves) {
+			path.add(m);
+		}
 
 		while (origins.containsKey(position)) {
 			position = origins.get(position);
+			moves = position.getMove();
 
 			if (position.getMove() == null) {
 				break;
 			}
 
-			path.add(position.getMove());
+			for (Character m : moves) {
+				path.add(m);
+			}
 		}
 
 		path.add((char) goalOrientation);
@@ -681,7 +720,7 @@ public class Agent {
 	public List<Character> astar(Position position, Position goal, int startOrientation, boolean exploringAstar,
 			boolean findPartial, float w, double d, boolean showMaps) {
 
-		if (goal.getValue() == '$') {
+		if (goal.getValue() == '$' || goal.getValue() == 'S') {
 			d *= 2;
 		}
 
@@ -703,7 +742,8 @@ public class Agent {
 		Map<Node, Node> origins = new HashMap<Node, Node>();
 
 		start.setG(0d);
-		start.setH(manDistTo(position, goal, start.getOrientation()));
+		// start.setH(manDistTo(position, goal, start.getOrientation()));
+		start.setH(manDistTo(position, goal, 9));
 		start.updateF();
 
 		Node current = null;
@@ -711,83 +751,149 @@ public class Agent {
 		while (!open.isEmpty() && System.currentTimeMillis() < endTime) {
 			current = Collections.min(open, new fScoreComparator());
 			if (current.getPosition().equals(goal)) {
-				// System.out.println("nodes opened " + co);
 				return make_path(origins, current);
 			}
 
-			Position forwardPosition = current.getForwardPosition();
-			if (forwardPosition != null) {
-				char forwardSymbol = current.nodeWorld.getCell(forwardPosition.getRow(), forwardPosition.getCol())
-						.getValue();
+			Node north = null;
+			Node south = null;
+			Node east = null;
+			Node west = null;
+			if (current.getPosition().north() != null) {
+				north = new Node(current.getPosition().north(), current.getPosition().north().getValue(), 0, current);
+			}
+			if (current.getPosition().south() != null) {
+				south = new Node(current.getPosition().south(), current.getPosition().south().getValue(), 2, current);
+			}
+			if (current.getPosition().east() != null) {
+				east = new Node(current.getPosition().east(), current.getPosition().east().getValue(), 1, current);
+			}
+			if (current.getPosition().west() != null) {
+				west = new Node(current.getPosition().west(), current.getPosition().west().getValue(), 3, current);
+			}
 
-				Node forw = new Node(forwardPosition, forwardSymbol, current.getOrientation(), current);
+			if (current.getOrientation() == 0) {
+				if (south != null) {
+					south.addMove('R');
+					south.addMove('R');
+				}
+				if (east != null) {
+					east.addMove('R');
+				}
+				if (west != null) {
+					west.addMove('L');
+				}
 
-				if (!current.nodeObstacles.contains(forwardSymbol) || (forwardSymbol == '~' && current.haveRaft)
-						|| (forwardPosition.equals(goal) && goal.getValue() == '#')) {
-					forw.setMove('F');
+			} else if (current.getOrientation() == 1) {
+				if (north != null) {
+					north.addMove('L');
+				}
+				if (south != null) {
+					south.addMove('R');
+				}
+				if (west != null) {
+					west.addMove('L');
+					west.addMove('L');
+				}
 
-					if (forwardSymbol == 'd') {
-						forw.addDynamite();
-						forw.nodeWorld.updateCell(forwardPosition.getRow(), forwardPosition.getCol(), ' ');
-					} else if (forwardSymbol == 'k') {
-						forw.setHaveKey(true);
-					} else if (forwardSymbol == 'a') {
-						forw.setHaveAxe(true);
-					} else if (forwardSymbol == '$') {
-						forw.setHaveTreasure(true);
-					} else if (current.getSymbol() == '~' && (forwardSymbol == ' ' || forwardSymbol == '$'
-							|| forwardSymbol == 'a' || forwardSymbol == 'd'
-							|| forwardSymbol == 'k' /*
-													 * || forwardSymbol == '#'
-													 */ )) {
-						forw.addObstacle('~');
-
-						forw.setHaveRaft(false);
-					}
-
-					if (forw.nodeWorld.getCell(forwardPosition.getRow(), forwardPosition.getCol()).getValue() != '~') {
-						forw.nodeWorld.updateCell(forwardPosition.getRow(), forwardPosition.getCol(), ' ');
-					}
-
-					current.addChild(forw);
-
-				} else if (forwardSymbol == '-' && current.haveKey) {
-					forw.nodeWorld.updateCell(forw.getPosition().getRow(), forw.getPosition().getCol(), ' ');
-					forw.setPosition(current.getPosition());
-
-					forw.setMove('U');
-					current.addChild(forw);
-				} else if (forwardSymbol == 'T' && current.haveAxe) {
-					forw.nodeWorld.updateCell(forw.getPosition().getRow(), forw.getPosition().getCol(), ' ');
-					forw.setPosition(current.getPosition());
-
-					forw.setHaveRaft(true);
-
-					forw.setMove('C');
-					current.addChild(forw);
-				} else if (!exploringAstar && (forwardSymbol == '*' || forwardSymbol == 'T' || forwardSymbol == '-')
-						&& forw.numDynamitesHeld > 0) {
-
-					forw.removeDynamite();
-					forw.nodeWorld.updateCell(forw.getPosition().getRow(), forw.getPosition().getCol(), ' ');
-					forw.setPosition(current.getPosition());
-
-					forw.setMove('B');
-					current.addChild(forw);
-
+			} else if (current.getOrientation() == 2) {
+				if (north != null) {
+					north.addMove('L');
+					north.addMove('L');
+				}
+				if (east != null) {
+					east.addMove('L');
+				}
+				if (west != null) {
+					west.addMove('R');
+				}
+			} else if (current.getOrientation() == 3) {
+				if (north != null) {
+					north.addMove('R');
+				}
+				if (south != null) {
+					south.addMove('L');
+				}
+				if (east != null) {
+					east.addMove('R');
+					east.addMove('R');
 				}
 
 			}
 
-			Node left = new Node(current.getPosition(), current.getSymbol(),
-					checkOrientation('L', current.getOrientation()), current);
-			Node right = new Node(current.getPosition(), current.getSymbol(),
-					checkOrientation('R', current.getOrientation()), current);
-			left.setMove('L');
-			right.setMove('R');
+			current.addChild(north);
+			current.addChild(south);
+			current.addChild(east);
+			current.addChild(west);
 
-			current.addChild(left);
-			current.addChild(right);
+			// Position forwardPosition = current.getForwardPosition();
+			List<Node> forRemoval = new ArrayList<Node>();
+			for (Node child : current.getChildren()) {
+				if (child.getPosition() != null) {
+					char childSymbol = current.nodeWorld
+							.getCell(child.getPosition().getRow(), child.getPosition().getCol()).getValue();
+
+					if (!current.nodeObstacles.contains(childSymbol) || (childSymbol == '~' && current.haveRaft)
+							|| (child.getPosition().equals(goal) && goal.getValue() == '#')) {
+						child.addMove(0, 'F');
+
+						if (childSymbol == 'd') {
+							child.addDynamite();
+							child.nodeWorld.updateCell(child.getPosition().getRow(), child.getPosition().getCol(), ' ');
+						} else if (childSymbol == 'k') {
+							child.setHaveKey(true);
+						} else if (childSymbol == 'a') {
+							child.setHaveAxe(true);
+						} else if (childSymbol == '$') {
+							child.setHaveTreasure(true);
+						} else if (current.getSymbol() == '~' && (childSymbol == ' ' || childSymbol == '$'
+								|| childSymbol == 'a' || childSymbol == 'd'
+								|| childSymbol == 'k' /*
+														 * || forwardSymbol ==
+														 * '#'
+														 */ )) {
+							child.addObstacle('~');
+
+							child.setHaveRaft(false);
+						}
+
+						if (child.nodeWorld.getCell(child.getPosition().getRow(), child.getPosition().getCol())
+								.getValue() != '~') {
+							child.nodeWorld.updateCell(child.getPosition().getRow(), child.getPosition().getCol(), ' ');
+						}
+
+					} else if (childSymbol == '-' && current.haveKey) {
+						child.nodeWorld.updateCell(child.getPosition().getRow(), child.getPosition().getCol(), ' ');
+						child.setPosition(current.getPosition());
+
+						child.addMove(0, 'U');
+
+					} else if (childSymbol == 'T' && current.haveAxe) {
+						child.nodeWorld.updateCell(child.getPosition().getRow(), child.getPosition().getCol(), ' ');
+						child.setPosition(current.getPosition());
+
+						child.setHaveRaft(true);
+
+						child.addMove(0, 'C');
+					} else if (!exploringAstar && (childSymbol == '*' || childSymbol == 'T' || childSymbol == '-')
+							&& child.numDynamitesHeld > 0) {
+
+						child.removeDynamite();
+						child.nodeWorld.updateCell(child.getPosition().getRow(), child.getPosition().getCol(), ' ');
+						child.setPosition(current.getPosition());
+
+						child.addMove(0, 'B');
+
+					} else {
+						forRemoval.add(child);
+
+					}
+
+				}
+			}
+
+			for (Node n : forRemoval) {
+				current.removeChild(n);
+			}
 
 			open.remove(current);
 			closed.add(current);
@@ -800,13 +906,13 @@ public class Agent {
 
 				int moveCost = 1;
 				if (exploringAstar) {
-					if (child.getMove() == 'B') {
+					if (child.getMove().contains('B')) {
 						moveCost = 10;
 						if (current.getSymbol() == '~') {
 							moveCost = +10;
 						}
 
-					} else if (child.getMove() == 'C' && child.haveRaft) {
+					} else if (child.getMove().contains('C') && child.haveRaft) {
 						moveCost = 10;
 
 						if (current.getSymbol() == '~') {
@@ -824,7 +930,7 @@ public class Agent {
 						moveCost += 5;
 					}
 				} else {
-					if (child.getMove() == 'B') {
+					if (child.getMove().contains('B')) {
 						moveCost = 3;
 						if (current.getSymbol() == '~') {
 							moveCost = 100;
@@ -838,6 +944,7 @@ public class Agent {
 					origins.put(child, current);
 
 					if (showMaps) {
+						System.out.println(current.nodeObstacles);
 						System.out.println("******** Current: " + current.numDynamitesHeld);
 						current.printWorld();
 						System.out.println("******** child: " + child.numDynamitesHeld);
@@ -864,6 +971,9 @@ public class Agent {
 		return null;
 	}
 
+	// Checks whether any new items items are uncovered on the map. Only
+	// registers if the items the agent doesn't already have
+	// the items, or if it is more dynamite.
 	public boolean checkForNewUsefulItems() {
 		int numberOfTreesUpdate = 0;
 		int numberOfAxesUpdate = 0;
@@ -928,6 +1038,10 @@ public class Agent {
 
 	}
 
+	// Returns the Manhattan distance between 2 points. Originally I included
+	// the cost of turning, but found there is little benefit
+	// to this. All instances of the method use orientation = 9 - which means
+	// orientation is ignored.
 	public int manDistTo(Position position, Position objective, int orientation) {
 		int manDist = 0;
 		int turnCost = 0;
@@ -964,8 +1078,9 @@ public class Agent {
 
 	}
 
+	// Scans the map for objectives with positive symbolValue. Returns them in a
+	// last sorted by symbolValue divided by Manhattan distance to agent.
 	public List<Position> findObjective() {
-
 		Map<Position, Double> allCandidates = new HashMap<Position, Double>();
 
 		double highestValue = 0d;
@@ -976,12 +1091,9 @@ public class Agent {
 				if (symbolValues.get(world.getCell(i, j).getValue()) != null) {
 					Position nextPosition = world.getCell(i, j);
 					nextValue = (double) symbolValues.get(nextPosition.getValue())
-							/ (double) manDistTo(worldPosition, nextPosition, orientation);
-					// System.out.println("position: "+nextPosition+" value:
-					// "+nextValue);
+							/ (double) manDistTo(worldPosition, nextPosition, 9);
 					if (nextValue > 0d) {
 						highestValue = nextValue;
-						// allCandidates.add(nextPosition);
 						allCandidates.put(nextPosition, highestValue);
 					}
 				}
@@ -1001,13 +1113,14 @@ public class Agent {
 
 	}
 
+	// Returns a list of reachable tiles according to one of the following
+	// allowed sets of actions:
+	// Iteration:
+	// 0: No chop, blow, or move to water
+	// 1: Allow chop
+	// 2: Allow move to water or from water
+	// 3: Allow blow
 	public List<Position> findReachableTiles(Position position, int iteration) {
-		// Iteration:
-		// 0: No chop, blow, or move to water
-		// 1: Allow chop
-		// 2: Allow move to water or from water
-		// 3: Allow blow
-
 		Map<Integer, Set<Character>> boundaries = new HashMap<Integer, Set<Character>>();
 
 		boundaries.put(0, new HashSet<Character>());
@@ -1113,6 +1226,9 @@ public class Agent {
 			}
 
 			if (!position.equals(current)) {
+				if (current != null && current.getValue() != null && current.getValue() == '$') {
+					failedToFindPathToObjective = false;
+				}
 				score = current.findExploreScore();
 			}
 
@@ -1221,13 +1337,15 @@ public class Agent {
 
 	}
 
+// Returns the next move to the getMove method
 	public Character move(char[][] view) {
 		Character move = null;
 
+//		If the treasure was attained, set start position as highest symbolValue
 		if (have_treasure) {
 			world.getCell(worldPosition.getRow() - positionRelativeToStart[0],
 					worldPosition.getCol() - positionRelativeToStart[1]).setValue('S');
-			symbolValues.put('S', 2);
+			symbolValues.put('S', 3);
 		}
 
 		Position forwardPosition = world.getCell(worldPosition.getRow() + forward.get(orientation)[0],
@@ -1331,7 +1449,11 @@ public class Agent {
 						// then find a path from there to the objective.
 						if (nextMoves == null) {
 							List<Character> positionToNearest = astar(worldPosition, nearestReachable, orientation,
-									true, false, 1.2f, 2, false);
+									true, false, 1.2f, 5, false);
+
+							if (positionToNearest == null || positionToNearest.isEmpty()) {
+								continue;
+							}
 							int startOrientation = (int) positionToNearest.remove(positionToNearest.size() - 1);
 							nextMoves = astar(nearestReachable, objective, startOrientation, false, false, 1.2f, 15,
 									false);
@@ -1354,9 +1476,10 @@ public class Agent {
 					}
 
 				} else {
+//					otherwise, take the closest reachable point as the objective
 					objective = reachables.get(reachables.size() - 1);
 
-					nextMoves = astar(worldPosition, objective, orientation, true, false, 1.5f, 2, false);
+					nextMoves = astar(worldPosition, objective, orientation, true, false, 1.5f, 60, false);
 					nextMoves.remove(nextMoves.size() - 1);
 				}
 
@@ -1365,7 +1488,7 @@ public class Agent {
 				if (objective == null) {
 					reachables = findReachableTiles(worldPosition, 3);
 					objective = reachables.get(reachables.size() - 1);
-					nextMoves = astar(worldPosition, objective, orientation, false, false, 1.5f, 2, false);
+					nextMoves = astar(worldPosition, objective, orientation, false, false, 1.5f, 5, false);
 					nextMoves.remove(nextMoves.size() - 1);
 
 				}
@@ -1480,6 +1603,7 @@ public class Agent {
 
 	}
 
+//	check if the world state needs to be expanded
 	public boolean needExpansion() {
 		if (positionRelativeToStart[0] < 0 && Math.abs(positionRelativeToStart[0]) > expandedUpRightDownLeft[0]) {
 			return true;
@@ -1497,6 +1621,7 @@ public class Agent {
 		return false;
 	}
 
+//	updates the field of view if columns or rows moved into are already expanded
 	public void updateFOV(char view[][]) {
 		int count = 0;
 		if (orientation == 0) {
@@ -1747,7 +1872,7 @@ public class Agent {
 					agent.updateWorld(view, agent.lastMoveSuccessful);
 				}
 
-				agent.world.print();
+				// agent.world.print();
 				action = agent.get_action(view);
 				out.write(action);
 
