@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import random
+import math
 from scipy.io.arff import loadarff
 import string
 from copy import deepcopy
@@ -22,8 +23,8 @@ operator = ('+','-','/','*')
 
 exampleOrder = {'LW':0,'LD':1,'RW':2,'RD':3}
 
-
-dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/balance-scale.arff','r'))
+dataset, meta = loadarff(open('C:/unsw/COMP9417/balance-scale.arff','r'))
+#dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/balance-scale.arff','r'))
 
 dataset = dataset[meta.names()].tolist()
 dataset = np.asarray(dataset, dtype='<U1')
@@ -39,6 +40,61 @@ class Node():
         self.left = None
         self.right = None
         self.value = value
+
+    def inorder(self):
+        if self.left is not None:
+            self.left.inorder()
+
+        print(self.value,end=' ')
+
+        if self.right is not None:
+            self.right.inorder()
+
+    def _evaluate(self,example):
+        if self is None:
+            return 0
+        if self.left is None and self.right is None:
+            return int(example[exampleOrder[self.value]])
+
+        leftEval = self.left._evaluate(example)
+        righEval = self.right._evaluate(example)
+
+        if self.value == '+':
+            return leftEval + righEval
+        elif self.value == '-':
+            return leftEval - righEval
+        elif self.value == '*':
+            return leftEval * righEval
+        else:
+            return leftEval / righEval
+
+    def getSize(self):
+        if self.left is None and self.right is None:
+            return 1
+        leftSize = self.left.getSize()
+        rightSize = self.right.getSize()
+
+        return 1 + leftSize + rightSize
+
+    def getHeight(self):
+        return int(math.log(self.getSize(),2))
+
+    def getRandomSubtree(self):
+        rand = random.randint(0,self.getSize())
+        count = -1
+        return self._traverse(rand,count)
+
+        
+
+    def _traverse(self,stop,step):
+        step+=1
+        print(step," ",stop)
+        if step == stop:
+           return self;
+        self.left._traverse(stop,step);
+        self.right._traverse(stop,step);
+
+    
 
 class Individual():
     def __init__(self):
@@ -78,38 +134,18 @@ class scaleIndividual():
 
         self.fitness = 0
 
+
+    
+    
+
     def setFitness(self,fitness):
         self.fitness = fitness
 
-    def inorder(node):
-        if node is not None:
-            inorder(node.left)
-            print(node.value,end=' ')
-            inorder(node.right)
-
     def evaluate(self,example):
-        return _evaluate(self)
-
-    def _evaluate(node):
-        if node is None:
-            return 0
-        if node.left is None and node.right is None:
-            return int(node.value)
-
-        leftEval = _evaluate(node.left)
-        righEval = _evaluate(node.right)
-
-        if node.value == '+':
-            return leftEval + righEval
-        elif node.value == '-':
-            return leftEval - righEval
-        elif node.value == '*':
-            return leftEval * righEval
-        else:
-            return leftEval / righEval
+        return self.root._evaluate(example)
 
     def __str__(self):
-        scaleIndividual.inorder(self.root)
+        self.root.inorder()
         return ''
 
     def __repr__(self):
@@ -141,38 +177,26 @@ class Population():
 
 def fitnessScale(individual):
     fitness = 0
-    genes = individual.genes
+    #genes = individual.genes
 
     for example in train:
-        if testHypothesis(genes,example):
+        if testHypothesis(individual,example):
             fitness += 1
 
 
     #print(genes," fit: ",fitness)
-    return (fitness/len(train)) ** 2
-    #return fitness
+    #return (fitness/len(train)) ** 2
+    return fitness
 
 def testHypothesis(hypothesis,example):
-    funcArray = []
-
-    for i in range(0,hypothesisLength,2):
-        if i % 4 == 0:
-            funcArray.append(variableVal[str(hypothesis[i]) + str(hypothesis[i + 1])])
-        else:
-            funcArray.append(operatorVal[str(hypothesis[i]) + str(hypothesis[i + 1])])
-
-    func = [example[exampleOrder[x]] if x in exampleOrder is not None else x for x in funcArray]
-    
-    ev = eval(''.join(func))
-
-    #print(func," balance: ",example[4]," = ",ev)
-
+    ev = hypothesis.evaluate(example)
     if ev == 0:
         return example[4] == "B"
     if ev > 0:
         return example[4] == "R"
     if ev < 0:
         return example[4] == "L"
+
 
 def crossover(individual1,individual2):
     return _onePointCrossover(individual1,individual2)
@@ -251,6 +275,4 @@ def runGA():
 
         print("generation: ",c)
         for i in range(0,12):
-            print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
-
-
+            print(pop.individuals[i]," fit: {0:.0f}%".format(pop.individuals[i].fitness*100))
