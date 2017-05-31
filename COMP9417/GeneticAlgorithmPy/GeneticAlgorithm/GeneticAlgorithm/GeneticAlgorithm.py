@@ -17,8 +17,8 @@ mutationRate = 0.05
 
 ## Balance scale definitions
 
-proportionTrain = 1
-hypothesisLength = 14
+#proportionTrain = 1
+#hypothesisLength = 14
 variableVal = {'00':'LW','01':'LD','10':'RW','11':'RD'}
 operatorVal = {'00':'+','01':'-','10':'/','11':'*'}
 variable = ('LW','RW','LD','RD')
@@ -27,23 +27,48 @@ exampleOrder = {'LW':0,'LD':1,'RW':2,'RD':3}
 
 ## Mushroom definitions
 
-#proportionTrain = 0.95
-#hypothesisLength = 126
-
+proportionTrain = 0.95
+hypothesisLength = 127
+mushrromAttributes =    [
+                [ 'b', 'c', 'f', 'k', 's', 'x'],
+                [ 'f', 'g', 's', 'y'],
+                [ 'b', 'c', 'e', 'g', 'n', 'p', 'r', 'u', 'w', 'y'],
+                [ 'f', 't'],
+                [ 'a', 'c', 'f', 'l', 'm', 'n', 'p', 's', 'y'],
+                [ 'a', 'd', 'f', 'n'],
+                [ 'c', 'd', 'w'],
+                [ 'b', 'n'],
+                [ 'b', 'e', 'g', 'h', 'k', 'n', 'o', 'p', 'r', 'u', 'w', 'y'],
+                [ 'e', 't'],
+                [ 'b', 'c', 'e', 'r', 'u', 'z'],
+                [ 'f', 'k', 's', 'y'],
+                [ 'f', 'k', 's', 'y'],
+                [ 'b', 'c', 'e', 'g', 'n', 'o', 'p', 'w', 'y'],
+                [ 'b', 'c', 'e', 'g', 'n', 'o', 'p', 'w', 'y'],
+                [ 'p', 'u'],
+                [ 'n', 'o', 'w', 'y'],
+                [ 'n', 'o', 't'],
+                [ 'c', 'e', 'f', 'l', 'n', 'p', 's', 'z'],
+                [ 'b', 'h', 'k', 'n', 'o', 'r', 'u', 'w', 'y'],
+                [ 'a', 'c', 'n', 's', 'v', 'y'],
+                [ 'd', 'g', 'l', 'm', 'p', 'u', 'w'],
+                [ 'e', 'p']
+                ]
 
 
 ## Load dataset
 
 #dataset, meta = loadarff(open('C:/unsw/COMP9417/balance-scale.arff','r'))
-dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/balance-scale.arff','r'))
+dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/mushroom.arff','r'))
 
 dataset = dataset[meta.names()].tolist()
-dataset = np.asarray(dataset, dtype='<U1')
+dataset = np.asarray(dataset, dtype='<U3')
+
+dataset = np.core.defchararray.replace(dataset,"'","")
 
 random.shuffle(dataset)
 train, test = dataset[:len(dataset) * proportionTrain], dataset[len(dataset) * proportionTrain:]
 
-arributeNum = train.shape[1]
 #fitnessThreshold = 1
 fitnessThreshold = len(train)
 
@@ -152,7 +177,6 @@ class Node():
                 step += 1
 
 
-    
 
 class Individual():
     def __init__(self):
@@ -176,10 +200,27 @@ class Individual():
         return ' '.join(funcArray)
 
     def mushroomToString(self):
-        return ' '.join(self.genes)
+        return ' '.join([str(x) for x in self.genes])
 
     def evaluateMushroom(self,example):
-        pass
+        hypothesis = self.genes
+        geneCount = 0
+        exampleCount = 0
+        nextStart = 0
+
+        for attrib in mushrromAttributes:
+            nextStart += len(attrib)
+            for val in attrib:
+                if hypothesis[geneCount] == 1 and attrib == example[exampleCount]:
+                    geneCount = nextStart
+                    continue
+                elif attrib != example[exampleCount]:
+                    geneCount +=1
+                else:
+                    return False
+            exampleCount += 1
+        return True
+
 
     def evaluateScale(self,example):
         funcArray = []
@@ -195,8 +236,8 @@ class Individual():
         return eval(''.join(func))
 
     def __str__(self):
-        #return self.mushroomToString()
-        return self.scaleToString()
+        return self.mushroomToString()
+        #return self.scaleToString()
 
     def __repr__(self):
         return self.__str__()
@@ -244,7 +285,7 @@ class Population():
 
     def findFitness(self):
         self._fitnessProportionate()
-        self._rankSelection()
+        #self._rankSelection()
 
     def _rankSelection(self):
         self.populationFitness = 0
@@ -284,6 +325,17 @@ def fitnessScale(individual):
     #return (fitness/len(train)) ** 2
     return fitness
 
+def fitnessMushroom(individual):
+    fitness = 0
+
+    for example in train:
+        if testMushroomHypothesis(individual,example):
+            fitness += 1
+
+    #print("fit: ",fitness)
+    #return (fitness/len(train)) ** 2
+    return fitness
+
 
 def testScaleHypothesis(hypothesis,example):
     ev = hypothesis.evaluateScale(example)
@@ -293,6 +345,9 @@ def testScaleHypothesis(hypothesis,example):
         return example[4] == "R"
     if ev < 0:
         return example[4] == "L"
+
+def testMushroomHypothesis(hypothesis,example):
+    return hypothesis.evaluateMushroom(example)
 
 
 
@@ -419,4 +474,3 @@ def test(n):
         generationsTaken.append(c)
     print("Average generations taken: ",sum(generationsTaken)/len(generationsTaken))
 
-test(20)
