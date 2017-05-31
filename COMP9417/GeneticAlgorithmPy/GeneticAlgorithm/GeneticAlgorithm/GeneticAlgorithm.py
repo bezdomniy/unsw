@@ -1,8 +1,8 @@
-import pandas as pd
 import numpy as np
 import random
 import math
 from scipy.io.arff import loadarff
+import scipy.stats as ss
 import string
 from copy import deepcopy
 
@@ -10,8 +10,8 @@ from copy import deepcopy
 #random.seed(1)
 proportionTrain = 1
 hypothesisLength = 14
-populationSize = 50
-replacementRate = 0.2
+populationSize = 60
+replacementRate = 0.1
 mutationRate = 0.05
 
 
@@ -23,8 +23,8 @@ operator = ('+','-','/','*')
 
 exampleOrder = {'LW':0,'LD':1,'RW':2,'RD':3}
 
-dataset, meta = loadarff(open('C:/unsw/COMP9417/balance-scale.arff','r'))
-#dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/balance-scale.arff','r'))
+#dataset, meta = loadarff(open('C:/unsw/COMP9417/balance-scale.arff','r'))
+dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/balance-scale.arff','r'))
 
 dataset = dataset[meta.names()].tolist()
 dataset = np.asarray(dataset, dtype='<U1')
@@ -33,13 +33,30 @@ random.shuffle(dataset)
 train, test = dataset[:len(dataset) * proportionTrain], dataset[len(dataset) * proportionTrain:]
 
 arributeNum = train.shape[1]
-fitnessThreshold = 1
+#fitnessThreshold = 1
+fitnessThreshold = len(train)
 
 class Node():
     def __init__(self,value):
         self.left = None
         self.right = None
         self.value = value
+        self.parent = None
+
+    def __str__(self):
+        self.inorder()
+        return ''
+
+    def __repr__(self):
+        return self.__str__()
+
+    def addLeftChild(self,node):
+        self.left = node
+        self.left.parent = self
+
+    def addRightChild(self,node):
+        self.right = node
+        self.right.parent = self
 
     def inorder(self):
         if self.left is not None:
@@ -57,16 +74,18 @@ class Node():
             return int(example[exampleOrder[self.value]])
 
         leftEval = self.left._evaluate(example)
-        righEval = self.right._evaluate(example)
+        rightEval = self.right._evaluate(example)
 
         if self.value == '+':
-            return leftEval + righEval
+            return leftEval + rightEval
         elif self.value == '-':
-            return leftEval - righEval
+            return leftEval - rightEval
         elif self.value == '*':
-            return leftEval * righEval
+            return leftEval * rightEval
         else:
-            return leftEval / righEval
+            if rightEval == 0:
+                return 0
+            return leftEval / rightEval
 
     def getSize(self):
         if self.left is None and self.right is None:
@@ -79,20 +98,48 @@ class Node():
     def getHeight(self):
         return int(math.log(self.getSize(),2))
 
+    def replaceNode(self,node,position):
+        if position == 0:
+            self.left = node.left
+            self.right = node.right
+            self.value = node.value
+            return
+
+        replace = self._traverse(position)
+        parent = replace.parent
+
+        node.parent = parent
+        #replace.parent = None
+
+        if parent.left == replace:
+            parent.left = node
+        else:
+            parent.right = node
+
+
     def getRandomSubtree(self):
-        rand = random.randint(0,self.getSize())
-        count = -1
-        return self._traverse(rand,count)
+        rand = random.randint(0,self.getSize()-1)
+        return self._traverse(rand), rand
 
-        
+    def _traverse(self,stop):
+        stack = []
+        current = self
+        step = 0
 
-    def _traverse(self,stop,step):
-        step+=1
-        print(step," ",stop)
-        if step == stop:
-           return self;
-        self.left._traverse(stop,step);
-        self.right._traverse(stop,step);
+        while len(stack) > 0 or current is not None:
+            if step == stop:
+                return current
+
+            if current is not None:
+                stack.append(current)
+                current = current.left
+            else:
+                current = stack.pop()
+                current = current.right
+
+            if current is not None:
+                step += 1
+
 
     
 
@@ -124,19 +171,16 @@ class Individual():
 class scaleIndividual():
     def __init__(self):
         self.root = Node(random.choice(operator))
-        self.root.left = Node(random.choice(operator))
-        self.root.right = Node(random.choice(operator))
+        self.root.addLeftChild(Node(random.choice(operator)))
+        self.root.addRightChild(Node(random.choice(operator)))
 
-        self.root.left.left = Node(random.choice(variable))
-        self.root.left.right = Node(random.choice(variable))
-        self.root.right.left = Node(random.choice(variable))
-        self.root.right.right = Node(random.choice(variable))
+        self.root.left.addLeftChild(Node(random.choice(variable)))
+        self.root.left.addRightChild(Node(random.choice(variable)))
+        self.root.right.addLeftChild(Node(random.choice(variable)))
+        self.root.right.addRightChild(Node(random.choice(variable)))
 
         self.fitness = 0
 
-
-    
-    
 
     def setFitness(self,fitness):
         self.fitness = fitness
@@ -166,6 +210,23 @@ class Population():
         self.individuals.append(deepcopy(individual))
 
     def findFitness(self):
+        self._fitnessProportionate()
+        self._rankSelection()
+
+    def _rankSelection(self):
+        self.populationFitness = 0
+        ranked = ss.rankdata([i.fitness for i in self.individuals])
+
+        for r in ranked:
+            r = populationSize - r - 1
+
+        for i in range(0,populationSize):
+            self.individuals[i].setFitness(ranked[i])
+            self.populationFitness += ranked[i]
+
+        self.individuals.sort(key=lambda x: x.fitness ,reverse=True)
+
+    def _fitnessProportionate(self):
         for individual in self.individuals:
             fitness = fitnessScale(individual)
             self.populationFitness += fitness
@@ -175,21 +236,48 @@ class Population():
 
         self.individuals.sort(key=lambda x: x.fitness ,reverse=True)
 
+
+
+
+
 def fitnessScale(individual):
     fitness = 0
-    #genes = individual.genes
+    genes = individual.genes
 
     for example in train:
-        if testHypothesis(individual,example):
+        #if testHypothesis(individual,example):
+        if testHypothesis(genes,example):
             fitness += 1
 
-
-    #print(genes," fit: ",fitness)
+    #print("fit: ",fitness)
     #return (fitness/len(train)) ** 2
     return fitness
 
-def testHypothesis(hypothesis,example):
+
+def _testHypothesis(hypothesis,example):
     ev = hypothesis.evaluate(example)
+    if ev == 0:
+        return example[4] == "B"
+    if ev > 0:
+        return example[4] == "R"
+    if ev < 0:
+        return example[4] == "L"
+
+def testHypothesis(hypothesis,example):
+    funcArray = []
+    
+    for i in range(0,hypothesisLength,2):
+        if i % 4 == 0:
+            funcArray.append(variableVal[str(hypothesis[i]) + str(hypothesis[i + 1])])
+        else:
+            funcArray.append(operatorVal[str(hypothesis[i]) + str(hypothesis[i + 1])])
+    
+    func = [example[exampleOrder[x]] if x in exampleOrder is not None else x for x in funcArray]
+    
+    ev = eval(''.join(func))
+    
+    #print(func," balance: ",example[4]," = ",ev)
+    
     if ev == 0:
         return example[4] == "B"
     if ev > 0:
@@ -199,7 +287,24 @@ def testHypothesis(hypothesis,example):
 
 
 def crossover(individual1,individual2):
-    return _onePointCrossover(individual1,individual2)
+    return _twoPointCrossover(individual1,individual2)
+
+
+def _subtreeCrossover(individual1,individual2):
+    replacement1,pos1 = individual1.root.getRandomSubtree();
+    replacement2,pos2 = individual2.root.getRandomSubtree();
+
+    r1=deepcopy(replacement1)
+    r2=deepcopy(replacement2)
+
+    #print("Replacing position",r1," at ",pos1," in ",individual1," with ",r2)
+    #print("Replacing position",replacement2," at ",pos2," in ",individual2," with ",r1)
+    individual1.root.replaceNode(r2,pos1)
+    individual2.root.replaceNode(r1,pos2)
+    #print("Result: ",individual1," and ",individual2)
+
+    return individual1,individual2
+
 
 def _twoPointCrossover(individual1,individual2):
     n0 = random.randint(0, hypothesisLength)
@@ -242,6 +347,14 @@ def mutate(individual):
     else:
         individual.genes[gene] = 0
 
+def _mutate(individual):
+    mutation,pos = individual.root.getRandomSubtree();
+
+    if mutation.value in '+-*/':
+        mutation.value = random.choice(operator)
+    else:
+        mutation.value = random.choice(variable)
+
 
 def runGA():
     pop = Population()
@@ -250,6 +363,7 @@ def runGA():
 
     end = 20
     c=0
+   
 
     while pop.maxFitness < fitnessThreshold :
         nextPop = Population()
@@ -275,4 +389,11 @@ def runGA():
 
         print("generation: ",c)
         for i in range(0,12):
-            print(pop.individuals[i]," fit: {0:.0f}%".format(pop.individuals[i].fitness*100))
+            print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
+            #print(pop.individuals[i]," fit: {0:.0f}%".format(pop.individuals[i].fitness*100))
+
+    print("Found solution at generation: ",c)
+    print("Top 3 solutions: ")
+    for i in range(0,3):
+        pop._fitnessProportionate()
+        print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
