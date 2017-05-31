@@ -11,8 +11,8 @@ from copy import deepcopy
 
 #random.seed(1)
 populationSize = 60
-replacementRate = 0.1
-mutationRate = 0.05
+replacementRate = 0.2
+mutationRate = 0.1
 
 
 ## Balance scale definitions
@@ -27,7 +27,7 @@ exampleOrder = {'LW':0,'LD':1,'RW':2,'RD':3}
 
 ## Mushroom definitions
 
-proportionTrain = 0.95
+proportionTrain = 0.01
 hypothesisLength = 127
 mushrromAttributes =    [
                 [ 'b', 'c', 'f', 'k', 's', 'x'],
@@ -58,11 +58,12 @@ mushrromAttributes =    [
 
 ## Load dataset
 
-#dataset, meta = loadarff(open('C:/unsw/COMP9417/balance-scale.arff','r'))
+#dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/balance-scale.arff','r'))
 dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/mushroom.arff','r'))
 
 dataset = dataset[meta.names()].tolist()
 dataset = np.asarray(dataset, dtype='<U3')
+#dataset = np.asarray(dataset, dtype='<U1')
 
 dataset = np.core.defchararray.replace(dataset,"'","")
 
@@ -70,7 +71,8 @@ random.shuffle(dataset)
 train, test = dataset[:len(dataset) * proportionTrain], dataset[len(dataset) * proportionTrain:]
 
 #fitnessThreshold = 1
-fitnessThreshold = len(train)
+fitnessThreshold = len(train) * len(mushrromAttributes) * 0.95
+#fitnessThreshold = len(train)
 
 class Node():
     def __init__(self,value):
@@ -182,9 +184,14 @@ class Individual():
     def __init__(self):
         self.genes = np.random.choice([0, 1], size=(hypothesisLength,))
         self.fitness = 0
+        self.rank = 0
 
     def setFitness(self,fitness):
         self.fitness = fitness
+
+    def setRank(self,rank):
+        self.rank = rank
+
 
     def setGenes(self,genes):
         for i in range(0,hypothesisLength):
@@ -208,18 +215,25 @@ class Individual():
         exampleCount = 0
         nextStart = 0
 
+        ev = 0
+
+        if (self.genes[125] == self.genes[126] == 0) or (self.genes[125] == self.genes[126] == 1):
+            return ev
+
         for attrib in mushrromAttributes:
             nextStart += len(attrib)
             for val in attrib:
-                if hypothesis[geneCount] == 1 and attrib == example[exampleCount]:
+                #print("hypothesis gene: ",hypothesis[geneCount],", attribute: ",val,", example value: ",example[exampleCount])
+                if hypothesis[geneCount] == 1 and val == example[exampleCount]:
                     geneCount = nextStart
-                    continue
-                elif attrib != example[exampleCount]:
+                    ev += 1
+                    break
+                elif val != example[exampleCount]:
                     geneCount +=1
-                else:
-                    return False
+                #else:
+                    #return False
             exampleCount += 1
-        return True
+        return ev
 
 
     def evaluateScale(self,example):
@@ -275,6 +289,7 @@ class Population():
     def __init__(self):
         self.individuals = []
         self.populationFitness = 0
+        self.totalRank = 0
         self.maxFitness = 0
 
     def createPopulation(self):
@@ -285,30 +300,29 @@ class Population():
 
     def findFitness(self):
         self._fitnessProportionate()
-        #self._rankSelection()
+        self._rankSelection()
 
     def _rankSelection(self):
-        self.populationFitness = 0
         ranked = ss.rankdata([i.fitness for i in self.individuals])
 
-        for r in ranked:
-            r = populationSize - r - 1
+        #for r in ranked:
+            #r = populationSize - r - 1
 
         for i in range(0,populationSize):
-            self.individuals[i].setFitness(ranked[i])
-            self.populationFitness += ranked[i]
+            self.totalRank += ranked[i]
+            self.individuals[i].setRank(ranked[i])
 
-        self.individuals.sort(key=lambda x: x.fitness ,reverse=True)
+        #self.individuals.sort(key=lambda x: x.fitness ,reverse=True)
 
     def _fitnessProportionate(self):
         for individual in self.individuals:
-            fitness = fitnessScale(individual)
+            fitness = fitnessMushroom(individual)
             self.populationFitness += fitness
             individual.setFitness(fitness)
             if fitness > self.maxFitness:
                 self.maxFitness = fitness
 
-        self.individuals.sort(key=lambda x: x.fitness ,reverse=True)
+        #self.individuals.sort(key=lambda x: x.fitness ,reverse=True)
 
 
 
@@ -329,8 +343,7 @@ def fitnessMushroom(individual):
     fitness = 0
 
     for example in train:
-        if testMushroomHypothesis(individual,example):
-            fitness += 1
+        fitness += testMushroomHypothesis(individual,example)
 
     #print("fit: ",fitness)
     #return (fitness/len(train)) ** 2
@@ -423,20 +436,22 @@ def runGA():
     pop.createPopulation()
     pop.findFitness()
 
-    limit = 60
+    limit = 1000
     c=0
    
 
     while pop.maxFitness < fitnessThreshold and c < limit:
         nextPop = Population()
 
-        individualsForCrossover = np.random.choice(pop.individuals, replacementRate*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
+        #individualsForCrossover = np.random.choice(pop.individuals, replacementRate*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
+        individualsForCrossover = np.random.choice(pop.individuals, replacementRate*populationSize, p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
         for i in range(0,len(individualsForCrossover),2):
             offspring1, offspring2 = crossover(individualsForCrossover[i],individualsForCrossover[i +1 ])
             nextPop.addIndividual(offspring1)
             nextPop.addIndividual(offspring2)
 
-        individualsForNextGeneration = np.random.choice(pop.individuals, (1-replacementRate)*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
+        #individualsForNextGeneration = np.random.choice(pop.individuals, (1-replacementRate)*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
+        individualsForNextGeneration = np.random.choice(pop.individuals, (1-replacementRate)*populationSize, p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
         for individual in individualsForNextGeneration:
             nextPop.addIndividual(individual)
 
@@ -449,10 +464,13 @@ def runGA():
         pop.findFitness()
         c+=1
 
-        #print("generation: ",c)
-        #for i in range(0,12):
-        #    print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
+        print("generation: ",c)
+        pop.individuals.sort(key=lambda x: x.rank ,reverse=True)
+        for i in range(0,12):
+            print("Rank: ", pop.individuals[i].rank,", Fit: ",pop.individuals[i].fitness," ind ",pop.individuals[i])
+            #print(pop.individuals[i]," fit: ",pop.individuals[i].fitness," rank", pop.individuals[i].rank)
             #print(pop.individuals[i]," fit: {0:.0f}%".format(pop.individuals[i].fitness*100))
+        
 
     if c == limit:
         print("failed at 60, reseting")
