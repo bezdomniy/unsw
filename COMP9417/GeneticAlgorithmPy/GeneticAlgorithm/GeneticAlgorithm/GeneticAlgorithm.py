@@ -7,21 +7,32 @@ import string
 from copy import deepcopy
 
 
+## Global bariables
+
 #random.seed(1)
-proportionTrain = 1
-hypothesisLength = 14
 populationSize = 60
 replacementRate = 0.1
 mutationRate = 0.05
 
 
+## Balance scale definitions
+
+proportionTrain = 1
+hypothesisLength = 14
 variableVal = {'00':'LW','01':'LD','10':'RW','11':'RD'}
 operatorVal = {'00':'+','01':'-','10':'/','11':'*'}
-
 variable = ('LW','RW','LD','RD')
 operator = ('+','-','/','*')
-
 exampleOrder = {'LW':0,'LD':1,'RW':2,'RD':3}
+
+## Mushroom definitions
+
+#proportionTrain = 0.95
+#hypothesisLength = 126
+
+
+
+## Load dataset
 
 #dataset, meta = loadarff(open('C:/unsw/COMP9417/balance-scale.arff','r'))
 dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/balance-scale.arff','r'))
@@ -155,15 +166,37 @@ class Individual():
         for i in range(0,hypothesisLength):
             self.genes[i] = genes[i]
 
-    def __str__(self):
+    def scaleToString(self):
         funcArray = []
-
         for i in range(0,hypothesisLength,2):
             if i % 4 == 0:
                 funcArray.append(variableVal[str(self.genes[i]) + str(self.genes[i + 1])])
             else:
                 funcArray.append(operatorVal[str(self.genes[i]) + str(self.genes[i + 1])])
         return ' '.join(funcArray)
+
+    def mushroomToString(self):
+        return ' '.join(self.genes)
+
+    def evaluateMushroom(self,example):
+        pass
+
+    def evaluateScale(self,example):
+        funcArray = []
+        hypothesis = self.genes
+    
+        for i in range(0,hypothesisLength,2):
+            if i % 4 == 0:
+                funcArray.append(variableVal[str(hypothesis[i]) + str(hypothesis[i + 1])])
+            else:
+                funcArray.append(operatorVal[str(hypothesis[i]) + str(hypothesis[i + 1])])
+    
+        func = [example[exampleOrder[x]] if x in exampleOrder is not None else x for x in funcArray]
+        return eval(''.join(func))
+
+    def __str__(self):
+        #return self.mushroomToString()
+        return self.scaleToString()
 
     def __repr__(self):
         return self.__str__()
@@ -185,7 +218,7 @@ class scaleIndividual():
     def setFitness(self,fitness):
         self.fitness = fitness
 
-    def evaluate(self,example):
+    def evaluateScale(self,example):
         return self.root._evaluate(example)
 
     def __str__(self):
@@ -242,11 +275,9 @@ class Population():
 
 def fitnessScale(individual):
     fitness = 0
-    genes = individual.genes
 
     for example in train:
-        #if testHypothesis(individual,example):
-        if testHypothesis(genes,example):
+        if testScaleHypothesis(individual,example):
             fitness += 1
 
     #print("fit: ",fitness)
@@ -254,8 +285,8 @@ def fitnessScale(individual):
     return fitness
 
 
-def _testHypothesis(hypothesis,example):
-    ev = hypothesis.evaluate(example)
+def testScaleHypothesis(hypothesis,example):
+    ev = hypothesis.evaluateScale(example)
     if ev == 0:
         return example[4] == "B"
     if ev > 0:
@@ -263,27 +294,6 @@ def _testHypothesis(hypothesis,example):
     if ev < 0:
         return example[4] == "L"
 
-def testHypothesis(hypothesis,example):
-    funcArray = []
-    
-    for i in range(0,hypothesisLength,2):
-        if i % 4 == 0:
-            funcArray.append(variableVal[str(hypothesis[i]) + str(hypothesis[i + 1])])
-        else:
-            funcArray.append(operatorVal[str(hypothesis[i]) + str(hypothesis[i + 1])])
-    
-    func = [example[exampleOrder[x]] if x in exampleOrder is not None else x for x in funcArray]
-    
-    ev = eval(''.join(func))
-    
-    #print(func," balance: ",example[4]," = ",ev)
-    
-    if ev == 0:
-        return example[4] == "B"
-    if ev > 0:
-        return example[4] == "R"
-    if ev < 0:
-        return example[4] == "L"
 
 
 def crossover(individual1,individual2):
@@ -297,11 +307,8 @@ def _subtreeCrossover(individual1,individual2):
     r1=deepcopy(replacement1)
     r2=deepcopy(replacement2)
 
-    #print("Replacing position",r1," at ",pos1," in ",individual1," with ",r2)
-    #print("Replacing position",replacement2," at ",pos2," in ",individual2," with ",r1)
     individual1.root.replaceNode(r2,pos1)
     individual2.root.replaceNode(r1,pos2)
-    #print("Result: ",individual1," and ",individual2)
 
     return individual1,individual2
 
@@ -361,11 +368,11 @@ def runGA():
     pop.createPopulation()
     pop.findFitness()
 
-    end = 20
+    limit = 60
     c=0
    
 
-    while pop.maxFitness < fitnessThreshold :
+    while pop.maxFitness < fitnessThreshold and c < limit:
         nextPop = Population()
 
         individualsForCrossover = np.random.choice(pop.individuals, replacementRate*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
@@ -389,20 +396,27 @@ def runGA():
 
         #print("generation: ",c)
         #for i in range(0,12):
-            #print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
+        #    print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
             #print(pop.individuals[i]," fit: {0:.0f}%".format(pop.individuals[i].fitness*100))
 
-    print("Found solution: ", pop.individuals[0],", at generation: ",c)
+    if c == limit:
+        print("failed at 60, reseting")
+        runGA()
+    else:
+        print("Found solution: ", pop.individuals[0],", at generation: ",c)
     #print("Top 3 solutions: ")
     #for i in range(0,1):
         #pop._fitnessProportionate()
         #print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
+    
 
     return c
 
-def test():
+def test(n):
     generationsTaken = []
-    for i in range(0,100):
+    for i in range(0,n):
         c = runGA()
         generationsTaken.append(c)
     print("Average generations taken: ",sum(generationsTaken)/len(generationsTaken))
+
+test(20)
