@@ -387,13 +387,22 @@ def runGA():
         pop.findFitness()
         c+=1
 
-        print("generation: ",c)
-        for i in range(0,12):
-            print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
+        #print("generation: ",c)
+        #for i in range(0,12):
+            #print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
             #print(pop.individuals[i]," fit: {0:.0f}%".format(pop.individuals[i].fitness*100))
 
-    print("Found solution at generation: ",c)
-    print("Top 3 solutions: ")
-    for i in range(0,3):
-        pop._fitnessProportionate()
-        print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
+    print("Found solution: ", pop.individuals[0],", at generation: ",c)
+    #print("Top 3 solutions: ")
+    #for i in range(0,1):
+        #pop._fitnessProportionate()
+        #print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
+
+    return c
+
+def test():
+    generationsTaken = []
+    for i in range(0,100):
+        c = runGA()
+        generationsTaken.append(c)
+    print("Average generations taken: ",sum(generationsTaken)/len(generationsTaken))
