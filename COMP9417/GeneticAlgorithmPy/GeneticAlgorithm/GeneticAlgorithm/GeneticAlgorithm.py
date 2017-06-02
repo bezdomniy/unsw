@@ -4,13 +4,14 @@ import math
 from scipy.io.arff import loadarff
 import scipy.stats as ss
 import string
+from collections import OrderedDict
 from copy import deepcopy
 
 
 ## Global bariables
 
 #random.seed(1)
-populationSize = 60
+populationSize = 50
 replacementRate = 0.2
 mutationRate = 0.1
 
@@ -27,9 +28,9 @@ exampleOrder = {'LW':0,'LD':1,'RW':2,'RD':3}
 
 ## Mushroom definitions
 
-proportionTrain = 0.01
+proportionTrain = 1
 hypothesisLength = 127
-mushrromAttributes =    [
+mushroomAttributes =    [
                 [ 'b', 'c', 'f', 'k', 's', 'x'],
                 [ 'f', 'g', 's', 'y'],
                 [ 'b', 'c', 'e', 'g', 'n', 'p', 'r', 'u', 'w', 'y'],
@@ -55,6 +56,30 @@ mushrromAttributes =    [
                 [ 'e', 'p']
                 ]
 
+mushroomAttributeLabels =   ['cap-shape',
+                            'cap-surface',
+                            'cap-color',
+                            'bruises?',
+                            'odor',
+                            'gill-attachment',
+                            'gill-spacing',
+                            'gill-size',
+                            'gill-color',
+                            'stalk-shape',
+                            'stalk-root',
+                            'stalk-surface-above-ring',
+                            'stalk-surface-below-ring',
+                            'stalk-color-above-ring',
+                            'stalk-color-below-ring',
+                            'veil-type',
+                            'veil-color',
+                            'ring-number',
+                            'ring-type',
+                            'spore-print-color',
+                            'population',
+                            'habitat',
+                            'class']
+
 
 ## Load dataset
 
@@ -70,9 +95,21 @@ dataset = np.core.defchararray.replace(dataset,"'","")
 random.shuffle(dataset)
 train, test = dataset[:len(dataset) * proportionTrain], dataset[len(dataset) * proportionTrain:]
 
-#fitnessThreshold = 1
-fitnessThreshold = len(train) * len(mushrromAttributes) * 0.95
-#fitnessThreshold = len(train)
+fitnessThreshold = 0.98
+#fitnessThreshold = len(train) * len(mushroomAttributes) * 0.95
+#fitnessThreshold = len(train) * 0.95
+
+def splitMushroom(data):
+    edible = []
+    poisonous = []
+    for d in data:
+        if d[22] == 'e':
+            edible.append(d)
+        else:
+            poisonous.append(d)
+    return edible,poisonous
+
+edible,poisonous = splitMushroom(train)
 
 class Node():
     def __init__(self,value):
@@ -178,6 +215,12 @@ class Node():
             if current is not None:
                 step += 1
 
+class Attribute():
+    def __init__(self,number,value, attribute, label):
+        self.number = number
+        self.value = value
+        self.attribute = attribute
+        self.label = label
 
 
 class Individual():
@@ -207,7 +250,52 @@ class Individual():
         return ' '.join(funcArray)
 
     def mushroomToString(self):
-        return ' '.join([str(x) for x in self.genes])
+        #return ' '.join([str(x) for x in self.genes])
+        strOut=[]
+        hypothesis = self.genes
+        geneCount = 0
+        nextStart = 0
+        attributeCount = 0
+
+        if (self.genes[125] == self.genes[126] == 0) or (self.genes[125] == self.genes[126] == 1):
+            return 'Invalid hypothesis'
+
+        for attrib in mushroomAttributes[:-1]:
+            strTemp = []
+
+            nextStart += len(attrib)
+
+            allOnes = True
+            for val in attrib:
+                if hypothesis[geneCount] == 1:
+                    if strTemp == []:
+                        strTemp += val
+                    else:
+                        strTemp += ' or '+val
+
+                    geneCount = nextStart
+                else:
+                    allOnes = False
+                    geneCount +=1
+
+            if not (allOnes or strTemp == []):
+                label = mushroomAttributeLabels[attributeCount]+': '
+                strTemp.insert(0,label)
+                if strOut == []:
+                    strOut += '('+''.join(strTemp)+')'
+                else:
+                    strOut += ' and ('+''.join(strTemp)+')'
+            attributeCount += 1
+
+        if self.genes[125] == 1:
+            strOut += ' = Edible'
+        else:
+            strOut += ' = Poisonous'
+        
+        return ''.join(strOut)
+
+    #def negativeForm(genes):
+    #    pass
 
     def evaluateMushroom(self,example):
         hypothesis = self.genes
@@ -215,25 +303,32 @@ class Individual():
         exampleCount = 0
         nextStart = 0
 
-        ev = 0
-
         if (self.genes[125] == self.genes[126] == 0) or (self.genes[125] == self.genes[126] == 1):
-            return ev
+            return False
 
-        for attrib in mushrromAttributes:
+        if ((example[22] == 'p' and self.genes[126] == 0) or (example[22] == 'e' and self.genes[125] == 0)):
+            return True
+
+        for attrib in mushroomAttributes:
+            if exampleCount == 22:
+                break
             nextStart += len(attrib)
+            allZeroes = True
             for val in attrib:
                 #print("hypothesis gene: ",hypothesis[geneCount],", attribute: ",val,", example value: ",example[exampleCount])
-                if hypothesis[geneCount] == 1 and val == example[exampleCount]:
+                if (hypothesis[geneCount] == 1 and (val == example[exampleCount]) or example[exampleCount] == '?'):
                     geneCount = nextStart
-                    ev += 1
                     break
                 elif val != example[exampleCount]:
+                    if hypothesis[geneCount] == 1:
+                        allZeroes = False
                     geneCount +=1
-                #else:
-                    #return False
+                elif allZeroes:
+                    continue
+                else:
+                    return False
             exampleCount += 1
-        return ev
+        return True
 
 
     def evaluateScale(self,example):
@@ -340,14 +435,21 @@ def fitnessScale(individual):
     return fitness
 
 def fitnessMushroom(individual):
-    fitness = 0
+    edibleFitness = 0
+    poisonousFitness = 0
 
-    for example in train:
-        fitness += testMushroomHypothesis(individual,example)
+    for example in edible:
+        edibleFitness += testMushroomHypothesis(individual,example)
+    for example in poisonous:
+        poisonousFitness += testMushroomHypothesis(individual,example)
+
+    #print(edibleFitness," ",poisonousFitness)
+
+    fitness = (edibleFitness / len(edible)) + (poisonousFitness / len(poisonous))
 
     #print("fit: ",fitness)
     #return (fitness/len(train)) ** 2
-    return fitness
+    return fitness/2
 
 
 def testScaleHypothesis(hypothesis,example):
@@ -365,7 +467,9 @@ def testMushroomHypothesis(hypothesis,example):
 
 
 def crossover(individual1,individual2):
+    #return _onePointCrossover(individual1,individual2)
     return _twoPointCrossover(individual1,individual2)
+    #return _uniformCrossover(individual1,individual2)
 
 
 def _subtreeCrossover(individual1,individual2):
@@ -412,7 +516,18 @@ def _onePointCrossover(individual1,individual2):
 
     return offspring1,offspring2
 
+def _uniformCrossover(individual1,individual2):
+    parents = [individual1,individual2]
 
+    crossoverMask = [random.randint(0,1) for _ in range(0,hypothesisLength)]
+
+    offspring1 = Individual()
+    offspring2 = Individual()
+    for i in range(0,hypothesisLength):
+        offspring1.genes[i] = parents[crossoverMask[i]].genes[i]
+        offspring2.genes[i] = parents[crossoverMask[i] ^ 1].genes[i]
+
+    return offspring1,offspring2
 
 def mutate(individual):
     gene = random.randint(0, hypothesisLength-1)
@@ -429,6 +544,7 @@ def _mutate(individual):
         mutation.value = random.choice(operator)
     else:
         mutation.value = random.choice(variable)
+
 
 
 def runGA():
@@ -467,13 +583,13 @@ def runGA():
         print("generation: ",c)
         pop.individuals.sort(key=lambda x: x.rank ,reverse=True)
         for i in range(0,12):
-            print("Rank: ", pop.individuals[i].rank,", Fit: ",pop.individuals[i].fitness," ind ",pop.individuals[i])
+            print("Rank: ", pop.individuals[i].rank,", Fit: {0:.2f}%".format(pop.individuals[i].fitness*100)," Hypothesis ",pop.individuals[i])
             #print(pop.individuals[i]," fit: ",pop.individuals[i].fitness," rank", pop.individuals[i].rank)
             #print(pop.individuals[i]," fit: {0:.0f}%".format(pop.individuals[i].fitness*100))
         
 
     if c == limit:
-        print("failed at 60, reseting")
+        print("failed at {}, reseting".format(limit))
         runGA()
     else:
         print("Found solution: ", pop.individuals[0],", at generation: ",c)
@@ -485,10 +601,38 @@ def runGA():
 
     return c
 
-def test(n):
+def _test(n):
     generationsTaken = []
     for i in range(0,n):
         c = runGA()
         generationsTaken.append(c)
     print("Average generations taken: ",sum(generationsTaken)/len(generationsTaken))
 
+
+def testHypothesis(individual,data):
+    fitness = 0
+
+    for example in data:
+        if individual.evaluateMushroom(example):
+            fitness+=1
+    return fitness
+
+print(len(edible)," edible examples")
+print(len(poisonous)," poisonous examples")
+
+#x='1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0'
+#x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0'
+#x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1'
+#x='1 0 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 0 1 1 1 1 1 1 1 0 0 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 0 1 0 1 0 1 1 1 1 1 1 1 0 0 0 1 1 1 1 1 1 1 1 1 0 1 1 0 1 1 1 0 1 1 1 1 1 1 1 1 1 1 0 1 1 0 1 1 0 0 1 1 0 0 1 0 1 1 1 1 1 1 1 0 0 0 1 1 1 1 1 1 1 1 1 1 1 0 1 1 0'
+#x='0 1 1 1 0 0 0 0 1 0 0 1 1 1 0 0 0 0 1 1 1 1 1 1 0 1 0 1 1 0 1 0 0 1 0 0 1 0 1 1 0 0 1 1 1 0 1 0 1 0 0 0 0 0 1 0 0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0 0 0 1 0 0 1 0 0 0 1 1 0 1 1 0 1 0 1 0 0 1 1 0 1 1 0 1 1 0 0 1 0 1 0 0 1 1 0 0 1 1 1 0 1 1 1 1 1 1 0 1 1 1 0'
+
+# Found on full dataset, with 98.61% fitness
+x=' 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 1 1 1 1 0 1 1 1 1 0 1 0 1 1 1 0 0 0 0 0 1 1 1 1 1 0 0 0 0 0 1 0 0 0 1 0 1 1 0 1 1 0 0 0 1 0 1 1 1 0 0 0 1 1 0 0 1 0 1 1 1 1 1 1 0 1 1 1 1 1 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 1'
+
+# Found on full dataset, with 98.39% fitness
+#x='0 0 1 1 1 1 0 0 0 1 1 1 1 1 1 0 1 1 1 1 0 0 1 1 0 1 1 1 1 1 1 0 0 1 1 1 0 1 1 1 0 0 0 0 0 0 1 1 1 0 1 0 1 1 1 1 1 1 0 1 1 1 1 0 0 1 1 1 1 0 0 0 1 0 1 1 1 0 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 1 1 0 0 1 0 0 1 1 1 0 1 0 1 1 0 1 0 1 1 1 0 0 0 0 0 1 1 0 1'
+
+x=[int(i) for i in x if i != ' ']
+y = Individual()
+y.setGenes(x)
+testHypothesis(y,dataset)
