@@ -119,7 +119,7 @@ dataset = np.asarray(dataset, dtype='<U3')
 
 dataset = np.core.defchararray.replace(dataset,"'","")
 
-random.shuffle(dataset)
+np.random.shuffle(dataset)
 train, test = dataset[:len(dataset) * proportionTrain], dataset[len(dataset) * proportionTrain:]
 
 fitnessThreshold = 0.98
@@ -284,13 +284,11 @@ class Individual():
         nextStart = 0
         attributeCount = 0
 
-        if (self.genes[125] == self.genes[126] == 0) or (self.genes[125] == self.genes[126] == 1):
+        if (self.genes[125] == self.genes[126] == 0) or (self.genes[125] == self.genes[126] == 1) or all(x == self.genes[0] for x in self.genes[:-2]):
             return 'Invalid hypothesis'
 
         for attrib in mushroomAttributes[:-1]:
             strTemp = []
-
-            nextStart += len(attrib)
 
             allOnes = True
             for val in attrib:
@@ -299,11 +297,9 @@ class Individual():
                         strTemp += mushroomVariableLabels[attributeCount][val]
                     else:
                         strTemp += ' or '+ mushroomVariableLabels[attributeCount][val]
-
-                    geneCount = nextStart
                 else:
                     allOnes = False
-                    geneCount +=1
+                geneCount +=1
 
             if not (allOnes or strTemp == []):
                 label = mushroomAttributeLabels[attributeCount]+': '
@@ -321,16 +317,13 @@ class Individual():
         
         return ''.join(strOut)
 
-    #def negativeForm(genes):
-    #    pass
-
-    def evaluateMushroom(self,example):
+    def _evaluateMushroom(self,example):
         hypothesis = self.genes
         geneCount = 0
         exampleCount = 0
         nextStart = 0
 
-        if (self.genes[125] == self.genes[126] == 0) or (self.genes[125] == self.genes[126] == 1):
+        if (self.genes[125] == self.genes[126] == 0) or (self.genes[125] == self.genes[126] == 1) or all(x == self.genes[0] for x in self.genes[:-2]):
             return False
 
         if ((example[22] == 'p' and self.genes[126] == 0) or (example[22] == 'e' and self.genes[125] == 0)):
@@ -356,6 +349,154 @@ class Individual():
                     return False
             exampleCount += 1
         return True
+
+    def __evaluateMushroom(self,example,debug=False):
+        if debug:
+            print(example)
+
+        hypothesis = self.genes
+        if (hypothesis[125] == hypothesis[126]) :
+            #or all(x == 0 for x in hypothesis[:-2])
+            return False
+
+        edible = None
+        if hypothesis[125] == 1:
+            edible = True
+        else:
+            edible = False
+
+        geneCount = 0
+        exampleCount = 0
+        nextStart = 0
+
+        ret = True
+
+        for attrib in mushroomAttributes[:-1]:
+            nextStart += len(attrib)
+            #ret = True
+            for val in attrib:
+                if ret:
+                    # If hypothesis asserts that a particular attribute is edible or poisonous
+                    if hypothesis[geneCount] == 1:
+                        # If the example attribute value is that which is asserted to be true
+                        if val == example[exampleCount] or example[exampleCount] == '?':
+                            ret = True
+                            # If the classes match
+                            if (edible and example[22] == 'p') or ((not edible) and example[22] == 'e'):
+                                ret = False
+                                geneCount = nextStart
+                                break
+
+                else:
+                    if hypothesis[geneCount] == 1:
+                        if val != example[exampleCount] or example[exampleCount] == '?':
+                            return True
+                            #ret = True
+                geneCount +=1
+            exampleCount += 1
+
+        return ret
+
+    def _evaluateMushroom(self,example,debug=False):
+        if debug:
+            print(example)
+
+        hypothesis = self.genes
+        if (hypothesis[125] == hypothesis[126]) :
+            #or all(x == 0 for x in hypothesis[:-2])
+            return False
+
+        edible = None
+        if hypothesis[125] == 1:
+            edible = True
+        else:
+            edible = False
+
+        geneCount = 0
+        exampleCount = 0
+        nextStart = 0
+
+        ret = True
+
+
+        # If classes  match find a 
+        if (edible and example[22] == 'e') or ((not edible) and example[22] == 'p'):
+            for attrib in mushroomAttributes[:-1]:
+                nextStart += len(attrib)
+                for val in attrib:
+                    # If hypothesis asserts that a particular attribute is in this class
+                    if hypothesis[geneCount] == 1:
+                        # If the example attribute value is that which is asserted to be true
+                        if val == example[exampleCount] or example[exampleCount] == '?':
+                            ret = True
+                            geneCount = nextStart
+                            break
+                        ret = False
+                    geneCount +=1
+                if not ret:
+                    return False
+                exampleCount += 1
+
+        # If classes don't match, find negation
+        else:
+            geneCount = 0
+            exampleCount = 0
+
+            for attrib in mushroomAttributes[:-1]:
+                for val in attrib:
+                    # If hypothesis asserts that a particular attribute is in this class
+                    if hypothesis[geneCount] == 1:
+                        # If the example attribute value is that which is asserted to be true
+                        if val != example[exampleCount]:
+                            ret = True
+                        else:
+                            ret = False
+                    geneCount +=1
+                exampleCount += 1
+
+        return ret
+
+    def evaluateMushroom(self,example,debug=False):
+        if debug:
+            print(example)
+
+        hypothesis = self.genes
+
+        if (hypothesis[125] == hypothesis[126]) :
+            #or all(x == 0 for x in hypothesis[:-2])
+            return False
+
+        edible = None
+        if hypothesis[125] == 1:
+            edible = True
+        else:
+            edible = False
+
+        geneCount = 0
+        exampleCount = 0
+
+        posBitwise = []
+        negBitwise = []
+
+        for attrib in mushroomAttributes[:-1]:
+            innerPos = []
+            innerNeg = []
+            for val in attrib:
+                attribValue = hypothesis[geneCount] & (val == example[exampleCount] or example[exampleCount] == '?')
+                innerPos.append(attribValue)
+                innerNeg.append(not(attribValue))
+
+                geneCount +=1
+
+            posBitwise.append(any(innerPos))
+            negBitwise.append(all(innerNeg))
+            exampleCount += 1
+
+        # If the classes match
+        if (edible and example[22] == 'e') or ((not edible) and example[22] == 'p'):
+            return any(negBitwise)
+        else:
+            return all(posBitwise)
 
 
     def evaluateScale(self,example):
@@ -642,19 +783,36 @@ def testHypothesis(individual,data):
     for example in data:
         if individual.evaluateMushroom(example):
             fitness+=1
+        else:
+            pass
+            #individual.evaluateMushroom(example,True)
+
     return fitness
+
+i=0
+for c in poisonous:
+    if c[2] == 'w' and c[-2]=='l':
+        c[-1] = 'e'
+        break
+    i+=1
+#else:
+#    print("not found")
+
+#print(poisonous[i])
+
+#y.evaluateMushroom(poisonous[i])
 
 print(len(edible)," edible examples")
 print(len(poisonous)," poisonous examples")
 
-#x='1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0'
+#x='1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1'
 #x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0'
-#x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1'
+x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1'
 #x='1 0 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 0 1 1 1 1 1 1 1 0 0 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 0 1 0 1 0 1 1 1 1 1 1 1 0 0 0 1 1 1 1 1 1 1 1 1 0 1 1 0 1 1 1 0 1 1 1 1 1 1 1 1 1 1 0 1 1 0 1 1 0 0 1 1 0 0 1 0 1 1 1 1 1 1 1 0 0 0 1 1 1 1 1 1 1 1 1 1 1 0 1 1 0'
 #x='0 1 1 1 0 0 0 0 1 0 0 1 1 1 0 0 0 0 1 1 1 1 1 1 0 1 0 1 1 0 1 0 0 1 0 0 1 0 1 1 0 0 1 1 1 0 1 0 1 0 0 0 0 0 1 0 0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0 0 0 1 0 0 1 0 0 0 1 1 0 1 1 0 1 0 1 0 0 1 1 0 1 1 0 1 1 0 0 1 0 1 0 0 1 1 0 0 1 1 1 0 1 1 1 1 1 1 0 1 1 1 0'
 
 # Found on full dataset, with 98.61% fitness
-x=' 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 1 1 1 1 0 1 1 1 1 0 1 0 1 1 1 0 0 0 0 0 1 1 1 1 1 0 0 0 0 0 1 0 0 0 1 0 1 1 0 1 1 0 0 0 1 0 1 1 1 0 0 0 1 1 0 0 1 0 1 1 1 1 1 1 0 1 1 1 1 1 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 1'
+#x=' 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 1 1 1 1 0 1 1 1 1 0 1 0 1 1 1 0 0 0 0 0 1 1 1 1 1 0 0 0 0 0 1 0 0 0 1 0 1 1 0 1 1 0 0 0 1 0 1 1 1 0 0 0 1 1 0 0 1 0 1 1 1 1 1 1 0 1 1 1 1 1 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 1'
 
 # Found on full dataset, with 98.39% fitness
 #x='0 0 1 1 1 1 0 0 0 1 1 1 1 1 1 0 1 1 1 1 0 0 1 1 0 1 1 1 1 1 1 0 0 1 1 1 0 1 1 1 0 0 0 0 0 0 1 1 1 0 1 0 1 1 1 1 1 1 0 1 1 1 1 0 0 1 1 1 1 0 0 0 1 0 1 1 1 0 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 1 1 0 0 1 0 0 1 1 1 0 1 0 1 1 0 1 0 1 1 1 0 0 0 0 0 1 1 0 1'
@@ -662,4 +820,7 @@ x=' 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 1 
 x=[int(i) for i in x if i != ' ']
 y = Individual()
 y.setGenes(x)
-testHypothesis(y,dataset)
+
+
+print(testHypothesis(y,edible))
+print(testHypothesis(y,poisonous))
