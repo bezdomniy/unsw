@@ -19,7 +19,7 @@ mushroom hypothesis [00000 0000 0000000000 00 000000000 0000 000 00 000000000000
 					 000000000 000000 0000000 00] - 126
 					 
 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-
+{"almond":"a","anise":"l","creosote":"c","fishy":"y","foul":"f","musty":"m","none":"n","pungent":"p","spicy":"s"}
 [
 [ 'b', 'c', 'f', 'k', 's', 'x'], 									6
 [ 'f', 'g', 's', 'y'], 												4
@@ -46,11 +46,28 @@ mushroom hypothesis [00000 0000 0000000000 00 000000000 0000 000 00 000000000000
 [ 'e', 'p'] 2
 ]
                 |           |       |                   |   |                 |       |     |   |                       |  
-				 b c f k s x f g s y b c e g n p r u w y f t a c f l m n p s y a d f n c d w b n b e g h k n o p r u w y e t b c e r u z f k s y f k s y b c e g n o p w y b c e g n o p w y p u n o w y n o t c e f l n p s z b h k n o r u w y a c n s v y d g l m p u w e p
-most general	 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-100% from arff   1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 1 0 0 0 0 0 1 
+				 b c f k s x f g s y b c e g n p r u w y f t a c f l m n p s y a d f n c d w b n b e g h k n o p r u w y e t b c e r u z f k s y f k s y b c e g n o p w y b c e g n o p w y p u n o w y n o t c e f l n p s z b h k n o r u w y a c n s v y d g l m p u w e 
+most general	 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+100% from arff   0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0  
+				 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 1 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+				 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 
 Found solution:  1 0 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 0 1 1 1 1 1 1 1 0 0 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 0 1 0 1 0 1 1 1 1 1 1 1 0 0 0 1 1 1 1 1 1 1 1 1 0 1 1 0 1 1 1 0 1 1 1 1 1 1 1 1 1 1 0 1 1 0 1 1 0 0 1 1 0 0 1 0 1 1 1 1 1 1 1 0 0 0 1 1 1 1 1 1 1 1 1 1 1 0 1 1 0 , at generation:  94
 Description:	cap-shape not conincal
                  
 				 
 				 16284
+				 
+				 
+had issue with algorithm not getting off the ground with 0% at initialisation - no beneficial genes in the gene pool.
+had to modify initialisation of population to place a greater probability on gene 0 - more general hypothesis will
+be more likely to work for more data points. Though this created the problem of limiting genetic diversity in the initialisation
+population, leading to plateaus in training. Realised that was also affecting class, so more hypotheses were in one class,
+removed the probability weighting from class bit.
+
+It then plateaued at 50%. Tried increasing mutation and crossover rate and switching to two-point crossover to increase
+genetic diversity. After this, increased population size to increase gene pool. Not resolving issue.
+
+Using rank selection up until this point as I got better results in the scale problem, compared to fitness proportionate
+selection. Tried using tournament selection in the interest of trying to maintain genetic diversity in later generations
+and avoiding a plateau at 50%. This indeed decreases the number of number of generations needed for convergence, but it
+still seems to plateau at 50%.

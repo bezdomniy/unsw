@@ -10,7 +10,7 @@ from copy import deepcopy
 ## Global variables
 
 #random.seed(1)
-populationSize = 50
+populationSize = 100
 replacementRate = 0.2
 mutationRate = 0.1
 
@@ -27,8 +27,9 @@ exampleOrder = {'LW':0,'LD':1,'RW':2,'RD':3}
 
 ## Mushroom definitions
 
-proportionTrain = 1
+proportionTrain = 0.1
 hypothesisLength = 126
+probabilityOfOneGene = 0.1
 mushroomAttributes =    [
                 [ 'b', 'c', 'f', 'k', 's', 'x'],
                 [ 'f', 'g', 's', 'y'],
@@ -122,9 +123,9 @@ dataset = np.core.defchararray.replace(dataset,"'","")
 np.random.shuffle(dataset)
 train, test = dataset[:len(dataset) * proportionTrain], dataset[len(dataset) * proportionTrain:]
 
-#fitnessThreshold = 0.99
+fitnessThreshold = 0.99
 #fitnessThreshold = len(train) * len(mushroomAttributes) * 0.95
-fitnessThreshold = len(train) * 0.99
+#fitnessThreshold = len(train) * 0.99
 
 def splitMushroom(data):
     edible = []
@@ -245,10 +246,13 @@ class Node():
 
 class Individual():
     def __init__(self):
-        self.genes = np.random.choice([0, 1], size=(hypothesisLength,))
+        _attributes = np.random.choice([0, 1], p=[1-probabilityOfOneGene,probabilityOfOneGene] , size=(hypothesisLength-1,))
+        _class = np.random.choice([0, 1],1)
+
+        self.genes = np.append(_attributes,_class)
+        
         self.fitness = 0
         self.rank = 0
-        self.mostCommonGene =mostCommonInList(self.genes)
 
     def setFitness(self,fitness):
         self.fitness = fitness
@@ -260,7 +264,6 @@ class Individual():
     def setGenes(self,genes):
         for i in range(0,hypothesisLength):
             self.genes[i] = genes[i]
-        self.mostCommonGene = mostCommonInList(self.genes)
 
     def scaleToString(self):
         funcArray = []
@@ -315,7 +318,7 @@ class Individual():
         return True
 
     def evaluateMushroom(self,example):
-        ret = True
+        #ret = True
         nextStart = 0
         edible = example[-1] == 'e'
 
@@ -339,7 +342,7 @@ class Individual():
         
         #if hypothesis[-1] != edible:
             #return ret == False
-        return ret
+        return True
 
 
 
@@ -409,6 +412,16 @@ class Population():
     def createPopulation(self):
         self.individuals = [Individual() for _ in range(populationSize)]
 
+        #for _ in range(populationSize//2):
+        #    ind = Individual()
+        #    neg = Individual()
+        #    neg.setGenes(ind.genes)
+        #    neg.genes[-1] = int(not ind.genes[-1])
+        #    self.individuals.append(ind)
+        #    self.individuals.append(neg)
+
+
+
     def addIndividual(self,individual):
         self.individuals.append(deepcopy(individual))
 
@@ -418,7 +431,7 @@ class Population():
 
     def findFitness(self):
         self._fitnessProportionate()
-        self._rankSelection()
+        #self._rankSelection()
 
     def _rankSelection(self):
         
@@ -459,6 +472,10 @@ def fitnessScale(individual):
     return fitness
 
 def fitnessMushroom(individual):
+    if all(i == individual.genes[0] for i in individual.genes[:-1]):
+        return 0
+
+
     edibleFitness = 0
     poisonousFitness = 0
     #fitness = 0
@@ -495,17 +512,8 @@ def testMushroomHypothesis(hypothesis,example):
     return hypothesis.evaluateMushroom(example)
 
 
-def mostCommonInList(l):
-    #if type(l) == 'numpy.ndarray':
-    l=l.tolist()
-    return max(set(l), key=l.count)
-
-
 def crossover(individual1,individual2):
-    offspring1,offspring2 = _onePointCrossover(individual1,individual2)
-
-    offspring1.mostCommonGene = mostCommonInList(offspring1.genes)
-    offspring2.mostCommonGene = mostCommonInList(offspring2.genes)
+    offspring1,offspring2 = _uniformCrossover(individual1,individual2)
     return offspring1,offspring2
     #return _twoPointCrossover(individual1,individual2)
     #return _uniformCrossover(individual1,individual2)
@@ -525,7 +533,7 @@ def _subtreeCrossover(individual1,individual2):
 
 
 def _twoPointCrossover(individual1,individual2):
-    n0 = random.randint(1, hypothesisLength -2)
+    n0 = random.randint(0, hypothesisLength -2)
     n1 = random.randint(1, hypothesisLength - n0)
 
     parents = [individual1,individual2]
@@ -582,20 +590,12 @@ def similarity(individual1,individual2):
 
 def mutate(individual):
     gene = random.randint(0, hypothesisLength-1)
-    #bump = 0.05
-    #if individual.mostCommonGene == 0:
-    #    p0 = 0.5 + bump
-    #    p1 = 0.5 - bump
-    #else:
-    #    p0 = 0.5 - bump
-    #    p1 = 0.5 + bump
 
-    #gene = np.random.choice(2, p=[p0,p1])
     if individual.genes[gene] == 0:
         individual.genes[gene] = 1
     else:
         individual.genes[gene] = 0
-    individual.mostCommonGene = mostCommonInList(individual.genes)
+
 
 
 def treeMutate(individual):
@@ -628,7 +628,7 @@ def runGA():
     pop.createPopulation()
     pop.findFitness()
 
-    limit = 1000
+    limit = 10000
     c=0
    
 
@@ -636,8 +636,8 @@ def runGA():
         nextPop = Population()
 
         #individualsForCrossover = np.random.choice(pop.individuals, replacementRate*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
-        individualsForCrossover = np.random.choice(pop.individuals, math.ceil(replacementRate*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
-        #individualsForCrossover = tournamentSelection(deepcopy(pop.individuals),math.ceil(replacementRate*populationSize))
+        #individualsForCrossover = np.random.choice(pop.individuals, math.ceil(replacementRate*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
+        individualsForCrossover = tournamentSelection(deepcopy(pop.individuals),math.ceil(replacementRate*populationSize))
         
         for i in range(0,len(individualsForCrossover),2):
             #individual1=None
@@ -655,8 +655,8 @@ def runGA():
             nextPop.addIndividual(offspring2)
 
         #individualsForNextGeneration = np.random.choice(pop.individuals, (1-replacementRate)*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
-        individualsForNextGeneration = np.random.choice(pop.individuals, math.ceil((1-replacementRate)*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
-        #individualsForNextGeneration = tournamentSelection(deepcopy(pop.individuals),math.ceil((1-replacementRate)*populationSize))
+        #individualsForNextGeneration = np.random.choice(pop.individuals, math.ceil((1-replacementRate)*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
+        individualsForNextGeneration = tournamentSelection(deepcopy(pop.individuals),math.ceil((1-replacementRate)*populationSize))
         for individual in individualsForNextGeneration:
             nextPop.addIndividual(individual)
 
@@ -670,9 +670,11 @@ def runGA():
         c+=1
 
         print("generation: ",c)
-        pop.individuals.sort(key=lambda x: x.rank ,reverse=True)
+        pop.individuals.sort(key=lambda x: x.fitness ,reverse=True)
+        #pop.individuals.sort(key=lambda x: x.rank ,reverse=True)
         for i in range(0,10):
-            print("Rank: ", pop.individuals[i].rank,", Fit: {0:.2f}%".format(pop.individuals[i].fitness*100)," Hypothesis: ",pop.individuals[i])
+            #print("Rank: ", pop.individuals[i].rank,", Fit: {0:.2f}%".format(pop.individuals[i].fitness*100)," Hypothesis: ",pop.individuals[i])
+            print("Fit: {0:.2f}%".format(pop.individuals[i].fitness*100)," Hypothesis: ",pop.individuals[i])
             #print(pop.individuals[i]," fit: ",pop.individuals[i].fitness," rank", pop.individuals[i].rank)
             #print(pop.individuals[i]," fit: {0:.0f}%".format(pop.individuals[i].fitness*100))
         
@@ -720,16 +722,29 @@ print(len(edible)," edible examples")
 print(len(poisonous)," poisonous examples")
 
 #x='1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0'
-#x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+#x='1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
 #x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0'
 
 # Found on full dataset, with 98.52% fitness
 x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 1 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
 
+#f = 0.2
+#x=[np.random.choice(2,p=[1-f,f]) for _ in range(126) ]
 x=[int(i) for i in x if i != ' ']
 y = Individual()
 y.setGenes(x)
 fitnessMushroom(y)
+
+#f = 0.85
+#test=[]
+#for _ in range(100):
+#    x=[np.random.choice(2,p=[1-f,f]) for _ in range(126) ]
+#    x=[int(i) for i in x if i != ' ']
+#    y = Individual()
+#    y.setGenes(x)
+#    test.append(fitnessMushroom(y))
+
+#print(sum(test)/len(test))
 
 #for i in range(0,len(train)):
 #    if train[i][4] not in ['a','l','n']:
@@ -746,4 +761,3 @@ fitnessMushroom(y)
 print(testHypothesis(y,edible))
 print(testHypothesis(y,poisonous))
 print(testHypothesis(y,dataset))
-
