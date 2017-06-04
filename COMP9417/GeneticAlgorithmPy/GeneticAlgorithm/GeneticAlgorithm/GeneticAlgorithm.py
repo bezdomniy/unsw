@@ -9,11 +9,15 @@ from copy import deepcopy
     # Balance Scale - bitString : B
     # Balance Scale - tree : BT
     # Mushroom : M
-dataUsed = 'BT'
+dataUsed = 'M'
 proportionTrain = 0.1
 
-## Selection method: F, R, T, and probability if using T
+## Selection method: F, R, T, 
 chooseSelection = 'T'
+## If using tournament selection: 
+# a similarityAllowed parameter for how minimum gene difference required for crossover
+# a probabilityOfFitterWinning parameter
+similarityAllowed = 3
 probabilityOfFitterWinning = 0.9
 
 ## Choose crossover method:
@@ -24,12 +28,12 @@ probabilityOfFitterWinning = 0.9
 crossoverMethod = 2
 
 populationSize = 100
-replacementRate = 0.3
+replacementRate = 0.36
 mutationRate = 0.1
 
 # Values further from 0.5 generate a more general hypothesis when initialising the population
-probabilityOfOneGene = 0.1
-genesPerMutation = 3
+probabilityOfOneGene = 0.10
+genesPerMutation = 2
 
 
 fitnessThreshold = 0.99
@@ -395,6 +399,8 @@ class Individual():
         return self.__str__()
 
     def __eq__(self,other):
+        if other is None:
+            return False
         for i in range(0,len(self.genes)):
             if self.genes[i] != other.genes[i]:
                 return False
@@ -525,9 +531,9 @@ def testScaleHypothesis(hypothesis,example):
     if ev == 0:
         return example[4] == "B"
     if ev > 0:
-        return example[4] == "R"
-    if ev < 0:
         return example[4] == "L"
+    if ev < 0:
+        return example[4] == "R"
 
 def testMushroomHypothesis(hypothesis,example):
     return hypothesis.evaluateMushroom(example)
@@ -607,10 +613,10 @@ def crossover(individual1,individual2):
 
 def similarity(individual1,individual2):
     similarity = 0
-    if individual1.genes[-1] != individual2.genes[-1]:
+    if individual1 is None or individual2 is None or individual1.genes[-1] != individual2.genes[-1]:
         return similarity
 
-    for i in range(0,len(hypothesisLength)):
+    for i in range(0,hypothesisLength):
         if individual1.genes[i] == individual2.genes[i]:
             similarity += 1
     return similarity
@@ -651,8 +657,10 @@ def treeMutate(individual):
 
 def _tournamentSelection(pop):
     winner = None
+    player = None
     for i in range(0,2):
         player = np.random.choice(pop)
+        ## Tournament
         if (winner is None):
             winner = player
         else:
@@ -684,13 +692,29 @@ def runGA():
         nextPop = Population()
 
         if chooseSelection == 'F':
-            individualsForCrossover = np.random.choice(pop.individuals, replacementRate*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
+            individualsForCrossover = np.random.choice(pop.individuals, math.ceil(replacementRate*populationSize), p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
         elif chooseSelection == 'R':
             individualsForCrossover = np.random.choice(pop.individuals, math.ceil(replacementRate*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
         else:
             individualsForCrossover = tournamentSelection(deepcopy(pop.individuals),math.ceil(replacementRate*populationSize))
         
-        for i in range(0,len(individualsForCrossover),2):
+        breakOut=0
+        lim = len(individualsForCrossover)
+        while len(individualsForCrossover) > 0:
+            individuals = np.random.choice(individualsForCrossover,2, replace=False)
+            ## Prevent genetically similar pairs breeding
+            if breakOut >= lim or similarity(individuals[0],individuals[1]) <= hypothesisLength - similarityAllowed:
+                offspring1, offspring2 = crossover(individuals[0],individuals[1])
+
+                nextPop.addIndividual(offspring1)
+                nextPop.addIndividual(offspring2)
+
+                individualsForCrossover.remove(individuals[0])
+                individualsForCrossover.remove(individuals[1])
+            breakOut += 1
+
+
+        #for i in range(0,len(individualsForCrossover),2):
             #individual1=None
             #individual2=None
 
@@ -700,13 +724,10 @@ def runGA():
 
             #offspring1, offspring2 = crossover(individual1,individual2)
 
-            offspring1, offspring2 = crossover(individualsForCrossover[i],individualsForCrossover[i +1 ])
-
-            nextPop.addIndividual(offspring1)
-            nextPop.addIndividual(offspring2)
+            
 
         if chooseSelection == 'F':
-            individualsForNextGeneration = np.random.choice(pop.individuals, (1-replacementRate)*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
+            individualsForNextGeneration = np.random.choice(pop.individuals, math.ceil((1-replacementRate)*populationSize), p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
         elif chooseSelection == 'R':
             individualsForNextGeneration = np.random.choice(pop.individuals, math.ceil((1-replacementRate)*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
         else:
@@ -744,17 +765,19 @@ def runGA():
         
 
     if c == limit:
-        print("failed at {}, reseting".format(limit))
-        runGA()
+        print("failed at limit {}".format(limit))
+        #runGA()
     else:
         print("Found solution: ", pop.individuals[0],", at generation: ",c)
+
+
     #print("Top 3 solutions: ")
     #for i in range(0,1):
         #pop._fitnessProportionate()
         #print(pop.individuals[i]," fit: ",pop.individuals[i].fitness)
     
 
-    return c
+    return pop.individuals[0]
 
 def _test(n):
     generationsTaken = []
@@ -786,7 +809,7 @@ def testHypothesis(individual,data):
 #print(len(poisonous)," poisonous examples")
 
 #x='1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0'
-#x='1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+x='1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
 #x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0'
 
 # Found on full dataset, with 98.52% fitness
@@ -797,34 +820,24 @@ def testHypothesis(individual,data):
 #x=[int(i) for i in x if i != ' ']
 #y = Individual()
 #y.setGenes(x)
+
+#z = Individual()
+#z.setGenes(x)
 #fitnessMushroom(y)
 
-#f = 0.85
-#test=[]
-#for _ in range(100):
-#    x=[np.random.choice(2,p=[1-f,f]) for _ in range(126) ]
-#    x=[int(i) for i in x if i != ' ']
-#    y = Individual()
-#    y.setGenes(x)
-#    test.append(fitnessMushroom(y))
+def testScaleOutput(test):
+    def scl(a,b,c,d):
+        return int(a)*int(b) - int(c)*int(d)
 
-#print(sum(test)/len(test))
+    def te(t1,t2):
+        return (t1 < 0 and t2 < 0) or (t1 > 0 and t2 > 0) or (t1==t2==0)
+    for i in range(1,9):
+        for j in range(1,9):
+            for k in range(1,9):
+                for l in range(1,9):
+                    t1 = scl(i,j,k,l)
+                    t2=test.evaluateScale(''.join([str(x) for x in [i,j,k,l]]))
+                    print(te(t1,t2))
 
-#for i in range(0,len(train)):
-#    if train[i][4] not in ['a','l','n']:
-#        if train[i][-1] == 'p':
-#            print(train[i])
-#            break
-
-#train[i][-1] = 'e'
-
-#y.evaluateMushroom(train[i])
-
-
-
-#print(testHypothesis(y,edible))
-#print(testHypothesis(y,poisonous))
-#print(testHypothesis(y,dataset))
-
-runGA()
+test = runGA()
 

@@ -61,10 +61,21 @@ Description:	cap-shape not conincal
 				 
 				 
 Found with tree representation: 
-RD - RD * LW + RW + RW / LW * RW / LD * RW * RD - LW * RW * LD / RW , at generation: 35
+RW + RW - LW - RW / LW + LD / LW * RW - LD / RW + RD - LW  , at generation:  71
+RD - RD * LW + RW + RW / LW * RW / LD * RW * RD - LW * RW * LD / RW , at generation: 45
 RD / LW * RD * RW - RD * LD  , at generation:  28
 with tournament selection
+
+talk about tree mutation
+
+Found with binary representation:
+Found solution:  RD - LW / RW * LD , at generation:  42
+Found solution:  RW / LD - LW / RD , at generation:  46
+Found solution:  RW - LW * LD / RD , at generation:  122
+with tournament selection and one-point crossover
 				 
+generation:  86
+1 : Fit: 95.84%  Hypothesis:  (odor: foul or pungent or spicy or fishy) = Poisonous
 				 
 had issue with algorithm not getting off the ground with 0% at initialisation - no beneficial genes in the gene pool.
 had to modify initialisation of population to place a greater probability on gene 0 - more general hypothesis will
@@ -79,3 +90,8 @@ Using rank selection up until this point as I got better results in the scale pr
 selection. Tried using tournament selection in the interest of trying to maintain genetic diversity in later generations
 and avoiding a plateau at 50%. This indeed decreases the number of number of generations needed for convergence, but it
 still seems to plateau at 50%.
+
+In implemented a probability into tournament selection in which the player with lower fitness can win a small proportion
+of the time which finally allowed it to cross the 50% plateau. 
+
+Implemented a check during crossover stage to prevent 2 similar individuals from breeding, if at all avoidable.
