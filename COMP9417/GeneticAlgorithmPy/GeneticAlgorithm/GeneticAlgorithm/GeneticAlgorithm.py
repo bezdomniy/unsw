@@ -4,33 +4,47 @@ import math
 from scipy.io.arff import loadarff
 import scipy.stats as ss
 import string
-#from collections import OrderedDict
 from copy import deepcopy
+
+## Dataset and search method 
+    # Balance Scale - bitString : B
+    # Balance Scale - tree : BT
+    # Mushroom : M
+dataUsed = 'BT'
+proportionTrain = 0.1
+
+## Selection method: F, R, T
+chooseSelection = 'F'
+probabilityOfFitterWinning = 0.8
+
+## Choose crossover method:
+    # 0: one-point
+    # 1: two-point
+    # 2: uniform
+crossoverMethod = 2
+
+populationSize = 100
+replacementRate = 0.3
+mutationRate = 0.1
+
+# Values further from 0.5 generate a more general hypothesis when initialising the population
+probabilityOfOneGene = 0.2
+
+
+fitnessThreshold = 0.99
+#fitnessThreshold = len(train) * len(mushroomAttributes) * 0.95
+#fitnessThreshold = len(train) * 0.99
 
 ## Global variables
 
-#random.seed(1)
-populationSize = 100
-replacementRate = 0.2
-mutationRate = 0.1
-
-
-## Balance scale definitions
-
-#proportionTrain = 1
-#hypothesisLength = 14
-variableVal = {'00':'LW','01':'LD','10':'RW','11':'RD'}
-operatorVal = {'00':'+','01':'-','10':'/','11':'*'}
-variable = ('LW','RW','LD','RD')
-operator = ('+','-','/','*')
-exampleOrder = {'LW':0,'LD':1,'RW':2,'RD':3}
-
+if dataUsed == 'M':
 ## Mushroom definitions
+    #random.seed(1)   
+    hypothesisLength = 126
 
-proportionTrain = 0.1
-hypothesisLength = 126
-probabilityOfOneGene = 0.1
-mushroomAttributes =    [
+
+    # Constants
+    mushroomAttributes =    [
                 [ 'b', 'c', 'f', 'k', 's', 'x'],
                 [ 'f', 'g', 's', 'y'],
                 [ 'b', 'c', 'e', 'g', 'n', 'p', 'r', 'u', 'w', 'y'],
@@ -55,77 +69,71 @@ mushroomAttributes =    [
                 [ 'd', 'g', 'l', 'm', 'p', 'u', 'w'],
                 [ 'e', 'p']
                 ]
+    mushroomAttributeLabels =   ['cap-shape',
+                                'cap-surface',
+                                'cap-color',
+                                'bruises?',
+                                'odor',
+                                'gill-attachment',
+                                'gill-spacing',
+                                'gill-size',
+                                'gill-color',
+                                'stalk-shape',
+                                'stalk-root',
+                                'stalk-surface-above-ring',
+                                'stalk-surface-below-ring',
+                                'stalk-color-above-ring',
+                                'stalk-color-below-ring',
+                                'veil-type',
+                                'veil-color',
+                                'ring-number',
+                                'ring-type',
+                                'spore-print-color',
+                                'population',
+                                'habitat',
+                                'class']
+
+    mushroomVariableLabels =    [
+                                {"bell":"b","conical":"c","convex":"x","flat":"f","knobbed":"k","sunken":"s"},
+                                {"fibrous":"f","grooves":"g","scaly":"y","smooth":"s"},
+                                {"brown":"n","buff":"b","cinnamon":"c","gray":"g","green":"r","pink":"p","purple":"u","red":"e","white":"w","yellow":"y"},
+                                {"bruises":"t","no":"f"},
+                                {"almond":"a","anise":"l","creosote":"c","fishy":"y","foul":"f","musty":"m","none":"n","pungent":"p","spicy":"s"},
+                                {"attached":"a","descending":"d","free":"f","notched":"n"},
+                                {"close":"c","crowded":"w","distant":"d"},
+                                {"broad":"b","narrow":"n"},
+                                {"black":"k","brown":"n","buff":"b","chocolate":"h","gray":"g","green":"r","orange":"o","pink":"p","purple":"u","red":"e","white":"w","yellow":"y"},
+                                {"enlarging":"e","tapering":"t"},
+                                {"bulbous":"b","club":"c","cup":"u","equal":"e","rhizomorphs":"z","rooted":"r","missing":"?"},
+                                {"ibrous":"f","scaly":"y","silky":"k","smooth":"s"},
+                                {"ibrous":"f","scaly":"y","silky":"k","smooth":"s"},
+                                {"brown":"n","buff":"b","cinnamon":"c","gray":"g","orange":"o","pink":"p","red":"e","white":"w","yellow":"y"},
+                                {"brown":"n","buff":"b","cinnamon":"c","gray":"g","orange":"o","pink":"p","red":"e","white":"w","yellow":"y"},
+                                {"partial":"p","universal":"u"},
+                                {"brown":"n","orange":"o","white":"w","yellow":"y"},
+                                {"none":"n","one":"o","two":"t"},
+                                {"cobwebby":"c","evanescent":"e","flaring":"f","large":"l","none":"n","pendant":"p","sheathing":"s","zone":"z"},
+                                {"black":"k","brown":"n","buff":"b","chocolate":"h","green":"r","orange":"o","purple":"u","white":"w","yellow":"y"},
+                                {"abundant":"a","clustered":"c","numerous":"n","scattered":"s","several":"v","solitary":"y"},
+                                {"grasses":"g","leaves":"l","meadows":"m","paths":"p","urban":"u","waste":"w","woods":"d"}
+                                ]
+    for i in range(0,len(mushroomVariableLabels)):
+        mushroomVariableLabels[i] = {v: k for k, v in mushroomVariableLabels[i].items()}
+
+elif dataUsed[0] == 'B':
+## Balance scale definitions
+    fitnessThreshold = 1
+    proportionTrain = 1
+    hypothesisLength = 14
+
+    # Constants
+    variableVal = {'00':'LW','01':'LD','10':'RW','11':'RD'}
+    operatorVal = {'00':'+','01':'-','10':'/','11':'*'}
+    variable = ('LW','RW','LD','RD')
+    operator = ('+','-','/','*')
+    exampleOrder = {'LW':0,'LD':1,'RW':2,'RD':3}
 
 
-mushroomAttributeLabels =   ['cap-shape',
-                            'cap-surface',
-                            'cap-color',
-                            'bruises?',
-                            'odor',
-                            'gill-attachment',
-                            'gill-spacing',
-                            'gill-size',
-                            'gill-color',
-                            'stalk-shape',
-                            'stalk-root',
-                            'stalk-surface-above-ring',
-                            'stalk-surface-below-ring',
-                            'stalk-color-above-ring',
-                            'stalk-color-below-ring',
-                            'veil-type',
-                            'veil-color',
-                            'ring-number',
-                            'ring-type',
-                            'spore-print-color',
-                            'population',
-                            'habitat',
-                            'class']
-
-mushroomVariableLabels =    [
-                            {"bell":"b","conical":"c","convex":"x","flat":"f","knobbed":"k","sunken":"s"},
-                            {"fibrous":"f","grooves":"g","scaly":"y","smooth":"s"},
-                            {"brown":"n","buff":"b","cinnamon":"c","gray":"g","green":"r","pink":"p","purple":"u","red":"e","white":"w","yellow":"y"},
-                            {"bruises":"t","no":"f"},
-                            {"almond":"a","anise":"l","creosote":"c","fishy":"y","foul":"f","musty":"m","none":"n","pungent":"p","spicy":"s"},
-                            {"attached":"a","descending":"d","free":"f","notched":"n"},
-                            {"close":"c","crowded":"w","distant":"d"},
-                            {"broad":"b","narrow":"n"},
-                            {"black":"k","brown":"n","buff":"b","chocolate":"h","gray":"g","green":"r","orange":"o","pink":"p","purple":"u","red":"e","white":"w","yellow":"y"},
-                            {"enlarging":"e","tapering":"t"},
-                            {"bulbous":"b","club":"c","cup":"u","equal":"e","rhizomorphs":"z","rooted":"r","missing":"?"},
-                            {"ibrous":"f","scaly":"y","silky":"k","smooth":"s"},
-                            {"ibrous":"f","scaly":"y","silky":"k","smooth":"s"},
-                            {"brown":"n","buff":"b","cinnamon":"c","gray":"g","orange":"o","pink":"p","red":"e","white":"w","yellow":"y"},
-                            {"brown":"n","buff":"b","cinnamon":"c","gray":"g","orange":"o","pink":"p","red":"e","white":"w","yellow":"y"},
-                            {"partial":"p","universal":"u"},
-                            {"brown":"n","orange":"o","white":"w","yellow":"y"},
-                            {"none":"n","one":"o","two":"t"},
-                            {"cobwebby":"c","evanescent":"e","flaring":"f","large":"l","none":"n","pendant":"p","sheathing":"s","zone":"z"},
-                            {"black":"k","brown":"n","buff":"b","chocolate":"h","green":"r","orange":"o","purple":"u","white":"w","yellow":"y"},
-                            {"abundant":"a","clustered":"c","numerous":"n","scattered":"s","several":"v","solitary":"y"},
-                            {"grasses":"g","leaves":"l","meadows":"m","paths":"p","urban":"u","waste":"w","woods":"d"}
-                            ]
-
-for i in range(0,len(mushroomVariableLabels)):
-    mushroomVariableLabels[i] = {v: k for k, v in mushroomVariableLabels[i].items()}
-
-## Load dataset
-
-#dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/balance-scale.arff','r'))
-dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/mushroom.arff','r'))
-
-dataset = dataset[meta.names()].tolist()
-dataset = np.asarray(dataset, dtype='<U3')
-#dataset = np.asarray(dataset, dtype='<U1')
-
-dataset = np.core.defchararray.replace(dataset,"'","")
-
-np.random.shuffle(dataset)
-train, test = dataset[:len(dataset) * proportionTrain], dataset[len(dataset) * proportionTrain:]
-
-fitnessThreshold = 0.99
-#fitnessThreshold = len(train) * len(mushroomAttributes) * 0.95
-#fitnessThreshold = len(train) * 0.99
 
 def splitMushroom(data):
     edible = []
@@ -138,7 +146,23 @@ def splitMushroom(data):
     return edible,poisonous
 
 
-edible,poisonous = splitMushroom(train)
+## Load dataset
+if dataUsed == 'M':
+    dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/mushroom.arff','r'))
+    dataset = dataset[meta.names()].tolist()
+    dataset = np.asarray(dataset, dtype='<U3')
+    dataset = np.core.defchararray.replace(dataset,"'","")
+    np.random.shuffle(dataset)
+    train, test = dataset[:len(dataset) * proportionTrain], dataset[len(dataset) * proportionTrain:]
+    edible,poisonous = splitMushroom(train)
+
+elif dataUsed[0] == 'B':
+    dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/balance-scale.arff','r'))
+    dataset = dataset[meta.names()].tolist()
+    dataset = np.asarray(dataset, dtype='<U1')
+    np.random.shuffle(dataset)
+    train, test = dataset[:len(dataset) * proportionTrain], dataset[len(dataset) * proportionTrain:]
+
 
 class Node():
     def __init__(self,value):
@@ -349,6 +373,9 @@ class Individual():
     def evaluateScale(self,example):
         funcArray = []
         hypothesis = self.genes
+
+        #print(self)
+        #print(example)
     
         for i in range(0,hypothesisLength,2):
             if i % 4 == 0:
@@ -360,8 +387,10 @@ class Individual():
         return eval(''.join(func))
 
     def __str__(self):
-        return self.mushroomToString()
-        #return self.scaleToString()
+        if dataUsed == 'M':
+            return self.mushroomToString()
+        elif dataUsed[0] == 'B':
+            return self.scaleToString()
 
     def __repr__(self):
         return self.__str__()
@@ -370,7 +399,6 @@ class Individual():
         for i in range(0,len(self.genes)):
             if self.genes[i] != other.genes[i]:
                 return False
-
         return True
 
 class scaleIndividual():
@@ -385,6 +413,7 @@ class scaleIndividual():
         self.root.right.addRightChild(Node(random.choice(variable)))
 
         self.fitness = 0
+        self.rank = 0
 
 
     def setFitness(self,fitness):
@@ -392,6 +421,9 @@ class scaleIndividual():
 
     def evaluateScale(self,example):
         return self.root._evaluate(example)
+
+    def setRank(self,rank):
+        self.rank = rank
 
     def __str__(self):
         self.root.inorder()
@@ -410,7 +442,10 @@ class Population():
         self.maxFitness = 0
 
     def createPopulation(self):
-        self.individuals = [Individual() for _ in range(populationSize)]
+        if dataUsed != 'BT':
+            self.individuals = [Individual() for _ in range(populationSize)]
+        else:
+            self.individuals = [scaleIndividual() for _ in range(populationSize)]
 
         #for _ in range(populationSize//2):
         #    ind = Individual()
@@ -419,9 +454,7 @@ class Population():
         #    neg.genes[-1] = int(not ind.genes[-1])
         #    self.individuals.append(ind)
         #    self.individuals.append(neg)
-
-
-
+        
     def addIndividual(self,individual):
         self.individuals.append(deepcopy(individual))
 
@@ -431,22 +464,22 @@ class Population():
 
     def findFitness(self):
         self._fitnessProportionate()
-        #self._rankSelection()
+        if chooseSelection == 'R':
+            self._rankSelection()
 
     def _rankSelection(self):
         
         ranked = ss.rankdata([i.fitness for i in self.individuals])
-        #print(len(self.individuals))
-        #print(len(ranked))
-        #print(populationSize)
-
         for i in range(0,populationSize):
             self.totalRank += ranked[i]
             self.individuals[i].setRank(ranked[i])
 
     def _fitnessProportionate(self):
         for individual in self.individuals:
-            fitness = fitnessMushroom(individual)
+            if dataUsed == 'M':
+                fitness = fitnessMushroom(individual)
+            elif dataUsed[0] == 'B':
+                fitness = fitnessScale(individual)
             self.populationFitness += fitness
             individual.setFitness(fitness)
             if fitness > self.maxFitness:
@@ -469,7 +502,7 @@ def fitnessScale(individual):
 
     #print("fit: ",fitness)
     #return (fitness/len(train)) ** 2
-    return fitness
+    return fitness/len(train)
 
 def fitnessMushroom(individual):
     if all(i == individual.genes[0] for i in individual.genes[:-1]):
@@ -478,24 +511,13 @@ def fitnessMushroom(individual):
 
     edibleFitness = 0
     poisonousFitness = 0
-    #fitness = 0
 
     for example in poisonous:
         poisonousFitness += testMushroomHypothesis(individual,example)
     for example in edible:
         edibleFitness += testMushroomHypothesis(individual,example)
 
-    #for example in train:
-    #    fitness += testMushroomHypothesis(individual,example)
-    
-
-    #print(edibleFitness," ",poisonousFitness)
- 
     fitness = (edibleFitness / len(edible)) + (poisonousFitness / len(poisonous))
-
-    #print("fit: ",fitness)
-    #return fitness
-    #return fitness/len(train)
     return fitness/2
 
 
@@ -512,11 +534,7 @@ def testMushroomHypothesis(hypothesis,example):
     return hypothesis.evaluateMushroom(example)
 
 
-def crossover(individual1,individual2):
-    offspring1,offspring2 = _uniformCrossover(individual1,individual2)
-    return offspring1,offspring2
-    #return _twoPointCrossover(individual1,individual2)
-    #return _uniformCrossover(individual1,individual2)
+
 
 
 def _subtreeCrossover(individual1,individual2):
@@ -576,6 +594,19 @@ def _uniformCrossover(individual1,individual2):
 
     return offspring1,offspring2
 
+crossoverMethods = [_onePointCrossover,_twoPointCrossover,_uniformCrossover]
+
+def crossover(individual1,individual2):
+    if dataUsed == 'BT':
+        offspring1,offspring2 = _subtreeCrossover(individual1,individual2)
+
+    else:
+        offspring1,offspring2 = crossoverMethods[crossoverMethod](individual1,individual2)
+
+    return offspring1,offspring2
+    #return _twoPointCrossover(individual1,individual2)
+    #return _uniformCrossover(individual1,individual2)
+
 
 
 def similarity(individual1,individual2):
@@ -610,8 +641,13 @@ def _tournamentSelection(pop):
     winner = None
     for i in range(0,2):
         player = np.random.choice(pop)
-        if (winner is None) or player.fitness > winner.fitness:
+        if (winner is None):
             winner = player
+        else:
+            if player.fitness > winner.fitness:
+                winner = np.random.choice([player,winner],p=[probabilityOfFitterWinning,1-probabilityOfFitterWinning])
+            else:
+                winner = np.random.choice([player,winner],p=[1-probabilityOfFitterWinning,probabilityOfFitterWinning])
     return winner 
 
 def tournamentSelection(pop,limit):
@@ -635,9 +671,12 @@ def runGA():
     while pop.maxFitness < fitnessThreshold and c < limit:
         nextPop = Population()
 
-        #individualsForCrossover = np.random.choice(pop.individuals, replacementRate*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
-        #individualsForCrossover = np.random.choice(pop.individuals, math.ceil(replacementRate*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
-        individualsForCrossover = tournamentSelection(deepcopy(pop.individuals),math.ceil(replacementRate*populationSize))
+        if chooseSelection == 'F':
+            individualsForCrossover = np.random.choice(pop.individuals, replacementRate*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
+        elif chooseSelection == 'R':
+            individualsForCrossover = np.random.choice(pop.individuals, math.ceil(replacementRate*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
+        else:
+            individualsForCrossover = tournamentSelection(deepcopy(pop.individuals),math.ceil(replacementRate*populationSize))
         
         for i in range(0,len(individualsForCrossover),2):
             #individual1=None
@@ -654,28 +693,41 @@ def runGA():
             nextPop.addIndividual(offspring1)
             nextPop.addIndividual(offspring2)
 
-        #individualsForNextGeneration = np.random.choice(pop.individuals, (1-replacementRate)*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
-        #individualsForNextGeneration = np.random.choice(pop.individuals, math.ceil((1-replacementRate)*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
-        individualsForNextGeneration = tournamentSelection(deepcopy(pop.individuals),math.ceil((1-replacementRate)*populationSize))
+        if chooseSelection == 'F':
+            individualsForNextGeneration = np.random.choice(pop.individuals, (1-replacementRate)*populationSize, p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
+        elif chooseSelection == 'R':
+            individualsForNextGeneration = np.random.choice(pop.individuals, math.ceil((1-replacementRate)*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
+        else:
+            individualsForNextGeneration = tournamentSelection(deepcopy(pop.individuals),math.ceil((1-replacementRate)*populationSize))
+        
         for individual in individualsForNextGeneration:
             nextPop.addIndividual(individual)
 
 
         individualsForMutation = np.random.choice(nextPop.individuals, math.ceil(mutationRate*populationSize / 2.) * 2, p=[1 / len(nextPop.individuals) for x in nextPop.individuals], replace=False)
         for mutant in individualsForMutation:
-            mutate(mutant)
+            if dataUsed != 'BT':
+                mutate(mutant)
+            else:
+                treeMutate(mutant)
 
         pop=nextPop
         pop.findFitness()
         c+=1
 
+        print()
         print("generation: ",c)
-        pop.individuals.sort(key=lambda x: x.fitness ,reverse=True)
-        #pop.individuals.sort(key=lambda x: x.rank ,reverse=True)
+        if chooseSelection == 'F' or chooseSelection == 'T':
+            pop.individuals.sort(key=lambda x: x.fitness ,reverse=True)
+        if chooseSelection == 'R':
+            pop.individuals.sort(key=lambda x: x.rank ,reverse=True)
         for i in range(0,10):
-            #print("Rank: ", pop.individuals[i].rank,", Fit: {0:.2f}%".format(pop.individuals[i].fitness*100)," Hypothesis: ",pop.individuals[i])
-            print("Fit: {0:.2f}%".format(pop.individuals[i].fitness*100)," Hypothesis: ",pop.individuals[i])
-            #print(pop.individuals[i]," fit: ",pop.individuals[i].fitness," rank", pop.individuals[i].rank)
+            if chooseSelection == 'R':
+                print("Rank: ", pop.individuals[i].rank,", Fit: {0:.2f}%".format(pop.individuals[i].fitness*100)," Hypothesis: ",pop.individuals[i])
+            elif chooseSelection == 'T':
+                print(i+1,": Fit: {0:.2f}%".format(pop.individuals[i].fitness*100)," Hypothesis: ",pop.individuals[i])
+            else:
+                print(i+1,": Fit: ",pop.individuals[i].fitness," Hypothesis: ",pop.individuals[i])
             #print(pop.individuals[i]," fit: {0:.0f}%".format(pop.individuals[i].fitness*100))
         
 
@@ -718,22 +770,22 @@ def testHypothesis(individual,data):
 
 #y.evaluateMushroom(poisonous[i])
 
-print(len(edible)," edible examples")
-print(len(poisonous)," poisonous examples")
+#print(len(edible)," edible examples")
+#print(len(poisonous)," poisonous examples")
 
 #x='1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0'
 #x='1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
 #x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0'
 
 # Found on full dataset, with 98.52% fitness
-x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 1 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+#x='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 1 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
 
 #f = 0.2
 #x=[np.random.choice(2,p=[1-f,f]) for _ in range(126) ]
-x=[int(i) for i in x if i != ' ']
-y = Individual()
-y.setGenes(x)
-fitnessMushroom(y)
+#x=[int(i) for i in x if i != ' ']
+#y = Individual()
+#y.setGenes(x)
+#fitnessMushroom(y)
 
 #f = 0.85
 #test=[]
@@ -758,6 +810,9 @@ fitnessMushroom(y)
 
 
 
-print(testHypothesis(y,edible))
-print(testHypothesis(y,poisonous))
-print(testHypothesis(y,dataset))
+#print(testHypothesis(y,edible))
+#print(testHypothesis(y,poisonous))
+#print(testHypothesis(y,dataset))
+
+runGA()
+
