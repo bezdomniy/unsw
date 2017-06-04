@@ -3,7 +3,6 @@ import random
 import math
 from scipy.io.arff import loadarff
 import scipy.stats as ss
-import string
 from copy import deepcopy
 
 ## Dataset and search method 
@@ -13,14 +12,15 @@ from copy import deepcopy
 dataUsed = 'BT'
 proportionTrain = 0.1
 
-## Selection method: F, R, T
-chooseSelection = 'F'
-probabilityOfFitterWinning = 0.8
+## Selection method: F, R, T, and probability if using T
+chooseSelection = 'T'
+probabilityOfFitterWinning = 0.9
 
 ## Choose crossover method:
     # 0: one-point
     # 1: two-point
     # 2: uniform
+    # ** not relevant for tree representation as this uses random subtree crossover method
 crossoverMethod = 2
 
 populationSize = 100
@@ -28,7 +28,8 @@ replacementRate = 0.3
 mutationRate = 0.1
 
 # Values further from 0.5 generate a more general hypothesis when initialising the population
-probabilityOfOneGene = 0.2
+probabilityOfOneGene = 0.1
+genesPerMutation = 3
 
 
 fitnessThreshold = 0.99
@@ -39,9 +40,7 @@ fitnessThreshold = 0.99
 
 if dataUsed == 'M':
 ## Mushroom definitions
-    #random.seed(1)   
     hypothesisLength = 126
-
 
     # Constants
     mushroomAttributes =    [
@@ -604,9 +603,6 @@ def crossover(individual1,individual2):
         offspring1,offspring2 = crossoverMethods[crossoverMethod](individual1,individual2)
 
     return offspring1,offspring2
-    #return _twoPointCrossover(individual1,individual2)
-    #return _uniformCrossover(individual1,individual2)
-
 
 
 def similarity(individual1,individual2):
@@ -620,20 +616,36 @@ def similarity(individual1,individual2):
     return similarity
 
 def mutate(individual):
-    gene = random.randint(0, hypothesisLength-1)
+    geneSet = np.random.choice(hypothesisLength,genesPerMutation)
 
-    if individual.genes[gene] == 0:
-        individual.genes[gene] = 1
-    else:
-        individual.genes[gene] = 0
+    #for _ in range(genesPerMutation):
+    for gene in geneSet:
+        #gene = random.randint(0, hypothesisLength-1)
+
+        if individual.genes[gene] == 0:
+            individual.genes[gene] = 1
+        else:
+            individual.genes[gene] = 0
 
 
 
 def treeMutate(individual):
+    addOrSwitch = random.randint(0,1)
+
     mutation,pos = individual.root.getRandomSubtree();
 
+    
     if mutation.value in '+-*/':
+        if addOrSwitch == 0 and mutation.left.value not in '+-*/':
+            mutation.value = random.choice(variable)
+            mutation.left = None
+            mutation.right = None
+        else:
+            mutation.value = random.choice(operator)
+    elif addOrSwitch == 0:
         mutation.value = random.choice(operator)
+        mutation.addLeftChild(Node(random.choice(variable)))
+        mutation.addRightChild(Node(random.choice(variable)))
     else:
         mutation.value = random.choice(variable)
 
