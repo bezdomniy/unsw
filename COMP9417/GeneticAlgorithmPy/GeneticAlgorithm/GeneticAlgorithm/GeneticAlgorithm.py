@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import random
 import math
@@ -5,35 +6,97 @@ from scipy.io.arff import loadarff
 import scipy.stats as ss
 from copy import deepcopy
 
+### Developed by Ilia Chibaev, z3218424 ###
+
 ## Dataset and search method 
     # Balance Scale - bitString : B
     # Balance Scale - tree : BT
     # Mushroom : M
-dataUsed = 'M'
-proportionTrain = 0.6
+try:
+    dataUsed = sys.argv[1]
+except:
+    print("Please include dataset arguement B, BT, or M")
+    sys.exit()
 
-## Selection method: F, R, T, 
-chooseSelection = 'T'
-## If using tournament selection: 
-# a similarityAllowed parameter for how minimum gene difference required for crossover
-# a probabilityOfFitterWinning parameter
-similarityAllowed = 3
-probabilityOfFitterWinning = 0.9
+# Proportion of dataset to use in training (only relevant for mushroom dataset)
+try:
+    proportionTrain = float(sys.argv[11])
+except:
+    proportionTrain = 0.6
 
-## Choose crossover method:
-    # 0: one-point
-    # 1: two-point
-    # 2: uniform
+try:
+    chooseSelection = sys.argv[3]
+except:
+    ## Selection method: F, R, T, 
+    chooseSelection = 'T'
+    print("Using tournament selection")
+
+try:
+    crossoverMethod = sys.argv[4]
+except:
+    ## Choose crossover method:
+    # O: one-point
+    # T: two-point
+    # U: uniform
     # ** not relevant for tree representation as this uses random subtree crossover method
-crossoverMethod = 2
+    crossoverMethod = 'O'
+    if dataUsed[-1] != 'T':
+        print("Using uniform crossover")
+    else:
+        print("Using subtree crossover")
 
-populationSize = 100
-replacementRate = 0.30
-mutationRate = 0.1
+try:
+    populationSize = int(sys.argv[5])
+except:
+    populationSize = 100
+try:
+    replacementRate = float(sys.argv[6])
+except:
+    replacementRate = 0.30
+try:
+    mutationRate = float(sys.argv[7])
+except:
+    mutationRate = 0.1
+
+## If using tournament selection: 
+# a similarityAllowed parameter the minimum gene difference required for crossover
+try:
+    similarityAllowed = int(sys.argv[8])
+except:
+    similarityAllowed = 2
+
+# a probabilityOfFitterWinning parameter
+try:
+    probabilityOfFitterWinning = float(sys.argv[9])
+except:
+    probabilityOfFitterWinning = 0.85
 
 # Values further from 0.5 generate a more general hypothesis when initialising the population
-probabilityOfOneGene = 0.10
-genesPerMutation = 2
+try:
+    probabilityOfOneGene = float(sys.argv[10])
+except:
+    probabilityOfOneGene = 0.1
+
+# Number of genes changed in a mutation
+try:
+    genesPerMutation = int(sys.argv[11])
+except:
+    genesPerMutation = 2
+
+
+
+#proportionTrain = 0.6
+
+#similarityAllowed = 2
+#probabilityOfFitterWinning = 0.85
+
+#populationSize = 100
+#replacementRate = 0.30
+#mutationRate = 0.1
+
+# Values further from 0.5 generate a more general hypothesis when initialising the population
+#probabilityOfOneGene = 0.1
+#genesPerMutation = 2
 
 ## Mushroom definitions
 if dataUsed == 'M':
@@ -118,8 +181,10 @@ if dataUsed == 'M':
 
 ## Balance scale definitions
 elif dataUsed[0] == 'B':
+    populationSize = 40
     fitnessThreshold = 1
     proportionTrain = 1
+    genesPerMutation = 1
     hypothesisLength = 14
 
     # Constants
@@ -144,7 +209,7 @@ def splitMushroom(data):
 
 ## Load dataset
 if dataUsed == 'M':
-    dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/mushroom.arff','r'))
+    dataset, meta = loadarff(open('mushroom.arff','r'))
     dataset = dataset[meta.names()].tolist()
     dataset = np.asarray(dataset, dtype='<U3')
     dataset = np.core.defchararray.replace(dataset,"'","")
@@ -153,7 +218,7 @@ if dataUsed == 'M':
     edible,poisonous = splitMushroom(train)
 
 elif dataUsed[0] == 'B':
-    dataset, meta = loadarff(open('C:/dev/unsw/COMP9417/balance-scale.arff','r'))
+    dataset, meta = loadarff(open('balance-scale.arff','r'))
     dataset = dataset[meta.names()].tolist()
     dataset = np.asarray(dataset, dtype='<U1')
     np.random.shuffle(dataset)
@@ -576,7 +641,7 @@ def _subtreeCrossover(individual1,individual2):
 
     return individual1,individual2
 
-crossoverMethods = [_onePointCrossover,_twoPointCrossover,_uniformCrossover]
+crossoverMethods = {'O':_onePointCrossover,'T':_twoPointCrossover,'U':_uniformCrossover}
 
 ## Driver function for selected crossover method
 def crossover(individual1,individual2):
@@ -666,12 +731,17 @@ def runGA():
     c=0
 
     while pop.maxFitness < fitnessThreshold and c < limit:
+        #if c == 50 or c == 75 or c == 100 or c == 125 or c == 150:
+            #mutationRate+=0.05
+
         nextPop = Population()
 
         if chooseSelection == 'F':
             individualsForCrossover = np.random.choice(pop.individuals, math.ceil(replacementRate*populationSize), p=[x.fitness / pop.populationFitness for x in pop.individuals], replace=False)
+            individualsForCrossover = individualsForCrossover.tolist()
         elif chooseSelection == 'R':
             individualsForCrossover = np.random.choice(pop.individuals, math.ceil(replacementRate*populationSize), p=[x.rank / pop.totalRank for x in pop.individuals], replace=False)
+            individualsForCrossover = individualsForCrossover.tolist()
         else:
             individualsForCrossover = tournamentSelection(deepcopy(pop.individuals),math.ceil(replacementRate*populationSize))
         
@@ -680,7 +750,7 @@ def runGA():
         while len(individualsForCrossover) > 0:
             individuals = np.random.choice(individualsForCrossover,2, replace=False)
             ## Prevent genetically similar pairs breeding
-            if breakOut >= lim or similarity(individuals[0],individuals[1]) <= hypothesisLength - similarityAllowed:
+            if dataUsed == 'BT' or breakOut >= lim or similarity(individuals[0],individuals[1]) <= hypothesisLength - similarityAllowed:
                 offspring1, offspring2 = crossover(individuals[0],individuals[1])
 
                 nextPop.addIndividual(offspring1)
@@ -774,7 +844,7 @@ def testHypothesis(individual,data):
             fitness+=1
     return fitness/len(data)
 
-
-
 out = runGA()
-print(testHypothesis(out,test))
+
+if proportionTrain != 1:
+    print("Cross validation accuracy: ",testHypothesis(out,data))
