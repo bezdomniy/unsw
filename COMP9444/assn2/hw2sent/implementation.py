@@ -106,4 +106,33 @@ def define_graph(glove_embeddings_arr):
     RETURN: input placeholder, labels placeholder, optimizer, accuracy and loss
     tensors"""
 
+    input_data = tf.placeholder(tf.float32,[batch_size,40])
+    labels = tf.placeholder(tf.int32,[1,2])
+
+    hidden_size = 40
+    num_steps = 20
+    vocab_size = len(word_index_dict)
+
+    cell = tf.contrib.rnn.BasicLSTMCell(hidden_size, state_is_tuple=True)
+
+    cell = tf.contrib.rnn.MultiRNNCell(
+        [cell for _ in range(hidden_size)], state_is_tuple=True)
+
+    state = cell.zero_state(hidden_size, tf.float32)
+
+    inputs = tf.unstack(inputs, num=num_steps, axis=1)
+    outputs, state = tf.contrib.rnn.static_rnn(cell, inputs,
+                                initial_state=state)
+
+    softmax_w = tf.get_variable("softmax_w", [size, vocab_size], dtype=tf.float32)
+    softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=tf.float32)
+    logits = tf.nn.xw_plus_b(output, softmax_w, softmax_b)
+     # Reshape logits to be a 3-D tensor for sequence loss
+    #logits = tf.reshape(logits, [batch_size, num_steps, vocab_size])
+
+    loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels)
+    loss= tf.reduce_mean(loss)
+
+    optimizer = tf.train.AdagradOptimizer(0.3).minimize(loss)
+
     return input_data, labels, optimizer, accuracy, loss
