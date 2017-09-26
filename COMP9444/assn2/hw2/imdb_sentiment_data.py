@@ -41,7 +41,7 @@ def read_data():
     for f in file_list:
         with open(f, "r",  encoding="utf-8") as openf:
             s = openf.read()
-            no_punct = ''.join(c for c in s if c not in (string.punctuation,'\x97'))
+            no_punct = ''.join(c for c in s if c not in (string.punctuation or '\x97'))
             data.extend(no_punct.split())
 
     print(data[:5])

@@ -33,13 +33,22 @@ def load_data(glove_dict):
     for i in range(len(file_list)):
         with open(file_list[i], "r",  encoding="utf-8") as openf:
             s = openf.read()
-            no_punct = ''.join(c for c in s if c not in (string.punctuation,'\x97'))
+            no_punct = ''.join(c.lower() for c in s if c not in (string.punctuation or '\x97'))
+            no_punct = no_punct.split()
+
+            if i < 5:
+            #    print(s[:40])
+                print(no_punct[:5])
 
             for j in range(40):
                 try:
                     data[i][j] = glove_dict[no_punct[j]]
-                except KeyError:
+                except (KeyError, IndexError):
                     data[i][j] = 0
+                
+            #if i < 5:
+                #print(no_punct[i][:5])
+                #print(data[i][:5])
 
     
     for i in range(5):
@@ -65,7 +74,7 @@ def load_glove_embeddings():
     embeddings= [np.zeros(50)]
     word_index_dict = {'UNK':0}
     
-    word_counter = 0
+    word_counter = 1
     vector_place = 50
     
     for d in data:
