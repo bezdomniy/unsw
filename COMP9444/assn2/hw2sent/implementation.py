@@ -107,8 +107,8 @@ def define_graph(glove_embeddings_arr):
     RETURN: input placeholder, labels placeholder, optimizer, accuracy and loss
     tensors"""
 
-    hidden_size = 20
-    num_steps = 40
+    hidden_size = 40
+    num_steps = 20
     vocab_size = len(glove_embeddings_arr)
 
     input_data = tf.placeholder(tf.int32,[batch_size,40])
@@ -125,31 +125,46 @@ def define_graph(glove_embeddings_arr):
 
     inputs = tf.nn.embedding_lookup(embeddings, input_data)
 
+    print(inputs)
+
     cell = tf.contrib.rnn.BasicLSTMCell(hidden_size, state_is_tuple=True)
-    state = cell.zero_state(batch_size, tf.float32)
+    initial_state = cell.zero_state(batch_size, tf.float32)
 
-    unstacked_input = tf.unstack(inputs, num=num_steps, axis=1)
+    #unstacked_input = tf.unstack(inputs, num=num_steps, axis=1)
 
-    outputs, state = tf.contrib.rnn.static_rnn(cell, unstacked_input,initial_state=state,dtype=tf.float32)
-    #outputs = tf.reshape(tf.concat(outputs, 1), [-1, hidden_size])
+    #outputs, state = tf.contrib.rnn.static_rnn(cell, unstacked_input,initial_state=initial_state,dtype=tf.float32)
 
-    softmax_w = tf.get_variable("softmax_w", [hidden_size, 2], dtype=tf.float32)
-    softmax_b = tf.get_variable("softmax_b", [2], dtype=tf.float32)
+    outputs, state = tf.nn.dynamic_rnn(cell, inputs,dtype=tf.float32)
+    outputs = tf.reduce_mean(outputs, reduction_indices=[1])
+    print(outputs)
+    #outputs, _ = tf.nn.dynamic_rnn(cell, inputs,dtype=tf.float32)
+
+    #softmax_w = tf.get_variable("softmax_w", [hidden_size, 2], dtype=tf.float32)
+    #softmax_b = tf.get_variable("softmax_b", [2], dtype=tf.float32)
+
+    softmax_w = tf.Variable(tf.random_normal([hidden_size, 2], stddev=0.01, name='w'), dtype=tf.float32)
+    softmax_b = tf.Variable(tf.random_normal(shape=[2], stddev=0.01, name='b'), dtype=tf.float32)
     
     # just using last output
-    #logits = tf.nn.xw_plus_b(outputs[-1], softmax_w, softmax_b)
-    # preds = tf.nn.softmax(logits)
-    # loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels)
-    # loss= tf.reduce_mean(loss)
 
-    logits_series = [tf.nn.xw_plus_b(output, softmax_w, softmax_b) for output in outputs]
-    preds_series = [tf.nn.softmax(logits) for logits in logits_series]
-    preds = tf.reduce_mean(preds_series)
+    logits = tf.nn.xw_plus_b(outputs, softmax_w, softmax_b, name='logits')
+    preds = tf.nn.softmax(logits)
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels))
+    #loss= tf.reduce_mean(loss)
 
-    labels_series = [labels * hidden_size]
+    #preds = tf.contrib.layers.fully_connected(outputs[:, -1], 1, activation_fn=tf.sigmoid)
+    #print(labels)
+    #print(preds)
+    #loss = tf.losses.mean_squared_error(labels, preds)
+    
+    #logits_series = [tf.nn.xw_plus_b(output, softmax_w, softmax_b) for output in outputs]
+    #preds_series = [tf.nn.softmax(logits) for logits in logits_series]
+    #preds = tf.reduce_mean(preds_series)
 
-    losses = [tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels) for logits, labels in zip(logits_series,labels_series)]
-    loss = tf.reduce_mean(losses)
+    #labels_series = [labels * hidden_size]
+
+    #losses = [tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels) for logits, labels in zip(logits_series,labels_series)]
+    #loss = tf.reduce_mean(losses)
     
     #print(logits)
     
@@ -159,11 +174,11 @@ def define_graph(glove_embeddings_arr):
 
 
 
-    optimizer = tf.train.AdagradOptimizer(0.1).minimize(loss)
+    optimizer = tf.train.AdamOptimizer(0.1).minimize(loss)
 
-    #correct_preds = tf.equal(tf.argmax(preds, 1), tf.argmax(labels, 1))
-    #accuracy = tf.reduce_mean(tf.cast(correct_preds, tf.int32))
+    correct_preds = tf.equal(tf.argmax(preds, 1, output_type=tf.int32), tf.argmax(labels, 1, output_type=tf.int32))
+    accuracy = tf.reduce_mean(tf.cast(correct_preds, tf.float32))
 
-    accuracy = tf.constant(0)
+    #accuracy = tf.constant(0)
 
     return input_data, labels, optimizer, accuracy, loss
