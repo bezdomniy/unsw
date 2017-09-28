@@ -22,6 +22,8 @@ local.properties
 glove.6B.50d.txt
 data2/
 summaries/
+tensorboard/
+checkpoints/
 
 # External tool builders
 .externalToolBuilders/
