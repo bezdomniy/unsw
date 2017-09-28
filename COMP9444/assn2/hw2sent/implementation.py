@@ -5,6 +5,7 @@ import tarfile
 import string
 import tensorflow as tf
 
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 batch_size = 50
 
 def load_data(glove_dict):
@@ -106,33 +107,63 @@ def define_graph(glove_embeddings_arr):
     RETURN: input placeholder, labels placeholder, optimizer, accuracy and loss
     tensors"""
 
-    input_data = tf.placeholder(tf.float32,[batch_size,40])
-    labels = tf.placeholder(tf.int32,[1,2])
+    hidden_size = 20
+    num_steps = 40
+    vocab_size = len(glove_embeddings_arr)
 
-    hidden_size = 40
-    num_steps = 20
-    vocab_size = len(word_index_dict)
+    input_data = tf.placeholder(tf.int32,[batch_size,40])
+    labels = tf.placeholder(tf.int32,[batch_size,2])
+
+    embeddings = tf.Variable(tf.constant(0.0, shape=[vocab_size, 50]),
+                    trainable=False, name="embeddings")
+
+    embedding_placeholder = tf.placeholder(tf.float32, [vocab_size, 50])
+    embedding_init = embeddings.assign(embedding_placeholder)
+
+    sess = tf.Session()
+    sess.run(embedding_init, feed_dict={embedding_placeholder: glove_embeddings_arr})
+
+    inputs = tf.nn.embedding_lookup(embeddings, input_data)
 
     cell = tf.contrib.rnn.BasicLSTMCell(hidden_size, state_is_tuple=True)
+    state = cell.zero_state(batch_size, tf.float32)
 
-    cell = tf.contrib.rnn.MultiRNNCell(
-        [cell for _ in range(hidden_size)], state_is_tuple=True)
+    unstacked_input = tf.unstack(inputs, num=num_steps, axis=1)
 
-    state = cell.zero_state(hidden_size, tf.float32)
+    outputs, state = tf.contrib.rnn.static_rnn(cell, unstacked_input,initial_state=state,dtype=tf.float32)
+    #outputs = tf.reshape(tf.concat(outputs, 1), [-1, hidden_size])
 
-    inputs = tf.unstack(inputs, num=num_steps, axis=1)
-    outputs, state = tf.contrib.rnn.static_rnn(cell, inputs,
-                                initial_state=state)
+    softmax_w = tf.get_variable("softmax_w", [hidden_size, 2], dtype=tf.float32)
+    softmax_b = tf.get_variable("softmax_b", [2], dtype=tf.float32)
+    
+    # just using last output
+    #logits = tf.nn.xw_plus_b(outputs[-1], softmax_w, softmax_b)
+    # preds = tf.nn.softmax(logits)
+    # loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels)
+    # loss= tf.reduce_mean(loss)
 
-    softmax_w = tf.get_variable("softmax_w", [size, vocab_size], dtype=tf.float32)
-    softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=tf.float32)
-    logits = tf.nn.xw_plus_b(output, softmax_w, softmax_b)
+    logits_series = [tf.nn.xw_plus_b(output, softmax_w, softmax_b) for output in outputs]
+    preds_series = [tf.nn.softmax(logits) for logits in logits_series]
+    preds = tf.reduce_mean(preds_series)
+
+    labels_series = [labels * hidden_size]
+
+    losses = [tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels) for logits, labels in zip(logits_series,labels_series)]
+    loss = tf.reduce_mean(losses)
+    
+    #print(logits)
+    
+
      # Reshape logits to be a 3-D tensor for sequence loss
     #logits = tf.reshape(logits, [batch_size, num_steps, vocab_size])
 
-    loss = tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels)
-    loss= tf.reduce_mean(loss)
 
-    optimizer = tf.train.AdagradOptimizer(0.3).minimize(loss)
+
+    optimizer = tf.train.AdagradOptimizer(0.1).minimize(loss)
+
+    #correct_preds = tf.equal(tf.argmax(preds, 1), tf.argmax(labels, 1))
+    #accuracy = tf.reduce_mean(tf.cast(correct_preds, tf.int32))
+
+    accuracy = tf.constant(0)
 
     return input_data, labels, optimizer, accuracy, loss
