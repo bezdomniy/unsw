@@ -108,25 +108,23 @@ def define_graph(glove_embeddings_arr):
     tensors"""
 
     embedding_shape = 50
-    num_steps = 40
+    num_layers = 3
     vocab_size = len(glove_embeddings_arr)
 
     input_data = tf.placeholder(tf.int32,[batch_size,40], name="input_data")
     labels = tf.placeholder(tf.int32,[batch_size,2], name="labels")
 
-    embeddings = tf.get_variable("embeddings", shape=[400001,50], initializer=tf.constant_initializer(np.array(glove_embeddings_arr)), trainable=False)
+    embeddings = tf.get_variable("embeddings", shape=[400001,embedding_shape], initializer=tf.constant_initializer(np.array(glove_embeddings_arr)), trainable=False)
 
     inputs = tf.nn.embedding_lookup(embeddings, input_data)
 
-    #word_list = tf.unstack(inputs, axis=1)
-
     cell = tf.contrib.rnn.BasicLSTMCell(embedding_shape, state_is_tuple=True)
+    cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=0.5)
+    cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
+
     initial_state = cell.zero_state(batch_size, tf.float32)
 
-
-    #outputs, state = tf.contrib.rnn.static_rnn(cell, word_list,initial_state=initial_state,dtype=tf.float32)
     outputs, state = tf.nn.dynamic_rnn(cell, inputs,initial_state=initial_state,dtype=tf.float32)
-    #outputs = tf.reduce_mean(outputs, reduction_indices=[1])
 
     outputs = tf.transpose(outputs, [1, 0, 2])
     last = tf.gather(outputs, int(outputs.get_shape()[0]) - 1)
