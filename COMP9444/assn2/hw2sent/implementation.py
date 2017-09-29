@@ -107,78 +107,38 @@ def define_graph(glove_embeddings_arr):
     RETURN: input placeholder, labels placeholder, optimizer, accuracy and loss
     tensors"""
 
-    hidden_size = 40
-    num_steps = 20
+    embedding_shape = 50
+    num_steps = 40
     vocab_size = len(glove_embeddings_arr)
 
-    input_data = tf.placeholder(tf.int32,[batch_size,40])
-    labels = tf.placeholder(tf.int32,[batch_size,2])
+    input_data = tf.placeholder(tf.int32,[batch_size,40], name="input_data")
+    labels = tf.placeholder(tf.int32,[batch_size,2], name="labels")
 
-    embeddings = tf.Variable(tf.constant(0.0, shape=[vocab_size, 50]),
-                    trainable=False, name="embeddings")
-
-    embedding_placeholder = tf.placeholder(tf.float32, [vocab_size, 50])
-    embedding_init = embeddings.assign(embedding_placeholder)
-
-    sess = tf.Session()
-    sess.run(embedding_init, feed_dict={embedding_placeholder: glove_embeddings_arr})
+    embeddings = tf.get_variable("embeddings", shape=[400001,50], initializer=tf.constant_initializer(np.array(glove_embeddings_arr)), trainable=False)
 
     inputs = tf.nn.embedding_lookup(embeddings, input_data)
 
-    print(inputs)
+    #word_list = tf.unstack(inputs, axis=1)
 
-    cell = tf.contrib.rnn.BasicLSTMCell(hidden_size, state_is_tuple=True)
+    cell = tf.contrib.rnn.BasicLSTMCell(embedding_shape, state_is_tuple=True)
     initial_state = cell.zero_state(batch_size, tf.float32)
 
-    #unstacked_input = tf.unstack(inputs, num=num_steps, axis=1)
 
-    #outputs, state = tf.contrib.rnn.static_rnn(cell, unstacked_input,initial_state=initial_state,dtype=tf.float32)
+    #outputs, state = tf.contrib.rnn.static_rnn(cell, word_list,initial_state=initial_state,dtype=tf.float32)
+    outputs, state = tf.nn.dynamic_rnn(cell, inputs,initial_state=initial_state,dtype=tf.float32)
+    #outputs = tf.reduce_mean(outputs, reduction_indices=[1])
 
-    outputs, state = tf.nn.dynamic_rnn(cell, inputs,dtype=tf.float32)
-    outputs = tf.reduce_mean(outputs, reduction_indices=[1])
-    print(outputs)
-    #outputs, _ = tf.nn.dynamic_rnn(cell, inputs,dtype=tf.float32)
+    outputs = tf.transpose(outputs, [1, 0, 2])
+    last = tf.gather(outputs, int(outputs.get_shape()[0]) - 1)
 
-    #softmax_w = tf.get_variable("softmax_w", [hidden_size, 2], dtype=tf.float32)
-    #softmax_b = tf.get_variable("softmax_b", [2], dtype=tf.float32)
+    logits = tf.contrib.layers.fully_connected(last, 2, activation_fn=None)
 
-    softmax_w = tf.Variable(tf.random_normal([hidden_size, 2], stddev=0.01, name='w'), dtype=tf.float32)
-    softmax_b = tf.Variable(tf.random_normal(shape=[2], stddev=0.01, name='b'), dtype=tf.float32)
-    
-    # just using last output
+    loss = tf.losses.softmax_cross_entropy(labels,logits)
 
-    logits = tf.nn.xw_plus_b(outputs, softmax_w, softmax_b, name='logits')
+    optimizer = tf.train.RMSPropOptimizer(0.01).minimize(loss)
+
     preds = tf.nn.softmax(logits)
-    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels))
-    #loss= tf.reduce_mean(loss)
-
-    #preds = tf.contrib.layers.fully_connected(outputs[:, -1], 1, activation_fn=tf.sigmoid)
-    #print(labels)
-    #print(preds)
-    #loss = tf.losses.mean_squared_error(labels, preds)
-    
-    #logits_series = [tf.nn.xw_plus_b(output, softmax_w, softmax_b) for output in outputs]
-    #preds_series = [tf.nn.softmax(logits) for logits in logits_series]
-    #preds = tf.reduce_mean(preds_series)
-
-    #labels_series = [labels * hidden_size]
-
-    #losses = [tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels) for logits, labels in zip(logits_series,labels_series)]
-    #loss = tf.reduce_mean(losses)
-    
-    #print(logits)
-    
-
-     # Reshape logits to be a 3-D tensor for sequence loss
-    #logits = tf.reshape(logits, [batch_size, num_steps, vocab_size])
-
-
-
-    optimizer = tf.train.AdamOptimizer(0.1).minimize(loss)
-
     correct_preds = tf.equal(tf.argmax(preds, 1, output_type=tf.int32), tf.argmax(labels, 1, output_type=tf.int32))
     accuracy = tf.reduce_mean(tf.cast(correct_preds, tf.float32))
-
-    #accuracy = tf.constant(0)
 
     return input_data, labels, optimizer, accuracy, loss
