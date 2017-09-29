@@ -37,7 +37,7 @@ def getTrainBatch():
 # Call implementation
 glove_array, glove_dict = imp.load_glove_embeddings()
 training_data = imp.load_data(glove_dict)
-input_data, labels, optimizer, accuracy, loss, preds = imp.define_graph(glove_array)
+input_data, labels, optimizer, accuracy, loss = imp.define_graph(glove_array)
 
 # tensorboard
 train_accuracy_op = tf.summary.scalar("training_accuracy", accuracy)
