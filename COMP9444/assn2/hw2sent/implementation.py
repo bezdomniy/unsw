@@ -37,9 +37,13 @@ def load_data(glove_dict):
             no_punct = ''.join(c.lower() for c in s if c not in (string.punctuation or '\x97'))
             no_punct = no_punct.split()
 
+            no_stop = [w for w in no_punct if w not in ['a','an','and','are','as','at','be','by',
+                                                        'for','from','has','he','in','is','it','its',
+                                                        'of','on','that','the','to','was','were','will','with']]
+
             for j in range(40):
                 try:
-                    data[i][j] = glove_dict[no_punct[j]]
+                    data[i][j] = glove_dict[no_stop[j]]
                 except (KeyError, IndexError):
                     data[i][j] = 0
 
@@ -95,6 +99,7 @@ def define_graph(glove_embeddings_arr):
     RETURN: input placeholder, labels placeholder, optimizer, accuracy and loss
     tensors"""
 
+    training = tf.placeholder(tf.bool, name='training')
     embedding_shape = 50
     num_layers = 1
     vocab_size = len(glove_embeddings_arr)
@@ -106,8 +111,13 @@ def define_graph(glove_embeddings_arr):
 
     inputs = tf.nn.embedding_lookup(embeddings, input_data)
 
+    
+
     cell = tf.contrib.rnn.BasicLSTMCell(embedding_shape, state_is_tuple=True)
+    #cell = tf.contrib.rnn.GRUCell(embedding_shape)
     cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=0.5)
+
+    #cell = tf.contrib.rnn.LayerNormBasicLSTMCell(embedding_shape,dropout_keep_prob=0.5)
     #cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
 
     initial_state = cell.zero_state(batch_size, tf.float32)

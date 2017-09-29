@@ -10,6 +10,7 @@ embeddings, word_index_dict = load_glove_embeddings()
 
 data= load_data(word_index_dict)
 
+'''
 def getValBatch():
     labels = []
     arr = np.zeros([5000, 40])
@@ -41,3 +42,4 @@ with tf.Session() as sess:
         accuracies.append(accuracy_value)
     print("Test Accuracy = {:.3f}".format(np.mean(accuracies)))
     
+'''

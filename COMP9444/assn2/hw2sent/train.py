@@ -39,7 +39,7 @@ def getValBatch():
     arr = np.zeros([batch_size, seq_length])
     for i in range(batch_size):
         if (i % 2 == 0):
-            num = randint(10000, 12999)
+            num = randint(10000, 12499)
             labels.append([1, 0])
         else:
             num = randint(22500, 24999)
@@ -74,7 +74,7 @@ writer = tf.summary.FileWriter(logdir, sess.graph)
 
 accuracies = []
 
-for i in range(iterations):
+for i in range(iterations+1):
     batch_data, batch_labels = getTrainBatch()
     val_data, val_labels = getValBatch()
     sess.run(optimizer, {input_data: batch_data, labels: batch_labels})
