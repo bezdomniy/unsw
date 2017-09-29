@@ -37,24 +37,12 @@ def load_data(glove_dict):
             no_punct = ''.join(c.lower() for c in s if c not in (string.punctuation or '\x97'))
             no_punct = no_punct.split()
 
-            if i < 5:
-            #    print(s[:40])
-                print(no_punct[:5])
-
             for j in range(40):
                 try:
                     data[i][j] = glove_dict[no_punct[j]]
                 except (KeyError, IndexError):
                     data[i][j] = 0
-                
-            #if i < 5:
-                #print(no_punct[i][:5])
-                #print(data[i][:5])
 
-    
-    for i in range(5):
-        print(data[i][:5])
-    
     return data
     
    
@@ -108,7 +96,7 @@ def define_graph(glove_embeddings_arr):
     tensors"""
 
     embedding_shape = 50
-    num_layers = 3
+    num_layers = 1
     vocab_size = len(glove_embeddings_arr)
 
     input_data = tf.placeholder(tf.int32,[batch_size,40], name="input_data")
@@ -120,7 +108,7 @@ def define_graph(glove_embeddings_arr):
 
     cell = tf.contrib.rnn.BasicLSTMCell(embedding_shape, state_is_tuple=True)
     cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=0.5)
-    cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
+    #cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
 
     initial_state = cell.zero_state(batch_size, tf.float32)
 

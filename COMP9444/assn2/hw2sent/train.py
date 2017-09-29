@@ -16,7 +16,7 @@ import os
 import implementation as imp
 
 batch_size = imp.batch_size
-iterations = 100000
+iterations = 10000
 seq_length = 40  # Maximum length of sentence
 
 checkpoints_dir = "./checkpoints"
@@ -26,13 +26,28 @@ def getTrainBatch():
     arr = np.zeros([batch_size, seq_length])
     for i in range(batch_size):
         if (i % 2 == 0):
-            num = randint(0, 12499)
+            num = randint(0, 9999)
             labels.append([1, 0])
         else:
-            num = randint(12500, 24999)
+            num = randint(12500, 22499)
             labels.append([0, 1])
         arr[i] = training_data[num]
     return arr, labels
+
+def getValBatch():
+    labels = []
+    arr = np.zeros([batch_size, seq_length])
+    for i in range(batch_size):
+        if (i % 2 == 0):
+            num = randint(10000, 12999)
+            labels.append([1, 0])
+        else:
+            num = randint(22500, 24999)
+            labels.append([0, 1])
+        arr[i] = training_data[num]
+    return arr, labels
+
+
 
 # Call implementation
 glove_array, glove_dict = imp.load_glove_embeddings()
@@ -41,6 +56,7 @@ input_data, labels, optimizer, accuracy, loss = imp.define_graph(glove_array)
 
 # tensorboard
 train_accuracy_op = tf.summary.scalar("training_accuracy", accuracy)
+test_accuracy_op = tf.summary.scalar("testing_accuracy", accuracy)
 tf.summary.scalar("loss", loss)
 summary_op = tf.summary.merge_all()
 
@@ -54,18 +70,34 @@ logdir = "tensorboard/" + datetime.datetime.now().strftime(
     "%Y%m%d-%H%M%S") + "/"
 writer = tf.summary.FileWriter(logdir, sess.graph)
 
+# Test vars
+
+accuracies = []
+
 for i in range(iterations):
     batch_data, batch_labels = getTrainBatch()
+    val_data, val_labels = getValBatch()
     sess.run(optimizer, {input_data: batch_data, labels: batch_labels})
     if (i % 50 == 0):
         loss_value, accuracy_value, summary = sess.run(
             [loss, accuracy, summary_op],
             {input_data: batch_data,
              labels: batch_labels})
+
+        accuracy_validation = sess.run(accuracy,{input_data: val_data, labels: val_labels})
+        accuracies.append(accuracy_validation)
+
         writer.add_summary(summary, i)
         print("Iteration: ", i)
-        print("loss", loss_value)
-        print("acc", accuracy_value)
+        print("training loss", loss_value)
+        print("training acc", accuracy_value)
+
+        
+        print("test acc", accuracy_validation)
+
+
+
+        
 
     if (i % 10000 == 0 and i != 0):
         if not os.path.exists(checkpoints_dir):
@@ -74,4 +106,7 @@ for i in range(iterations):
                                    "/trained_model.ckpt",
                                    global_step=i)
         print("Saved model to %s" % save_path)
+
+print("Test Accuracy = {:.3f}".format(np.mean(accuracies)))
+
 sess.close()
