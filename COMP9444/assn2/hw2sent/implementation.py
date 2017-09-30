@@ -34,10 +34,16 @@ def load_data(glove_dict):
     for i in range(len(file_list)):
         with open(file_list[i], "r",  encoding="utf-8") as openf:
             s = openf.read()
-            no_punct = ''.join(c.lower() for c in s if c not in (string.punctuation or '\x97'))
+
+            # Replace punctuation with space
+            punc = string.punctuation.replace("'",'')
+            translator = s.maketrans(punc, ' '*len(punc))
+            no_punct = s.lower().translate(translator)
+
+            no_punct = ''.join(c.lower() for c in no_punct if c != "'")
             no_punct = no_punct.split()
 
-            no_stop = [w for w in no_punct if w not in ['a','an','and','are','as','at','be','by',
+            no_stop = [w for w in no_punct if w not in ['\x97', 'a','an','and','are','as','at','be','by',
                                                         'for','from','has','he','in','is','it','its',
                                                         'of','on','that','the','to','was','were','will','with']]
 
@@ -45,6 +51,7 @@ def load_data(glove_dict):
                 try:
                     data[i][j] = glove_dict[no_stop[j]]
                 except (KeyError, IndexError):
+                    #print(no_stop[j])
                     data[i][j] = 0
 
     return data
@@ -106,7 +113,8 @@ def define_graph(glove_embeddings_arr):
     training = tf.placeholder_with_default(1.0, shape=())
 
     embedding_shape = 50
-    hidden_units = 200
+    hidden_units = 40
+    fully_connected_units = 20
     num_layers = 2
     vocab_size = len(glove_embeddings_arr)
 
@@ -121,7 +129,7 @@ def define_graph(glove_embeddings_arr):
     #cell = tf.contrib.rnn.GRUCell(embedding_shape)
     #cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=training)
     #cell = tf.contrib.rnn.LayerNormBasicLSTMCell(embedding_shape,dropout_keep_prob=0.5)
-    
+
     cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell_with_dropout() for _ in range(num_layers)]
                                         ,state_is_tuple=True)
 
@@ -132,7 +140,16 @@ def define_graph(glove_embeddings_arr):
     outputs = tf.transpose(outputs, [1, 0, 2])
     last = tf.gather(outputs, int(outputs.get_shape()[0]) - 1)
 
-    logits = tf.contrib.layers.fully_connected(last, 2, activation_fn=None)
+
+    # Initialize the weights and biases
+    weights = tf.truncated_normal_initializer(stddev=0.1)
+   
+
+    #logits = tf.contrib.layers.fully_connected(last, 2, activation_fn=None)
+    fully_connected = tf.contrib.layers.fully_connected(last, fully_connected_units, activation_fn=tf.sigmoid)
+    fully_connected = tf.contrib.layers.dropout(fully_connected, training)
+
+    logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=None)
 
     loss = tf.losses.softmax_cross_entropy(labels,logits)
 
