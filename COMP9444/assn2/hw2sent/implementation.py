@@ -99,26 +99,31 @@ def define_graph(glove_embeddings_arr):
     RETURN: input placeholder, labels placeholder, optimizer, accuracy and loss
     tensors"""
 
-    training = tf.placeholder(tf.bool, name='training')
+    def lstm_cell_with_dropout():
+        cell = tf.contrib.rnn.BasicLSTMCell(hidden_units)
+        return tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=training)
+
+    training = tf.placeholder_with_default(1.0, shape=())
+
     embedding_shape = 50
-    num_layers = 1
+    hidden_units = 200
+    num_layers = 2
     vocab_size = len(glove_embeddings_arr)
 
     input_data = tf.placeholder(tf.int32,[batch_size,40], name="input_data")
     labels = tf.placeholder(tf.int32,[batch_size,2], name="labels")
 
     embeddings = tf.get_variable("embeddings", shape=[400001,embedding_shape], initializer=tf.constant_initializer(np.array(glove_embeddings_arr)), trainable=False)
-
     inputs = tf.nn.embedding_lookup(embeddings, input_data)
 
+    #cell = tf.contrib.rnn.BasicLSTMCell(hidden_units, state_is_tuple=True)
     
-
-    cell = tf.contrib.rnn.BasicLSTMCell(embedding_shape, state_is_tuple=True)
     #cell = tf.contrib.rnn.GRUCell(embedding_shape)
-    cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=0.5)
-
+    #cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=training)
     #cell = tf.contrib.rnn.LayerNormBasicLSTMCell(embedding_shape,dropout_keep_prob=0.5)
-    #cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
+    
+    cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell_with_dropout() for _ in range(num_layers)]
+                                        ,state_is_tuple=True)
 
     initial_state = cell.zero_state(batch_size, tf.float32)
 
@@ -137,4 +142,4 @@ def define_graph(glove_embeddings_arr):
     correct_preds = tf.equal(tf.argmax(preds, 1, output_type=tf.int32), tf.argmax(labels, 1, output_type=tf.int32))
     accuracy = tf.reduce_mean(tf.cast(correct_preds, tf.float32))
 
-    return input_data, labels, optimizer, accuracy, loss
+    return input_data, labels, optimizer, accuracy, loss, training
