@@ -3,6 +3,7 @@ import glob  # this will be useful when reading reviews from file
 import os
 import tarfile
 import string
+from collections import deque
 import tensorflow as tf
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -32,27 +33,16 @@ def load_data(glove_dict):
     file_list.extend(glob.glob(os.path.join(dir,
                                             'data2/neg/*')))
     print("Parsing %s files" % len(file_list))
-    for i in range(len(file_list)):
-        with open(file_list[i], "r",  encoding="utf-8") as openf:
-            s = openf.read()
 
-            # Replace punctuation with space
-            punc = string.punctuation.replace("'", '')
-            translator = s.maketrans(punc, ' ' * len(punc))
-            no_punct = s.lower().translate(translator)
-
-            no_punct = ''.join(c.lower() for c in no_punct if c != "'")
-            no_punct = no_punct.split()
-
-            # stopwords from: http://www.lextek.com/manuals/onix/stopwords1.html and https://www.link-assistant.com/seo-stop-words.html
-            stop_words = set([  'about',	'mrs',	'few',	'since',	'big',	'part',	'i',	'under',	'area',
-                                'above',	'much',	'find',	'small',	'both',	'parted',	'if',	'until',	'areas',
-                                'across',	'must',	'finds',	'smaller',	'but',	'parting',	'important',	'up',	'around',
-                                'after',	'my',	'first',	'smallest',	'by',	'parts',	'in',	'upon',	'as',
-                                'again',	'myself',	'for',	'so',	'c',	'per',	'interest',	'us',	'ask',
-                                'against',	'n',	'four',	'some',	'came',	'perhaps',	'interested',	'use',	'asked',
-                                'all',	'necessary',	'from',	'somebody',	'can',	'place',	'interesting',	'used',	'asking',
-                                'almost',	'need',	'full',	'someone',	'cannot',	'places',	'interests',	'uses',	'asks',
+    # stopwords from: http://www.lextek.com/manuals/onix/stopwords1.html and https://www.link-assistant.com/seo-stop-words.html
+    stop_words = set([  'about',	'mrs',	'few',	'since',	'big',	'part',	'i',	'under',	'area',
+                        'above',	'much',	'find',	'small',	'both',	'parted',	'if',	'until',	'areas',
+                        'across',	'must',	'finds',	'smaller',	'but',	'parting',	'important',	'up',	'around',
+                        'after',	'my',	'first',	'smallest',	'by',	'parts',	'in',	'upon',	'as',
+                        'again',	'myself',	'for',	'so',	'c',	'per',	'interest',	'us',	'ask',
+                        'against',	'n',	'four',	'some',	'came',	'perhaps',	'interested',	'use',	'asked',
+                        'all',	'necessary',	'from',	'somebody',	'can',	'place',	'interesting',	'used',	'asking',
+                        'almost',	'need',	'full',	'someone',	'cannot',	'places',	'interests',	'uses',	'asks',
                                 'alone',	'needed',	'fully',	'something',	'case',	'point',	'into',	'v',	'at',
                                 'along',	'needing',	'further',	'somewhere',	'cases',	'pointed',	'is',	'very',	'away',
                                 'already',	'needs',	'furthered',	'state',	'certain',	'pointing',	'it',	'w',	'b',
@@ -90,9 +80,9 @@ def load_data(glove_dict):
                                 'or',	'herself',	'today',	'every',	'seems',	'man',	'x',	'face',	'better',
                                 'order',	'high',	'together',	'everybody',	'sees',	'many',	'y',	'faces',	'between',
                                 'ordered',	'high',	'too',	'everyone',	'several',	'may',	'year',	'fact',	'br',
-                                'ordering',	'high',	'took',	'everything',	'shall',	'me',	'years',	'facts',	
-                                'orders',	'higher',	'toward',	'everywhere',	'she',	'member',	'yet',	'far',	
-                                'other',	'highest',	'turn',	'f',	'should',	'members',	'you',	'felt',	
+                                'ordering',	'high',	'took',	'everything',	'shall',	'me',	'years',	'facts',
+                                'orders',	'higher',	'toward',	'everywhere',	'she',	'member',	'yet',	'far',
+                                'other',	'highest',	'turn',	'f',	'should',	'members',	'you',	'felt',
                                 '\x97', 'a',	'hence',	'see', 'able',	'her',	'seeing',
                                 'about',	'here',	'seem', 'above',	'hereafter',	'seemed',
                                 'abroad',	'hereby',	'seeming', 'according',	'herein',	'seems',
@@ -204,14 +194,33 @@ def load_data(glove_dict):
                                 'hed', 'saying',  'youve', 'hell', 'says', 'z',
                                 'hello',  'second',  'zero', 'help',  'secondly'])
 
+    for i in range(len(file_list)):
+        with open(file_list[i], "r",  encoding="utf-8") as openf:
+            s = openf.read()
+
+            # Replace punctuation with space, except for ' character which could be inside a word
+            punc = string.punctuation.replace("'", '')
+            translator = s.maketrans(punc, ' ' * len(punc))
+            no_punct = s.lower().translate(translator)
+
+            # remove ' character
+            no_punct = ''.join(c.lower() for c in no_punct if c != "'")
+            no_punct = no_punct.split()
+
+            # remove stopwords, words not in glove dictionary, and pad the end with 0s
             no_stop = [w for w in no_punct if w not in stop_words]
 
+            word_buffer = deque(no_stop)
             for j in range(40):
-                try:
-                    data[i][j] = glove_dict[no_stop[j]]
-                except (KeyError, IndexError):
+                while word_buffer:
+                    next_word = word_buffer.popleft()
+                    try:
+                        data[i][j] = glove_dict[next_word]
+                        break
+                    except KeyError:
+                        continue
+                else:
                     data[i][j] = 0
-
     return data
 
 
@@ -225,12 +234,11 @@ def load_glove_embeddings():
             its index in the embeddings array. e.g. {"apple": 119"}
     """
 
+    # if you are running on the CSE machines, you can load the glove data from here
+    #data = open("/home/cs9444/public_html/17s2/hw2/glove.6B.50d.txt",'r',encoding="utf-8")
     data = open("glove.6B.50d.txt", 'r', encoding="utf-8").read().split()
 
-    #embeddings= [np.zeros(50)]
-
     vocab_size = 400001
-
     embeddings = np.zeros((vocab_size, 50), dtype=np.float32)
 
     word_index_dict = {'UNK': 0}
@@ -240,16 +248,12 @@ def load_glove_embeddings():
 
     for i in range(len(data)):
         if vector_place == 50:
-            # embeddings.append(np.zeros(50))
             word_index_dict.update({data[i]: word_counter})
             word_counter += 1
             vector_place = 0
         else:
             embeddings[word_counter - 1][vector_place] = float(data[i])
             vector_place += 1
-
-    # if you are running on the CSE machines, you can load the glove data from here
-    #data = open("/home/cs9444/public_html/17s2/hw2/glove.6B.50d.txt",'r',encoding="utf-8")
     return embeddings, word_index_dict
 
 
@@ -273,6 +277,10 @@ def define_graph(glove_embeddings_arr):
         cell = tf.contrib.rnn.BasicLSTMCell(hidden_units)
         return tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=dropout_keep_prob)
 
+    def gru_cell_with_dropout():
+        cell = tf.contrib.rnn.GRUCell(hidden_units)
+        return tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=dropout_keep_prob)
+
     embedding_shape = 50
     hidden_units = 20
     fully_connected_units = 20
@@ -282,13 +290,11 @@ def define_graph(glove_embeddings_arr):
     input_data = tf.placeholder(tf.int32, [batch_size, 40], name="input_data")
     labels = tf.placeholder(tf.int32, [batch_size, 2], name="labels")
 
+    # Keep tensor for faster lookup - not used in final output
     #embeddings = tf.get_variable("embeddings", shape=[400001,embedding_shape], initializer=tf.constant_initializer(np.array(glove_embeddings_arr)), trainable=False)
     #inputs = tf.nn.embedding_lookup(embeddings, input_data)
 
     inputs = tf.nn.embedding_lookup(glove_embeddings_arr, input_data)
-
-    #cell = tf.contrib.rnn.GRUCell(embedding_shape)
-    #cell = tf.contrib.rnn.LayerNormBasicLSTMCell(embedding_shape,dropout_keep_prob=dropout_keep_prob)
 
     cell = tf.nn.rnn_cell.MultiRNNCell(
         [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
