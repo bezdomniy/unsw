@@ -42,6 +42,7 @@ input_data, labels, dropout_keep_prob, optimizer, accuracy, loss = \
 
 # tensorboard
 train_accuracy_op = tf.summary.scalar("training_accuracy", accuracy)
+test_accuracy_op = tf.summary.scalar("training_accuracy", accuracy)
 tf.summary.scalar("loss", loss)
 summary_op = tf.summary.merge_all()
 
@@ -57,7 +58,7 @@ writer = tf.summary.FileWriter(logdir, sess.graph)
 
 for i in range(iterations):
     batch_data, batch_labels = getTrainBatch()
-    sess.run(optimizer, {input_data: batch_data, labels: batch_labels})
+    sess.run(optimizer, {input_data: batch_data, labels: batch_labels, dropout_keep_prob: 0.5})
     if (i % 50 == 0):
         loss_value, accuracy_value, summary = sess.run(
             [loss, accuracy, summary_op],

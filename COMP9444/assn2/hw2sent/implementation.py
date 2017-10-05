@@ -35,164 +35,164 @@ def load_data(glove_dict):
     print("Parsing %s files" % len(file_list))
 
     # stopwords from: http://www.lextek.com/manuals/onix/stopwords1.html and https://www.link-assistant.com/seo-stop-words.html
-    stop_words = set([  'about',	'mrs',	'few',	'since',	'big',	'part',	'i',	'under',	'area',
-                        'above',	'much',	'find',	'small',	'both',	'parted',	'if',	'until',	'areas',
-                        'across',	'must',	'finds',	'smaller',	'but',	'parting',	'important',	'up',	'around',
-                        'after',	'my',	'first',	'smallest',	'by',	'parts',	'in',	'upon',	'as',
-                        'again',	'myself',	'for',	'so',	'c',	'per',	'interest',	'us',	'ask',
-                        'against',	'n',	'four',	'some',	'came',	'perhaps',	'interested',	'use',	'asked',
-                        'all',	'necessary',	'from',	'somebody',	'can',	'place',	'interesting',	'used',	'asking',
-                        'almost',	'need',	'full',	'someone',	'cannot',	'places',	'interests',	'uses',	'asks',
-                                'alone',	'needed',	'fully',	'something',	'case',	'point',	'into',	'v',	'at',
-                                'along',	'needing',	'further',	'somewhere',	'cases',	'pointed',	'is',	'very',	'away',
-                                'already',	'needs',	'furthered',	'state',	'certain',	'pointing',	'it',	'w',	'b',
-                                'also',	'never',	'furthering',	'states',	'certainly',	'points',	'its',	'want',	'back',
-                                'although',	'new',	'furthers',	'still',	'clear',	'possible',	'itself',	'wanted',	'backed',
-                                'always',	'new',	'g',	'still',	'clearly',	'present',	'j',	'wanting',	'backing',
-                                'among',	'newer',	'gave',	'such',	'come',	'presented',	'just',	'wants',	'backs',
-                                'an',	'newest',	'general',	'sure',	'could',	'presenting',	'k',	'was',	'be',
-                                'and',	'next',	'generally',	't',	'd',	'presents',	'keep',	'way',	'became',
-                                'another',	'no',	'get',	'take',	'did',	'problem',	'keeps',	'ways',	'because',
-                                'any',	'nobody',	'gets',	'taken',	'differ',	'problems',	'kind',	'we',	'become',
-                                'anybody',	'non',	'give',	'than',	'different',	'put',	'knew',	'well',	'becomes',
-                                'anyone',	'noone',	'given',	'that',	'differently',	'puts',	'know',	'wells',	'been',
-                                'anything',	'not',	'gives',	'the',	'do',	'q',	'known',	'went',	'before',
-                                'anywhere',	'nothing',	'go',	'their',	'does',	'quite',	'knows',	'were',	'began',
-                                'are',	'now',	'going',	'them',	'done',	'r',	'l',	'what',	'behind',
-                                'nowhere',	'good',	'then',	'down',	'rather',	'large',	'when',	'men',	'turned',
-                                'number',	'goods',	'there',	'down',	'really',	'largely',	'where',	'might',	'turning',
-                                'numbers',	'got',	'therefore',	'downed',	'right',	'last',	'whether',	'more',	'turns',
-                                'o',	'great',	'these',	'downing',	'right',	'later',	'which',	'most',	'two',
-                                'of',	'greater',	'they',	'downs',	'room',	'latest',	'while',	'mostly',	'u',
-                                'off',	'greatest',	'thing',	'during',	'rooms',	'least',	'who',	'mr',	'him',
-                                'often',	'group',	'things',	'e',	's',	'less',	'whole',	'young',	'himself',
-                                'old',	'grouped',	'think',	'each',	'said',	'let',	'whose',	'younger',	'his',
-                                'older',	'grouping',	'thinks',	'early',	'same',	'lets',	'why',	'youngest',	'how',
-                                'oldest',	'groups',	'this',	'either',	'saw',	'like',	'will',	'your',	'however',
-                                'on',	'h',	'those',	'end',	'say',	'likely',	'with',	'yours',	'others',
-                                'once',	'had',	'though',	'ended',	'says',	'long',	'within',	'z',	'our',
-                                'one',	'has',	'thought',	'ending',	'second',	'longer',	'without',	'show',	'out',
-                                'only',	'have',	'thoughts',	'ends',	'seconds',	'longest',	'work',	'showed',	'over',
-                                'open',	'having',	'three',	'enough',	'see',	'm',	'worked',	'showing',	'p',
-                                'opened',	'he',	'through',	'even',	'seem',	'made',	'working',	'shows',	'being',
-                                'opening',	'her',	'thus',	'evenly',	'seemed',	'make',	'works',	'side',	'beings',
-                                'opens',	'here',	'to',	'ever',	'seeming',	'making',	'would',	'sides',	'best',
-                                'or',	'herself',	'today',	'every',	'seems',	'man',	'x',	'face',	'better',
-                                'order',	'high',	'together',	'everybody',	'sees',	'many',	'y',	'faces',	'between',
-                                'ordered',	'high',	'too',	'everyone',	'several',	'may',	'year',	'fact',	'br',
-                                'ordering',	'high',	'took',	'everything',	'shall',	'me',	'years',	'facts',
-                                'orders',	'higher',	'toward',	'everywhere',	'she',	'member',	'yet',	'far',
-                                'other',	'highest',	'turn',	'f',	'should',	'members',	'you',	'felt',
-                                '\x97', 'a',	'hence',	'see', 'able',	'her',	'seeing',
-                                'about',	'here',	'seem', 'above',	'hereafter',	'seemed',
-                                'abroad',	'hereby',	'seeming', 'according',	'herein',	'seems',
-                                'accordingly',	'heres',	'seen', 'across',	'hereupon',	'self',
-                                'actually',	'hers',	'selves', 'adj',	'herself',	'sensible',
-                                'after',	'hes',	'sent', 'afterwards',	'hi',	'serious',
-                                'again',	'him',	'seriously', 'against',	'himself',	'seven',
-                                'ago',	'his',	'several', 'ahead',	'hither',	'shall',
-                                'aint',	'hopefully',	'shant', 'all',	'how',	'she',
-                                'allow',	'howbeit',	'shed', 'allows',	'however',	'shell',
-                                'almost',	'hundred',	'shes', 'alone',	'i',	'should',
-                                'along',	'id',	'shouldnt', 'alongside',	'ie',	'since',
-                                'already',	'if',	'six', 'also',	'ignored',	'so',
-                                'although',	'ill',	'some', 'always',	'im',	'somebody',
-                                'am',	'immediate',	'someday', 'amid',	'in',	'somehow',
-                                'amidst',	'inasmuch',	'someone', 'among',	'inc',	'something',
-                                'amongst',	'inc.',	'sometime', 'an',	'indeed',	'sometimes',
-                                'and',	'indicate',	'somewhat', 'another',	'indicated',	'somewhere',
-                                'any',	'indicates',	'soon', 'anybody',	'inner',	'sorry',
-                                'anyhow',	'inside',	'specified', 'anyone',	'insofar',	'specify',
-                                'anything',	'instead',	'specifying', 'anyway',	'into',	'still',
-                                'anyways',	'inward',	'sub', 'anywhere',	'is',	'such',
-                                'apart',	'isnt',	'sup', 'appear',	'it',	'sure',
-                                'appreciate',	'itd',	't', 'appropriate',	'itll',	'take',
-                                'are', 'its', 'taken', 'arent',  'its', 'taking',
-                                'around',  'itself',  'tell', 'as',  'ive', 'tends',
-                                'as',  'j',  'th', 'aside', 'just', 'than',
-                                'ask', 'k',  'thank', 'asking', 'keep', 'thanks',
-                                'associated',  'keeps', 'thanx', 'at', 'kept', 'that',
-                                'available',  'know', 'thatll', 'away',  'known',  'thats',
-                                'awfully', 'knows',  'thats', 'b',  'l',  'thatve',
-                                'back', 'last', 'the', 'backward', 'lately',  'their',
-                                'backwards',  'later',  'theirs', 'be', 'latter',  'them',
-                                'became',  'latterly', 'themselves', 'because',  'least',  'then',
-                                'become',  'less', 'thence', 'becomes',  'lest', 'there',
-                                'becoming', 'let', 'thereafter', 'been',  'lets', 'thereby',
-                                'before',  'like', 'thered', 'beforehand', 'liked',  'therefore',
-                                'begin',  'likely',  'therein', 'behind',  'likewise', 'therell',
-                                'being',  'little',  'therere', 'believe',  'look', 'theres',
-                                'below',  'looking', 'theres', 'beside', 'looks',  'thereupon',
-                                'besides', 'low', 'thereve', 'best', 'lower',  'these',
-                                'better',  'ltd', 'they', 'between', 'm',  'theyd',
-                                'beyond',  'made', 'theyll', 'both',  'mainly',  'theyre',
-                                'brief',  'make', 'theyve', 'but',  'makes',  'thing',
-                                'by',  'many', 'things', 'c', 'may', 'think',
-                                'came', 'maybe',  'third', 'can', 'maynt',  'thirty',
-                                'cannot',  'me',  'this', 'cant', 'mean', 'thorough',
-                                'cant', 'meantime', 'thoroughly', 'caption',  'meanwhile',  'those',
-                                'cause',  'merely',  'though', 'causes', 'might',  'three',
-                                'certain', 'mightnt', 'through', 'certainly', 'mine', 'throughout',
-                                'changes', 'minus',  'thru', 'clearly', 'miss', 'thus',
-                                'cmon', 'more', 'till', 'co',  'moreover', 'to',
-                                'co.', 'most', 'together', 'com', 'mostly',  'too',
-                                'come', 'mr',  'took', 'comes',  'mrs', 'toward',
-                                'concerning',  'much', 'towards', 'consequently', 'must', 'tried',
-                                'consider', 'mustnt',  'tries', 'considering', 'my',  'truly',
-                                'contain', 'myself',  'try', 'containing',  'n',  'trying',
-                                'contains', 'name', 'ts', 'corresponding', 'namely',  'twice',
-                                'could',  'nd',  'two', 'couldnt',  'near', 'u',
-                                'course',  'nearly',  'un', 'cs', 'necessary',  'under',
-                                'currently',  'need', 'underneath', 'd', 'neednt',  'undoing',
-                                'dare', 'needs',  'unfortunately', 'darent', 'neither', 'unless',
-                                'definitely',  'never',  'unlike', 'described', 'neverf',  'unlikely',
-                                'despite', 'neverless',  'until', 'did', 'nevertheless', 'unto',
-                                'didnt',  'new', 'up', 'different', 'next', 'upon',
-                                'directly', 'nine', 'upwards', 'do',  'ninety',  'us',
-                                'does', 'no',  'use', 'doesnt',  'nobody',  'used',
-                                'doing',  'non', 'useful', 'done', 'none', 'uses',
-                                'dont', 'nonetheless', 'using', 'down',  'noone',  'usually',
-                                'downwards',  'no-one',  'v', 'during',  'nor', 'value',
-                                'e',  'normally', 'various', 'each',  'not', 'versus',
-                                'edu', 'nothing', 'very', 'eg',  'notwithstanding', 'via',
-                                'eight',  'novel',  'viz', 'eighty',  'now', 'vs',
-                                'either',  'nowhere', 'w', 'else',  'o',  'want',
-                                'elsewhere',  'obviously',  'wants', 'end', 'of',  'was',
-                                'ending',  'off', 'wasnt', 'enough', 'often',  'way',
-                                'entirely', 'oh',  'we', 'especially', 'ok',  'wed',
-                                'et',  'okay', 'welcome', 'etc', 'old', 'well',
-                                'even', 'on',  'well', 'ever', 'once', 'went',
-                                'evermore', 'one', 'were', 'every', 'ones', 'were',
-                                'everybody',  'ones', 'werent', 'everyone',  'only', 'weve',
-                                'everything',  'onto', 'what', 'everywhere',  'opposite', 'whatever',
-                                'ex',  'or',  'whatll', 'exactly',  'other',  'whats',
-                                'example', 'others',  'whatve', 'except', 'otherwise',  'when',
-                                'f',  'ought',  'whence', 'fairly',  'oughtnt', 'whenever',
-                                'far', 'our', 'where', 'farther',  'ours', 'whereafter',
-                                'few', 'ourselves',  'whereas', 'fewer',  'out', 'whereby',
-                                'fifth',  'outside', 'wherein', 'first',  'over', 'wheres',
-                                'five', 'overall', 'whereupon', 'followed',  'own', 'wherever',
-                                'following',  'p',  'whether', 'follows', 'particular',  'which',
-                                'for', 'particularly', 'whichever', 'forever', 'past', 'while',
-                                'former',  'per', 'whilst', 'formerly',  'perhaps', 'whither',
-                                'forth',  'placed',  'who', 'forward',  'please',  'whod',
-                                'found',  'plus', 'whoever', 'four', 'possible', 'whole',
-                                'from', 'presumably',  'wholl', 'further', 'probably', 'whom',
-                                'furthermore', 'provided', 'whomever', 'g',  'provides', 'whos',
-                                'get', 'q',  'whose', 'gets',  'que', 'why',
-                                'getting', 'quite',  'will', 'given',  'qv',  'willing',
-                                'gives',  'r',  'wish', 'go',  'rather',  'with',
-                                'goes', 'rd',  'within', 'going',  're',  'without',
-                                'gone', 'really',  'wonder', 'got',  'reasonably',  'wont',
-                                'gotten',  'recent',  'would', 'greetings', 'recently', 'wouldnt',
-                                'h',  'regarding',  'x', 'had',  'regardless',  'y',
-                                'hadnt',  'regards', 'yes', 'half', 'relatively',  'yet',
-                                'happens', 'respectively', 'you', 'hardly',  'right',  'youd',
-                                'has', 'round',  'youll', 'hasnt',  's',  'your',
-                                'have', 'said', 'youre', 'havent', 'same', 'yours',
-                                'having',  'saw', 'yourself', 'he',  'say', 'yourselves',
-                                'hed', 'saying',  'youve', 'hell', 'says', 'z',
-                                'hello',  'second',  'zero', 'help',  'secondly'])
+    stop_words = set([  'about', 'mrs', 'few', 'since', 'big', 'part', 'i', 'under', 'area',
+                        'above', 'much', 'find', 'small', 'both', 'parted', 'if', 'until', 'areas',
+                        'across', 'must', 'finds', 'smaller', 'but', 'parting', 'important', 'up', 'around',
+                        'after', 'my', 'first', 'smallest', 'by', 'parts', 'in', 'upon', 'as',
+                        'again', 'myself', 'for', 'so', 'c', 'per', 'interest', 'us', 'ask',
+                        'against', 'n', 'four', 'some', 'came', 'perhaps', 'interested', 'use', 'asked',
+                        'all', 'necessary', 'from', 'somebody', 'can', 'place', 'interesting', 'used', 'asking',
+                        'almost', 'need', 'full', 'someone', 'cannot', 'places', 'interests', 'uses', 'asks',
+                        'alone', 'needed', 'fully', 'something', 'case', 'point', 'into', 'v', 'at',
+                        'along', 'needing', 'further', 'somewhere', 'cases', 'pointed', 'is', 'very', 'away',
+                        'already', 'needs', 'furthered', 'state', 'certain', 'pointing', 'it', 'w', 'b',
+                        'also', 'never', 'furthering', 'states', 'certainly', 'points', 'its', 'want', 'back',
+                        'although', 'new', 'furthers', 'still', 'clear', 'possible', 'itself', 'wanted', 'backed',
+                        'always', 'new', 'g', 'still', 'clearly', 'present', 'j', 'wanting', 'backing',
+                        'among', 'newer', 'gave', 'such', 'come', 'presented', 'just', 'wants', 'backs',
+                        'an', 'newest', 'general', 'sure', 'could', 'presenting', 'k', 'was', 'be',
+                        'and', 'next', 'generally', 't', 'd', 'presents', 'keep', 'way', 'became',
+                        'another', 'no', 'get', 'take', 'did', 'problem', 'keeps', 'ways', 'because',
+                        'any', 'nobody', 'gets', 'taken', 'differ', 'problems', 'kind', 'we', 'become',
+                        'anybody', 'non', 'give', 'than', 'different', 'put', 'knew', 'well', 'becomes',
+                        'anyone', 'noone', 'given', 'that', 'differently', 'puts', 'know', 'wells', 'been',
+                        'anything', 'not', 'gives', 'the', 'do', 'q', 'known', 'went', 'before',
+                        'anywhere', 'nothing', 'go', 'their', 'does', 'quite', 'knows', 'were', 'began',
+                        'are', 'now', 'going', 'them', 'done', 'r', 'l', 'what', 'behind',
+                        'nowhere', 'good', 'then', 'down', 'rather', 'large', 'when', 'men', 'turned',
+                        'number', 'goods', 'there', 'down', 'really', 'largely', 'where', 'might', 'turning',
+                        'numbers', 'got', 'therefore', 'downed', 'right', 'last', 'whether', 'more', 'turns',
+                        'o', 'great', 'these', 'downing', 'right', 'later', 'which', 'most', 'two',
+                        'of', 'greater', 'they', 'downs', 'room', 'latest', 'while', 'mostly', 'u',
+                        'off', 'greatest', 'thing', 'during', 'rooms', 'least', 'who', 'mr', 'him',
+                        'often', 'group', 'things', 'e', 's', 'less', 'whole', 'young', 'himself',
+                        'old', 'grouped', 'think', 'each', 'said', 'let', 'whose', 'younger', 'his',
+                        'older', 'grouping', 'thinks', 'early', 'same', 'lets', 'why', 'youngest', 'how',
+                        'oldest', 'groups', 'this', 'either', 'saw', 'like', 'will', 'your', 'however',
+                        'on', 'h', 'those', 'end', 'say', 'likely', 'with', 'yours', 'others',
+                        'once', 'had', 'though', 'ended', 'says', 'long', 'within', 'z', 'our',
+                        'one', 'has', 'thought', 'ending', 'second', 'longer', 'without', 'show', 'out',
+                        'only', 'have', 'thoughts', 'ends', 'seconds', 'longest', 'work', 'showed', 'over',
+                        'open', 'having', 'three', 'enough', 'see', 'm', 'worked', 'showing', 'p',
+                        'opened', 'he', 'through', 'even', 'seem', 'made', 'working', 'shows', 'being',
+                        'opening', 'her', 'thus', 'evenly', 'seemed', 'make', 'works', 'side', 'beings',
+                        'opens', 'here', 'to', 'ever', 'seeming', 'making', 'would', 'sides', 'best',
+                        'or', 'herself', 'today', 'every', 'seems', 'man', 'x', 'face', 'better',
+                        'order', 'high', 'together', 'everybody', 'sees', 'many', 'y', 'faces', 'between',
+                        'ordered', 'high', 'too', 'everyone', 'several', 'may', 'year', 'fact', 'br',
+                        'ordering', 'high', 'took', 'everything', 'shall', 'me', 'years', 'facts',
+                        'orders', 'higher', 'toward', 'everywhere', 'she', 'member', 'yet', 'far',
+                        'other', 'highest', 'turn', 'f', 'should', 'members', 'you', 'felt',
+                        '\x97', 'a',	'hence',	'see', 'able',	'her',	'seeing',
+                        'about',	'here',	'seem', 'above',	'hereafter',	'seemed',
+                        'abroad',	'hereby',	'seeming', 'according',	'herein',	'seems',
+                        'accordingly',	'heres',	'seen', 'across',	'hereupon',	'self',
+                        'actually',	'hers',	'selves', 'adj',	'herself',	'sensible',
+                        'after',	'hes',	'sent', 'afterwards',	'hi',	'serious',
+                        'again',	'him',	'seriously', 'against',	'himself',	'seven',
+                        'ago',	'his',	'several', 'ahead',	'hither',	'shall',
+                        'aint',	'hopefully',	'shant', 'all',	'how',	'she',
+                        'allow',	'howbeit',	'shed', 'allows',	'however',	'shell',
+                        'almost',	'hundred',	'shes', 'alone',	'i',	'should',
+                        'along',	'id',	'shouldnt', 'alongside',	'ie',	'since',
+                        'already',	'if',	'six', 'also',	'ignored',	'so',
+                        'although',	'ill',	'some', 'always',	'im',	'somebody',
+                        'am',	'immediate',	'someday', 'amid',	'in',	'somehow',
+                        'amidst',	'inasmuch',	'someone', 'among',	'inc',	'something',
+                        'amongst',	'inc.',	'sometime', 'an',	'indeed',	'sometimes',
+                        'and',	'indicate',	'somewhat', 'another',	'indicated',	'somewhere',
+                        'any',	'indicates',	'soon', 'anybody',	'inner',	'sorry',
+                        'anyhow',	'inside',	'specified', 'anyone',	'insofar',	'specify',
+                        'anything',	'instead',	'specifying', 'anyway',	'into',	'still',
+                        'anyways',	'inward',	'sub', 'anywhere',	'is',	'such',
+                        'apart',	'isnt',	'sup', 'appear',	'it',	'sure',
+                        'appreciate',	'itd',	't', 'appropriate',	'itll',	'take',
+                        'are', 'its', 'taken', 'arent',  'its', 'taking',
+                        'around',  'itself',  'tell', 'as',  'ive', 'tends',
+                        'as',  'j',  'th', 'aside', 'just', 'than',
+                        'ask', 'k',  'thank', 'asking', 'keep', 'thanks',
+                        'associated',  'keeps', 'thanx', 'at', 'kept', 'that',
+                        'available',  'know', 'thatll', 'away',  'known',  'thats',
+                        'awfully', 'knows',  'thats', 'b',  'l',  'thatve',
+                        'back', 'last', 'the', 'backward', 'lately',  'their',
+                        'backwards',  'later',  'theirs', 'be', 'latter',  'them',
+                        'became',  'latterly', 'themselves', 'because',  'least',  'then',
+                        'become',  'less', 'thence', 'becomes',  'lest', 'there',
+                        'becoming', 'let', 'thereafter', 'been',  'lets', 'thereby',
+                        'before',  'like', 'thered', 'beforehand', 'liked',  'therefore',
+                        'begin',  'likely',  'therein', 'behind',  'likewise', 'therell',
+                        'being',  'little',  'therere', 'believe',  'look', 'theres',
+                        'below',  'looking', 'theres', 'beside', 'looks',  'thereupon',
+                        'besides', 'low', 'thereve', 'best', 'lower',  'these',
+                        'better',  'ltd', 'they', 'between', 'm',  'theyd',
+                        'beyond',  'made', 'theyll', 'both',  'mainly',  'theyre',
+                        'brief',  'make', 'theyve', 'but',  'makes',  'thing',
+                        'by',  'many', 'things', 'c', 'may', 'think',
+                        'came', 'maybe',  'third', 'can', 'maynt',  'thirty',
+                        'cannot',  'me',  'this', 'cant', 'mean', 'thorough',
+                        'cant', 'meantime', 'thoroughly', 'caption',  'meanwhile',  'those',
+                        'cause',  'merely',  'though', 'causes', 'might',  'three',
+                        'certain', 'mightnt', 'through', 'certainly', 'mine', 'throughout',
+                        'changes', 'minus',  'thru', 'clearly', 'miss', 'thus',
+                        'cmon', 'more', 'till', 'co',  'moreover', 'to',
+                        'co.', 'most', 'together', 'com', 'mostly',  'too',
+                        'come', 'mr',  'took', 'comes',  'mrs', 'toward',
+                        'concerning',  'much', 'towards', 'consequently', 'must', 'tried',
+                        'consider', 'mustnt',  'tries', 'considering', 'my',  'truly',
+                        'contain', 'myself',  'try', 'containing',  'n',  'trying',
+                        'contains', 'name', 'ts', 'corresponding', 'namely',  'twice',
+                        'could',  'nd',  'two', 'couldnt',  'near', 'u',
+                        'course',  'nearly',  'un', 'cs', 'necessary',  'under',
+                        'currently',  'need', 'underneath', 'd', 'neednt',  'undoing',
+                        'dare', 'needs',  'unfortunately', 'darent', 'neither', 'unless',
+                        'definitely',  'never',  'unlike', 'described', 'neverf',  'unlikely',
+                        'despite', 'neverless',  'until', 'did', 'nevertheless', 'unto',
+                        'didnt',  'new', 'up', 'different', 'next', 'upon',
+                        'directly', 'nine', 'upwards', 'do',  'ninety',  'us',
+                        'does', 'no',  'use', 'doesnt',  'nobody',  'used',
+                        'doing',  'non', 'useful', 'done', 'none', 'uses',
+                        'dont', 'nonetheless', 'using', 'down',  'noone',  'usually',
+                        'downwards',  'no-one',  'v', 'during',  'nor', 'value',
+                        'e',  'normally', 'various', 'each',  'not', 'versus',
+                        'edu', 'nothing', 'very', 'eg',  'notwithstanding', 'via',
+                        'eight',  'novel',  'viz', 'eighty',  'now', 'vs',
+                        'either',  'nowhere', 'w', 'else',  'o',  'want',
+                        'elsewhere',  'obviously',  'wants', 'end', 'of',  'was',
+                        'ending',  'off', 'wasnt', 'enough', 'often',  'way',
+                        'entirely', 'oh',  'we', 'especially', 'ok',  'wed',
+                        'et',  'okay', 'welcome', 'etc', 'old', 'well',
+                        'even', 'on',  'well', 'ever', 'once', 'went',
+                        'evermore', 'one', 'were', 'every', 'ones', 'were',
+                        'everybody',  'ones', 'werent', 'everyone',  'only', 'weve',
+                        'everything',  'onto', 'what', 'everywhere',  'opposite', 'whatever',
+                        'ex',  'or',  'whatll', 'exactly',  'other',  'whats',
+                        'example', 'others',  'whatve', 'except', 'otherwise',  'when',
+                        'f',  'ought',  'whence', 'fairly',  'oughtnt', 'whenever',
+                        'far', 'our', 'where', 'farther',  'ours', 'whereafter',
+                        'few', 'ourselves',  'whereas', 'fewer',  'out', 'whereby',
+                        'fifth',  'outside', 'wherein', 'first',  'over', 'wheres',
+                        'five', 'overall', 'whereupon', 'followed',  'own', 'wherever',
+                        'following',  'p',  'whether', 'follows', 'particular',  'which',
+                        'for', 'particularly', 'whichever', 'forever', 'past', 'while',
+                        'former',  'per', 'whilst', 'formerly',  'perhaps', 'whither',
+                        'forth',  'placed',  'who', 'forward',  'please',  'whod',
+                        'found',  'plus', 'whoever', 'four', 'possible', 'whole',
+                        'from', 'presumably',  'wholl', 'further', 'probably', 'whom',
+                        'furthermore', 'provided', 'whomever', 'g',  'provides', 'whos',
+                        'get', 'q',  'whose', 'gets',  'que', 'why',
+                        'getting', 'quite',  'will', 'given',  'qv',  'willing',
+                        'gives',  'r',  'wish', 'go',  'rather',  'with',
+                        'goes', 'rd',  'within', 'going',  're',  'without',
+                        'gone', 'really',  'wonder', 'got',  'reasonably',  'wont',
+                        'gotten',  'recent',  'would', 'greetings', 'recently', 'wouldnt',
+                        'h',  'regarding',  'x', 'had',  'regardless',  'y',
+                        'hadnt',  'regards', 'yes', 'half', 'relatively',  'yet',
+                        'happens', 'respectively', 'you', 'hardly',  'right',  'youd',
+                        'has', 'round',  'youll', 'hasnt',  's',  'your',
+                        'have', 'said', 'youre', 'havent', 'same', 'yours',
+                        'having',  'saw', 'yourself', 'he',  'say', 'yourselves',
+                        'hed', 'saying',  'youve', 'hell', 'says', 'z',
+                        'hello',  'second',  'zero', 'help',  'secondly'])
 
     for i in range(len(file_list)):
         with open(file_list[i], "r",  encoding="utf-8") as openf:
@@ -272,6 +272,7 @@ def define_graph(glove_embeddings_arr):
     tensors"""
 
     dropout_keep_prob = tf.placeholder_with_default(1.0, shape=())
+    tf_version = tf.__version__[:3]
 
     def lstm_cell_with_dropout():
         cell = tf.contrib.rnn.BasicLSTMCell(hidden_units)
@@ -284,7 +285,7 @@ def define_graph(glove_embeddings_arr):
     embedding_shape = 50
     hidden_units = 20
     fully_connected_units = 20
-    num_layers = 3
+    num_layers = 2
     vocab_size = len(glove_embeddings_arr)
 
     input_data = tf.placeholder(tf.int32, [batch_size, 40], name="input_data")
@@ -295,9 +296,13 @@ def define_graph(glove_embeddings_arr):
     #inputs = tf.nn.embedding_lookup(embeddings, input_data)
 
     inputs = tf.nn.embedding_lookup(glove_embeddings_arr, input_data)
-
-    cell = tf.nn.rnn_cell.MultiRNNCell(
-        [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+    
+    if tf_version == '1.3' or tf_version == '1.2':
+        cell = tf.nn.rnn_cell.MultiRNNCell(
+            [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+    else:
+        cell = tf.contrib.rnn_cell.MultiRNNCell(
+            [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
 
     initial_state = cell.zero_state(batch_size, tf.float32)
 
@@ -307,11 +312,13 @@ def define_graph(glove_embeddings_arr):
     outputs = tf.transpose(outputs, [1, 0, 2])
     last = tf.gather(outputs, int(outputs.get_shape()[0]) - 1)
 
-    #fully_connected = tf.contrib.layers.fully_connected(last, fully_connected_units, activation_fn=tf.sigmoid)
-    fully_connected = tf.contrib.layers.fully_connected(
-        last, fully_connected_units)
-    fully_connected = tf.contrib.layers.dropout(
-        fully_connected, dropout_keep_prob)
+    if fully_connected > 0:
+        fully_connected = tf.contrib.layers.fully_connected(
+            last, fully_connected_units)
+        fully_connected = tf.contrib.layers.dropout(
+            fully_connected, dropout_keep_prob)
+    else:
+        fully_connected = last
 
     logits = tf.contrib.layers.fully_connected(
         fully_connected, 2, activation_fn=None)
@@ -321,8 +328,13 @@ def define_graph(glove_embeddings_arr):
     optimizer = tf.train.RMSPropOptimizer(0.001).minimize(loss)
 
     preds = tf.nn.softmax(logits)
-    correct_preds = tf.equal(tf.argmax(preds, 1, output_type=tf.int32), tf.argmax(
-        labels, 1, output_type=tf.int32))
+
+    if tf_version == '1.3' or tf_version == '1.2':
+        correct_preds = tf.equal(tf.argmax(preds, 1, output_type=tf.int32), tf.argmax(
+            labels, 1, output_type=tf.int32))
+    else:
+        correct_preds = tf.equal(tf.round(tf.argmax(preds, 1)), tf.round(tf.argmax(
+            labels, 1)))
     accuracy = tf.reduce_mean(tf.cast(correct_preds, tf.float32))
 
     return input_data, labels, dropout_keep_prob, optimizer, accuracy, loss

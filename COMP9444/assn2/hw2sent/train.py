@@ -77,10 +77,10 @@ input_data, labels, dropout_keep_prob, optimizer, accuracy, loss = \
     imp.define_graph(glove_array)
 
 # tensorboard
-train_accuracy_op = tf.summary.scalar("training_accuracy", accuracy)
-test_accuracy_op = tf.summary.scalar("testing_accuracy", accuracy)
-tf.summary.scalar("loss", loss)
-summary_op = tf.summary.merge_all()
+train_acc_op = tf.summary.scalar("training_accuracy", accuracy)
+test_acc_op = tf.summary.scalar("testing_accuracy", accuracy)
+#tf.summary.scalar("loss", loss)
+#summary_op = tf.summary.merge_all()
 
 # saver
 all_saver = tf.train.Saver()
@@ -99,18 +99,17 @@ for i in range(iterations+1):
     val_data, val_labels = getValBatch()
     sess.run(optimizer, {input_data: batch_data, labels: batch_labels, dropout_keep_prob: 0.5})
     if (i % 50 == 0):
-        loss_value, accuracy_value, summary = sess.run(
-            [loss, accuracy, summary_op],
-            {input_data: batch_data,
-             labels: batch_labels})
-        writer.add_summary(summary, i)
+        accuracy_value, train_summ = sess.run(
+            [accuracy, train_acc_op],
+            {input_data: batch_data, labels: batch_labels})
+        writer.add_summary(train_summ, i)
 
-        accuracy_validation, valid_summ = sess.run([accuracy, test_accuracy_op],{input_data: val_data, labels: val_labels})
+        accuracy_validation, valid_summ = sess.run([accuracy, test_acc_op],{input_data: val_data, labels: val_labels})
         accuracies.append(accuracy_validation)
         writer.add_summary(valid_summ , i)
 
         print("Iteration: ", i)
-        print("loss", loss_value)
+        #print("loss", loss_value)
         print("acc", accuracy_value)
         print("test acc", accuracy_validation)
 
