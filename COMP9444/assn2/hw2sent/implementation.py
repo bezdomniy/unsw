@@ -296,7 +296,7 @@ def define_graph(glove_embeddings_arr):
     tf_version = tf.__version__[:3]
 
     def lstm_cell_with_dropout():
-        cell = tf.contrib.rnn.BasicLSTMCell(hidden_units)
+        cell = tf.contrib.rnn.BasicLSTMCell(hidden_units, reuse = tf.get_variable_scope().reuse)
         return tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=dropout_keep_prob)
 
     def gru_cell_with_dropout():

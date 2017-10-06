@@ -20,8 +20,8 @@ vocabulary_size = 50000
 
 data, count, dictionary, reverse_dictionary = get_dataset(vocabulary_size)
 
-#print('Most common words (+UNK)', count[:5])
-#print('Sample data', data[:10], [reverse_dictionary[i] for i in data[:10]])
+print('Most common words (+UNK)', count[:5])
+print('Sample data', data[:10], [reverse_dictionary[i] for i in data[:10]])
 
 # sanity check the batches
 check_skip_window = 2      # How many words to consider left and right.
@@ -108,6 +108,7 @@ with tf.Session(graph=graph) as session:
     average_loss = 0
     for step in xrange(num_steps):
         batch_inputs, batch_labels = generate_batch(data, batch_size, skip_window)
+
         feed_dict = {train_inputs: batch_inputs, train_labels: batch_labels}
 
         # We perform one update step by evaluating the optimizer op (including it
