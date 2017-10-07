@@ -64,7 +64,6 @@ def get_mean_context_embeds(embeddings, train_inputs):
         context_embeds = tf.nn.embedding_lookup(embeddings, train_inputs)
         
         mean_context_embeds=tf.reduce_mean(context_embeds,1)
-        print(mean_context_embeds)
-        #print(mean_context_embeds)
+
         
     return mean_context_embeds

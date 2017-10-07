@@ -296,17 +296,24 @@ def define_graph(glove_embeddings_arr):
     tf_version = tf.__version__[:3]
 
     def lstm_cell_with_dropout():
-        cell = tf.contrib.rnn.BasicLSTMCell(hidden_units, reuse = tf.get_variable_scope().reuse)
-        return tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=dropout_keep_prob)
+        cell = tf.contrib.rnn.BasicLSTMCell(hidden_units)
+        return tf.contrib.rnn.DropoutWrapper(cell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
+
+    def lstm_cell_with_dropout_and_skip_connection():
+        cell = tf.contrib.rnn.BasicLSTMCell(hidden_units)
+        cell = tf.contrib.rnn.DropoutWrapper(cell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
+        return tf.contrib.rnn.ResidualWrapper(cell)
+
+
 
     def gru_cell_with_dropout():
         cell = tf.contrib.rnn.GRUCell(hidden_units)
         return tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=dropout_keep_prob)
 
     embedding_shape = 50
-    hidden_units = 256
+    hidden_units = 32
     fully_connected_units = 0
-    num_layers = 3
+    num_layers = 5
     vocab_size = len(glove_embeddings_arr)
 
     input_data = tf.placeholder(tf.int32, [batch_size, 40], name="input_data")
@@ -320,9 +327,10 @@ def define_graph(glove_embeddings_arr):
     
     if tf_version == '1.3' or tf_version == '1.2':
         cell = tf.nn.rnn_cell.MultiRNNCell(
-            [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+            #[lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+            [lstm_cell_with_dropout()]+[lstm_cell_with_dropout_and_skip_connection() for _ in range(num_layers-1)], state_is_tuple=True)
     else:
-        cell = tf.contrib.rnn_cell.MultiRNNCell(
+        cell = tf.contrib.rnn.MultiRNNCell(
             [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
 
     initial_state = cell.zero_state(batch_size, tf.float32)
@@ -335,21 +343,25 @@ def define_graph(glove_embeddings_arr):
 
     if fully_connected_units > 0:
         fully_connected = tf.contrib.layers.fully_connected(
-            last, fully_connected_units)
+            last, fully_connected_units, activation_fn=tf.sigmoid)
         fully_connected = tf.contrib.layers.dropout(
             fully_connected, dropout_keep_prob)
     else:
         fully_connected = last
 
-    #logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=None)
-    logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=tf.sigmoid)
-
+    logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=None)
+    #logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=tf.sigmoid)
+    preds = tf.nn.softmax(logits)
 
     loss = tf.losses.softmax_cross_entropy(labels, logits)
+    #loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
 
-    optimizer = tf.train.RMSPropOptimizer(0.001).minimize(loss)
+    #optimizer = tf.train.RMSPropOptimizer(0.001).minimize(loss)
+    #optimizer = tf.train.AdagradOptimizer(0.001).minimize(loss)
 
-    preds = tf.nn.softmax(logits)
+    optimizer = tf.train.AdamOptimizer().minimize(loss)
+
+    
 
     if tf_version == '1.3' or tf_version == '1.2':
         correct_preds = tf.equal(tf.argmax(preds, 1, output_type=tf.int32), tf.argmax(
