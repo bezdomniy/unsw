@@ -313,7 +313,7 @@ def define_graph(glove_embeddings_arr):
     embedding_shape = 50
     hidden_units = 32
     fully_connected_units = 0
-    num_layers = 5
+    num_layers = 6
     vocab_size = len(glove_embeddings_arr)
 
     input_data = tf.placeholder(tf.int32, [batch_size, 40], name="input_data")
@@ -359,8 +359,12 @@ def define_graph(glove_embeddings_arr):
     #optimizer = tf.train.RMSPropOptimizer(0.001).minimize(loss)
     #optimizer = tf.train.AdagradOptimizer(0.001).minimize(loss)
 
-    optimizer = tf.train.AdamOptimizer().minimize(loss)
+    #optimizer = tf.train.AdamOptimizer().minimize(loss)
 
+    optimizer = tf.train.AdamOptimizer()
+    gradients, variables = zip(*optimizer.compute_gradients(loss))
+    gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
+    optimizer = optimizer.apply_gradients(zip(gradients, variables))
     
 
     if tf_version == '1.3' or tf_version == '1.2':
