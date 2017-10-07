@@ -24,6 +24,7 @@ data2/
 summaries/
 tensorboard/
 checkpoints/
+saved_models/
 
 # External tool builders
 .externalToolBuilders/
