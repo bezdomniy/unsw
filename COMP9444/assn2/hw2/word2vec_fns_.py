@@ -22,31 +22,29 @@ def generate_batch(data, batch_size, skip_window):
     batch = np.ndarray(shape=(batch_size, 2*skip_window), dtype=np.int32)
     labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
 
-    span = 2 * skip_window + 1  
+    span = 2 * skip_window + 1  # [ skip_window target skip_window ]
 
-    # buffer to hold current 5 word window
     buffer = collections.deque(maxlen=span)
     if data_index + span > len(data):
         data_index = 0
     buffer.extend(data[data_index:data_index + span])
     data_index += span
     for i in range(batch_size):
-        target = skip_window 
+        target = skip_window  # target label at the center of the buffer
 
         batch[i] = [buffer[j] for j in range(len(buffer)) if j != target]
         labels[i, 0] = buffer[target]
 		
         if data_index == len(data):
-            # reached the end of the data start again
+            # reached the end of the data, start again
             buffer.extend(data[:span])
             data_index = span
         else:
-            # slide the window forward by one 
+            # slide the window forward one word (n.b. buffer = deque(maxlen=span))
             buffer.append(data[data_index])
             data_index += 1
-    
-    # backtrack 5 words at the end of batch    
-    data_index = (data_index - span) % len(data)
+    # Backtrack a little bit to avoid skipping words in the end of a batch
+    #data_index = (data_index - span) % len(data)
 
 	
     return batch, labels
@@ -64,6 +62,8 @@ def get_mean_context_embeds(embeddings, train_inputs):
     # have a high capacity GPU
     with tf.device('/cpu:0'):
         context_embeds = tf.nn.embedding_lookup(embeddings, train_inputs)
+        
         mean_context_embeds=tf.reduce_mean(context_embeds,1)
-                
+
+        
     return mean_context_embeds

@@ -10,7 +10,6 @@ embeddings, word_index_dict = load_glove_embeddings()
 
 data= load_data(word_index_dict)
 
-'''
 def getValBatch():
     labels = []
     arr = np.zeros([5000, 40])
@@ -25,13 +24,20 @@ def getValBatch():
 
 val_data, val_labels = getValBatch()
 
-saver = tf.train.import_meta_graph('./checkpoints/trained_model.ckpt-90000.meta')
+saver = tf.train.import_meta_graph('./checkpoints/trained_model.ckpt-50000.meta')
 
-input_data, labels, optimizer, accuracy, loss = define_graph(embeddings)
+#input_data, labels, dropout_keep_prob, optimizer, accuracy, loss = define_graph(embeddings)
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     saver.restore(sess, tf.train.latest_checkpoint('./checkpoints/'))
+
+    graph = tf.get_default_graph()
+
+    input_data = graph.get_tensor_by_name("input_data:0")
+    labels = graph.get_tensor_by_name("labels:0")
+
+    accuracy = graph.get_tensor_by_name("accuracy:0")
     print("Model restored.")
     #
 
@@ -39,7 +45,7 @@ with tf.Session() as sess:
 
     for i in range(0,5000,50):  
         accuracy_value = sess.run([accuracy],{input_data: val_data[i:i+50], labels: val_labels[i:i+50]})
+        print("Acc: ",accuracy_value)
         accuracies.append(accuracy_value)
     print("Test Accuracy = {:.3f}".format(np.mean(accuracies)))
     
-'''

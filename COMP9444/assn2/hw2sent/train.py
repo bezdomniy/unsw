@@ -94,8 +94,10 @@ writer = tf.summary.FileWriter(logdir, sess.graph)
 
 accuracies = []
 
+
 for i in range(iterations+1):
     batch_data, batch_labels = getTrainBatch()
+
     val_data, val_labels = getValBatch()
     sess.run(optimizer, {input_data: batch_data, labels: batch_labels, dropout_keep_prob: 0.5})
     if (i % 50 == 0):
@@ -105,7 +107,7 @@ for i in range(iterations+1):
         writer.add_summary(train_summ, i)
 
         accuracy_validation, valid_summ = sess.run([accuracy, test_acc_op],{input_data: val_data, labels: val_labels})
-        accuracies.append(accuracy_validation)
+        #accuracies.append(accuracy_validation)
         writer.add_summary(valid_summ , i)
 
         print("Iteration: ", i)
@@ -121,5 +123,6 @@ for i in range(iterations+1):
                                    global_step=i)
         print("Saved model to %s" % save_path)
 
-print("Test Accuracy = {:.3f}".format(np.mean(accuracies)))
 sess.close()
+
+

@@ -53,7 +53,7 @@ def load_data(glove_dict):
     #                    'the', 'of', 'before', 'unlike', 'and'])
 
   # stopwords from: http://www.lextek.com/manuals/onix/stopwords1.html and https://www.link-assistant.com/seo-stop-words.html
-    stop_words = set([  'about', 'mrs', 'few', 'since', 'big', 'part', 'i', 'under', 'area',
+    stopwords = set([  'about', 'mrs', 'few', 'since', 'big', 'part', 'i', 'under', 'area',
                         'above', 'much', 'find', 'small', 'both', 'parted', 'if', 'until', 'areas',
                         'across', 'must', 'finds', 'smaller', 'but', 'parting', 'up', 'around',
                         'after', 'my', 'first', 'smallest', 'by', 'parts', 'in', 'upon', 'as',
@@ -213,7 +213,28 @@ def load_data(glove_dict):
                         'hed', 'saying', 'youve', 'hell', 'says', 'z',
                         'hello', 'second', 'help', 'secondly'])
 
-
+    minimal_stopwords = set([   'a', 'down', 'their', 'onto',
+                                'an', 'during', 'this', 'onto',
+                                'another', 'except', 'and', 'opposite',
+                                'any', 'following', 'but', 'out',
+                                'certain', 'for', 'or', 'outside',
+                                'each', 'from', 'yet', 'over',
+                                'every', 'in', 'for', 'past',
+                                'her', 'inside', 'nor', 'plus',
+                                'his', 'into', 'so', 'round',
+                                'its', 'like', ' as', 'since',
+                                'its', 'minus', 'aboard', 'since',
+                                'my', 'minus', 'about', 'than',
+                                'no', 'near', 'above', 'through',
+                                'our', 'next', 'across', 'to',
+                                'some', 'of', 'after', 'toward',
+                                'that', 'off', 'against', 'under',
+                                'the', 'on', 'along', 'underneath',
+                                'behind', 'upon', 'around', 'unlike',
+                                'below', 'with', 'at', 'until',
+                                'beneath', 'without', 'before', 'up',
+                                'beside', 'but', 'between', 'by',
+                                'beyond', 'br', '\x97'])
 
     for i in range(len(file_list)):
         with open(file_list[i], "r",  encoding="utf-8") as openf:
@@ -229,7 +250,9 @@ def load_data(glove_dict):
             no_punct = no_punct.split()
 
             # remove stopwords, words not in glove dictionary, and pad the end with 0s
-            no_stop = [w for w in no_punct if w not in stop_words]
+            no_stop = [w for w in no_punct if w not in stopwords]
+
+            #no_stop = [w for w in no_punct if w not in minimal_stopwords]
 
             word_buffer = deque(no_stop)
             for j in range(40):
@@ -295,51 +318,127 @@ def define_graph(glove_embeddings_arr):
     dropout_keep_prob = tf.placeholder_with_default(1.0, shape=())
     tf_version = tf.__version__[:3]
 
+
+
     def lstm_cell_with_dropout():
-        cell = tf.contrib.rnn.BasicLSTMCell(hidden_units)
+        #cell = tf.contrib.rnn.BasicLSTMCell(hidden_units,forget_bias=0.0, state_is_tuple=True)
+        cell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0, state_is_tuple=True)
         return tf.contrib.rnn.DropoutWrapper(cell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
+
+    def lstm_cell_with_dropout_reducing_by_half():
+        cells = []
+        for i in range(0,num_layers):
+            cell = tf.contrib.rnn.BasicLSTMCell(hidden_units/int(pow(2,i)),forget_bias=0.0, state_is_tuple=True)
+            cell = tf.contrib.rnn.DropoutWrapper(cell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
+            cells.append(cell)
+        return cells
 
     def lstm_cell_with_dropout_and_skip_connection():
         cell = tf.contrib.rnn.BasicLSTMCell(hidden_units)
         cell = tf.contrib.rnn.DropoutWrapper(cell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
         return tf.contrib.rnn.ResidualWrapper(cell)
 
+    def lstm_cell_with_layernorm_and_dropout():
+        return  tf.contrib.rnn.LayerNormBasicLSTMCell(hidden_units,forget_bias=0.0,dropout_keep_prob=dropout_keep_prob)
 
 
     def gru_cell_with_dropout():
         cell = tf.contrib.rnn.GRUCell(hidden_units)
         return tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=dropout_keep_prob)
 
+    def bidirectional_lstm_cell_with_dropout():
+        #fwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0,initializer=tf.truncated_normal_initializer, state_is_tuple=True)
+        #bwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0,initializer=tf.truncated_normal_initializer, state_is_tuple=True)
+
+        #fwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0, state_is_tuple=True)
+        #bwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0, state_is_tuple=True)
+
+        fwcell = lstm_cell_with_layernorm_and_dropout()
+        bwcell = lstm_cell_with_layernorm_and_dropout()
+
+        fwcell = tf.contrib.rnn.DropoutWrapper(fwcell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
+        bwcell = tf.contrib.rnn.DropoutWrapper(bwcell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
+
+        return fwcell,bwcell
+
+    def bidirectional_gru_cell_with_dropout():
+        #fwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0,initializer=tf.truncated_normal_initializer, state_is_tuple=True)
+        #bwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0,initializer=tf.truncated_normal_initializer, state_is_tuple=True)
+
+        fwcell = tf.contrib.rnn.GRUCell(hidden_units)
+        bwcell = tf.contrib.rnn.GRUCell(hidden_units)
+
+        fwcell = tf.contrib.rnn.DropoutWrapper(fwcell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
+        bwcell = tf.contrib.rnn.DropoutWrapper(bwcell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
+
+        return fwcell,bwcell
+
+    def length(data):
+        length = tf.reduce_sum(tf.sign(data), 1)
+        length = tf.cast(length, tf.int32)
+        return length
+
+    def last_relevant(output, length):
+        batch_size = tf.shape(output)[0]
+        max_length = tf.shape(output)[1]
+        out_size = int(output.get_shape()[2])
+        index = tf.range(0, batch_size) * max_length + (length - 1)
+        flat = tf.reshape(output, [-1, out_size])
+        relevant = tf.gather(flat, index)
+        return relevant
+
     embedding_shape = 50
-    hidden_units = 32
+    hidden_units = 64
     fully_connected_units = 0
-    num_layers = 6
+    num_layers = 1
     vocab_size = len(glove_embeddings_arr)
 
     input_data = tf.placeholder(tf.int32, [batch_size, 40], name="input_data")
     labels = tf.placeholder(tf.int32, [batch_size, 2], name="labels")
+    input_lengths = length(input_data)
 
     # Keep tensor for faster lookup - not used in final output
     #embeddings = tf.get_variable("embeddings", shape=[400001,embedding_shape], initializer=tf.constant_initializer(np.array(glove_embeddings_arr)), trainable=False)
     #inputs = tf.nn.embedding_lookup(embeddings, input_data)
 
     inputs = tf.nn.embedding_lookup(glove_embeddings_arr, input_data)
-    
+
+    '''
     if tf_version == '1.3' or tf_version == '1.2':
         cell = tf.nn.rnn_cell.MultiRNNCell(
-            #[lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
-            [lstm_cell_with_dropout()]+[lstm_cell_with_dropout_and_skip_connection() for _ in range(num_layers-1)], state_is_tuple=True)
+            [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+            #lstm_cell_with_dropout_reducing_by_half(), state_is_tuple=True)
+            #[lstm_cell_with_dropout()]+[lstm_cell_with_dropout_and_skip_connection() for _ in range(num_layers-1)], state_is_tuple=True)
     else:
         cell = tf.contrib.rnn.MultiRNNCell(
             [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+    
+    '''
+    # trying bidirectional lstm
+    fwcell, bwcell = bidirectional_lstm_cell_with_dropout()  
+    #fwcell, bwcell = bidirectional_gru_cell_with_dropout()      
 
+    initial_state_fw = fwcell.zero_state(batch_size, tf.float32)
+    initial_state_bw = bwcell.zero_state(batch_size, tf.float32)
+
+    outputs, state = tf.nn.bidirectional_dynamic_rnn(
+        fwcell, bwcell, inputs, sequence_length=input_lengths, initial_state_fw=initial_state_fw, initial_state_bw=initial_state_bw, dtype=tf.float32)
+
+    outputs = tf.concat(outputs, 2)
+    
+    
+    '''
+    #first_layer = tf.contrib.layers.fully_connected(inputs, 40, activation_fn=None)
+    
     initial_state = cell.zero_state(batch_size, tf.float32)
-
     outputs, state = tf.nn.dynamic_rnn(
-        cell, inputs, initial_state=initial_state, dtype=tf.float32)
+        cell, cell,sequence_length=input_lengths, initial_state=initial_state, dtype=tf.float32)
+    '''
 
-    outputs = tf.transpose(outputs, [1, 0, 2])
-    last = tf.gather(outputs, int(outputs.get_shape()[0]) - 1)
+    #outputs = tf.transpose(outputs, [1, 0, 2])
+    #last = tf.gather(outputs, int(outputs.get_shape()[0]) - 1)
+
+    last = last_relevant(outputs, input_lengths)
 
     if fully_connected_units > 0:
         fully_connected = tf.contrib.layers.fully_connected(
@@ -349,22 +448,19 @@ def define_graph(glove_embeddings_arr):
     else:
         fully_connected = last
 
-    logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=None)
-    #logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=tf.sigmoid)
+    #logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=None)
+    logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=tf.sigmoid)
     preds = tf.nn.softmax(logits)
 
     loss = tf.losses.softmax_cross_entropy(labels, logits)
     #loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
 
-    #optimizer = tf.train.RMSPropOptimizer(0.001).minimize(loss)
-    #optimizer = tf.train.AdagradOptimizer(0.001).minimize(loss)
-
-    #optimizer = tf.train.AdamOptimizer().minimize(loss)
-
-    optimizer = tf.train.AdamOptimizer()
-    gradients, variables = zip(*optimizer.compute_gradients(loss))
+    #_optimizer = tf.train.RMSPropOptimizer(0.001)
+    #_optimizer = tf.train.AdagradOptimizer(0.001)
+    _optimizer = tf.train.AdamOptimizer()
+    gradients, variables = zip(*_optimizer.compute_gradients(loss))
     gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
-    optimizer = optimizer.apply_gradients(zip(gradients, variables))
+    optimizer = _optimizer.apply_gradients(zip(gradients, variables))
     
 
     if tf_version == '1.3' or tf_version == '1.2':
@@ -373,6 +469,7 @@ def define_graph(glove_embeddings_arr):
     else:
         correct_preds = tf.equal(tf.round(tf.argmax(preds, 1)), tf.round(tf.argmax(
             labels, 1)))
-    accuracy = tf.reduce_mean(tf.cast(correct_preds, tf.float32))
+
+    accuracy = tf.reduce_mean(tf.cast(correct_preds, tf.float32),name="accuracy")
 
     return input_data, labels, dropout_keep_prob, optimizer, accuracy, loss
