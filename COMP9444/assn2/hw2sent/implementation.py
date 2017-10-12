@@ -10,7 +10,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 batch_size = 50
 
 
-def load_data(glove_dict):
+def load_data(glove_dict,test=False):
     """
     Take reviews from text files, vectorize them, and load them into a
     numpy array. Any preprocessing of the reviews should occur here. The first
@@ -27,7 +27,10 @@ def load_data(glove_dict):
     print("READING DATA")
     data = np.zeros((25000, 40), dtype=np.int)
 
-    dir = os.path.dirname(__file__)
+    if not test:
+        dir = os.path.dirname(__file__)
+    else:
+        dir = os.path.join(os.path.dirname(__file__),'test/')
     file_list = glob.glob(os.path.join(dir,
                                        'data2/pos/*'))
     file_list.extend(glob.glob(os.path.join(dir,
@@ -347,9 +350,6 @@ def define_graph(glove_embeddings_arr):
         return tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=dropout_keep_prob)
 
     def bidirectional_lstm_cell_with_dropout():
-        #fwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0,initializer=tf.truncated_normal_initializer, state_is_tuple=True)
-        #bwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0,initializer=tf.truncated_normal_initializer, state_is_tuple=True)
-
         #fwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0, state_is_tuple=True)
         #bwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0, state_is_tuple=True)
 
@@ -388,8 +388,8 @@ def define_graph(glove_embeddings_arr):
         return relevant
 
     embedding_shape = 50
-    hidden_units = 64
-    fully_connected_units = 0
+    hidden_units = 32
+    fully_connected_units = 32
     num_layers = 1
     vocab_size = len(glove_embeddings_arr)
 
@@ -406,7 +406,8 @@ def define_graph(glove_embeddings_arr):
     '''
     if tf_version == '1.3' or tf_version == '1.2':
         cell = tf.nn.rnn_cell.MultiRNNCell(
-            [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+            #[lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+            [lstm_cell_with_layernorm_and_dropout() for _ in range(num_layers)], state_is_tuple=True)
             #lstm_cell_with_dropout_reducing_by_half(), state_is_tuple=True)
             #[lstm_cell_with_dropout()]+[lstm_cell_with_dropout_and_skip_connection() for _ in range(num_layers-1)], state_is_tuple=True)
     else:
@@ -432,7 +433,7 @@ def define_graph(glove_embeddings_arr):
     
     initial_state = cell.zero_state(batch_size, tf.float32)
     outputs, state = tf.nn.dynamic_rnn(
-        cell, cell,sequence_length=input_lengths, initial_state=initial_state, dtype=tf.float32)
+        cell, inputs,sequence_length=input_lengths, initial_state=initial_state, dtype=tf.float32)
     '''
 
     #outputs = tf.transpose(outputs, [1, 0, 2])
@@ -440,6 +441,7 @@ def define_graph(glove_embeddings_arr):
 
     last = last_relevant(outputs, input_lengths)
 
+    # Option of a fully connected layer
     if fully_connected_units > 0:
         fully_connected = tf.contrib.layers.fully_connected(
             last, fully_connected_units, activation_fn=tf.sigmoid)
@@ -448,15 +450,11 @@ def define_graph(glove_embeddings_arr):
     else:
         fully_connected = last
 
-    #logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=None)
-    logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=tf.sigmoid)
+    logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=None)
     preds = tf.nn.softmax(logits)
-
     loss = tf.losses.softmax_cross_entropy(labels, logits)
-    #loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
 
-    #_optimizer = tf.train.RMSPropOptimizer(0.001)
-    #_optimizer = tf.train.AdagradOptimizer(0.001)
+    # Do gradient clipping over all variables
     _optimizer = tf.train.AdamOptimizer()
     gradients, variables = zip(*_optimizer.compute_gradients(loss))
     gradients, _ = tf.clip_by_global_norm(gradients, 5.0)

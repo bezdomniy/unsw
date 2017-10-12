@@ -26,10 +26,10 @@ def getTrainBatch():
     arr = np.zeros([batch_size, seq_length])
     for i in range(batch_size):
         if (i % 2 == 0):
-            num = randint(0, 9999)
+            num = randint(0, 12499)
             labels.append([1, 0])
         else:
-            num = randint(12500, 22499)
+            num = randint(12500, 24999)
             labels.append([0, 1])
         arr[i] = training_data[num]
     return arr, labels
@@ -39,12 +39,12 @@ def getValBatch():
     arr = np.zeros([batch_size, seq_length])
     for i in range(batch_size):
         if (i % 2 == 0):
-            num = randint(10000, 12499)
+            num = randint(0, 12499)
             labels.append([1, 0])
         else:
-            num = randint(22500, 24999)
+            num = randint(12500, 24999)
             labels.append([0, 1])
-        arr[i] = training_data[num]
+        arr[i] = test_data[num]
     return arr, labels
 
 
@@ -53,6 +53,7 @@ glove_array, glove_dict = imp.load_glove_embeddings()
 print("Loaded glove")
 
 training_data = imp.load_data(glove_dict)
+test_data = imp.load_data(glove_dict,test=True)
 print("Loaded data")
 
 '''
