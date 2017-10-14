@@ -321,10 +321,25 @@ def define_graph(glove_embeddings_arr):
     dropout_keep_prob = tf.placeholder_with_default(1.0, shape=())
     tf_version = tf.__version__[:3]
 
+    embedding_shape = 50
+    bidirectional = True
+    hidden_units = 32
+    fully_connected_units = 32    # 0 for no fully connected layer
+    num_layers = 1    # only works with non-bidirectional LSTM
+    vocab_size = len(glove_embeddings_arr)
+
+    input_data = tf.placeholder(tf.int32, [batch_size, 40], name="input_data")
+    labels = tf.placeholder(tf.int32, [batch_size, 2], name="labels")
+    input_lengths = length(input_data)
+
+    # Keep tensor for faster lookup - not used in final output
+    #embeddings = tf.get_variable("embeddings", shape=[400001,embedding_shape], initializer=tf.constant_initializer(np.array(glove_embeddings_arr)), trainable=False)
+    #inputs = tf.nn.embedding_lookup(embeddings, input_data)
+
+    inputs = tf.nn.embedding_lookup(glove_embeddings_arr, input_data)
 
 
     def lstm_cell_with_dropout():
-        #cell = tf.contrib.rnn.BasicLSTMCell(hidden_units,forget_bias=0.0, state_is_tuple=True)
         cell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0, state_is_tuple=True)
         return tf.contrib.rnn.DropoutWrapper(cell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
 
@@ -378,68 +393,43 @@ def define_graph(glove_embeddings_arr):
         length = tf.cast(length, tf.int32)
         return length
 
-    def last_relevant(output, length):
-        batch_size = tf.shape(output)[0]
-        max_length = tf.shape(output)[1]
-        out_size = int(output.get_shape()[2])
-        index = tf.range(0, batch_size) * max_length + (length - 1)
-        flat = tf.reshape(output, [-1, out_size])
-        relevant = tf.gather(flat, index)
-        return relevant
+    def last(output, length):
+        index = tf.range(0, batch_size) * 40 + (length - 1)
+        flat = tf.reshape(output, [-1, hidden_units])
+        last = tf.gather(flat, index)
+        return last
 
-    embedding_shape = 50
-    hidden_units = 32
-    fully_connected_units = 32
-    num_layers = 1
-    vocab_size = len(glove_embeddings_arr)
 
-    input_data = tf.placeholder(tf.int32, [batch_size, 40], name="input_data")
-    labels = tf.placeholder(tf.int32, [batch_size, 2], name="labels")
-    input_lengths = length(input_data)
 
-    # Keep tensor for faster lookup - not used in final output
-    #embeddings = tf.get_variable("embeddings", shape=[400001,embedding_shape], initializer=tf.constant_initializer(np.array(glove_embeddings_arr)), trainable=False)
-    #inputs = tf.nn.embedding_lookup(embeddings, input_data)
-
-    inputs = tf.nn.embedding_lookup(glove_embeddings_arr, input_data)
-
-    '''
-    if tf_version == '1.3' or tf_version == '1.2':
-        cell = tf.nn.rnn_cell.MultiRNNCell(
-            #[lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
-            [lstm_cell_with_layernorm_and_dropout() for _ in range(num_layers)], state_is_tuple=True)
-            #lstm_cell_with_dropout_reducing_by_half(), state_is_tuple=True)
-            #[lstm_cell_with_dropout()]+[lstm_cell_with_dropout_and_skip_connection() for _ in range(num_layers-1)], state_is_tuple=True)
+    if not bidirectional:
+        if tf_version == '1.3' or tf_version == '1.2':
+            cell = tf.nn.rnn_cell.MultiRNNCell(
+                #[lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+                [lstm_cell_with_layernorm_and_dropout() for _ in range(num_layers)], state_is_tuple=True)
+                #lstm_cell_with_dropout_reducing_by_half(), state_is_tuple=True)
+                #[lstm_cell_with_dropout()]+[lstm_cell_with_dropout_and_skip_connection() for _ in range(num_layers-1)], state_is_tuple=True)
+        else:
+            cell = tf.contrib.rnn.MultiRNNCell(
+                [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+        
+        initial_state = cell.zero_state(batch_size, tf.float32)
+        outputs, state = tf.nn.dynamic_rnn(
+            cell, inputs,sequence_length=input_lengths, initial_state=initial_state, dtype=tf.float32)
     else:
-        cell = tf.contrib.rnn.MultiRNNCell(
-            [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
-    
-    '''
-    # trying bidirectional lstm
-    fwcell, bwcell = bidirectional_lstm_cell_with_dropout()  
-    #fwcell, bwcell = bidirectional_gru_cell_with_dropout()      
+        # trying bidirectional lstm
+        fwcell, bwcell = bidirectional_lstm_cell_with_dropout()  
+        #fwcell, bwcell = bidirectional_gru_cell_with_dropout()      
 
-    initial_state_fw = fwcell.zero_state(batch_size, tf.float32)
-    initial_state_bw = bwcell.zero_state(batch_size, tf.float32)
+        initial_state_fw = fwcell.zero_state(batch_size, tf.float32)
+        initial_state_bw = bwcell.zero_state(batch_size, tf.float32)
 
-    outputs, state = tf.nn.bidirectional_dynamic_rnn(
-        fwcell, bwcell, inputs, sequence_length=input_lengths, initial_state_fw=initial_state_fw, initial_state_bw=initial_state_bw, dtype=tf.float32)
+        outputs, state = tf.nn.bidirectional_dynamic_rnn(
+            fwcell, bwcell, inputs, sequence_length=input_lengths, initial_state_fw=initial_state_fw, initial_state_bw=initial_state_bw, dtype=tf.float32)
 
-    outputs = tf.concat(outputs, 2)
-    
-    
-    '''
-    #first_layer = tf.contrib.layers.fully_connected(inputs, 40, activation_fn=None)
-    
-    initial_state = cell.zero_state(batch_size, tf.float32)
-    outputs, state = tf.nn.dynamic_rnn(
-        cell, inputs,sequence_length=input_lengths, initial_state=initial_state, dtype=tf.float32)
-    '''
+        outputs = tf.concat(outputs, 2)
 
-    #outputs = tf.transpose(outputs, [1, 0, 2])
-    #last = tf.gather(outputs, int(outputs.get_shape()[0]) - 1)
-
-    last = last_relevant(outputs, input_lengths)
+    # Get the last non-0 output from RNN
+    last_output = last(outputs, input_lengths)
 
     # Option of a fully connected layer
     if fully_connected_units > 0:
