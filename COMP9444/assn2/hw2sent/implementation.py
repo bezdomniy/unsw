@@ -37,24 +37,6 @@ def load_data(glove_dict,test=False):
                                             'data2/neg/*')))
     print("Parsing %s files" % len(file_list))
 
-    #stop_words = set([  'a', 'but', 'but', 'onto', 'beside',
-    #                    'an', 'by', 'or', 'opposite', 'between',
-    #                    'another', 'down', 'yet', 'out', 'beyond',
-    #                    'any', 'during', 'for', 'outside', 'with',
-    #                    'certain', 'except', 'nor', 'over', 'without',
-    #                    'each', 'following', 'so', 'past', 'until',
-    #                    'every', 'for', 'as', 'plus', 'up',
-    #                    'her', 'from', 'aboard', 'round', 'upon',
-    #                    'his', 'in', 'about', 'since', 'behind',
-    #                    'its', 'inside', 'above', 'since', 'below',
-    #                    'its', 'into', 'across', 'than', 'beneath',
-    #                    'my', 'like', 'after', 'through', 'off',
-    #                    'no', 'minus', 'against', 'to', 'on',
-    #                    'our', 'minus', 'along', 'toward', 'onto',
-    #                    'some', 'near', 'around', 'under', 'their',
-    #                    'that', 'next', 'at', 'underneath', 'this',
-    #                    'the', 'of', 'before', 'unlike', 'and'])
-
   # stopwords from: http://www.lextek.com/manuals/onix/stopwords1.html and https://www.link-assistant.com/seo-stop-words.html
     stopwords = set([  'about', 'mrs', 'few', 'since', 'big', 'part', 'i', 'under', 'area',
                         'above', 'much', 'find', 'small', 'both', 'parted', 'if', 'until', 'areas',
@@ -254,7 +236,6 @@ def load_data(glove_dict,test=False):
 
             # remove stopwords, words not in glove dictionary, and pad the end with 0s
             no_stop = [w for w in no_punct if w not in stopwords]
-
             #no_stop = [w for w in no_punct if w not in minimal_stopwords]
 
             word_buffer = deque(no_stop)
@@ -328,6 +309,21 @@ def define_graph(glove_embeddings_arr):
     num_layers = 1    # only works with non-bidirectional LSTM
     vocab_size = len(glove_embeddings_arr)
 
+    # Length vector for 0 padded tensor
+    def length(data):
+        length = tf.reduce_sum(tf.sign(data), 1)
+        length = tf.cast(length, tf.int32)
+        return length
+
+    # Return non-0 output tensor from RNN outputs
+    def last(output, length):
+        layer_size = int(output.get_shape()[2])
+        index = tf.range(0, batch_size) * 40 + (length - 1)
+        flat = tf.reshape(output, [-1, layer_size])
+        last = tf.gather(flat, index)
+        return last
+
+
     input_data = tf.placeholder(tf.int32, [batch_size, 40], name="input_data")
     labels = tf.placeholder(tf.int32, [batch_size, 2], name="labels")
     input_lengths = length(input_data)
@@ -337,7 +333,6 @@ def define_graph(glove_embeddings_arr):
     #inputs = tf.nn.embedding_lookup(embeddings, input_data)
 
     inputs = tf.nn.embedding_lookup(glove_embeddings_arr, input_data)
-
 
     def lstm_cell_with_dropout():
         cell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0, state_is_tuple=True)
@@ -377,9 +372,6 @@ def define_graph(glove_embeddings_arr):
         return fwcell,bwcell
 
     def bidirectional_gru_cell_with_dropout():
-        #fwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0,initializer=tf.truncated_normal_initializer, state_is_tuple=True)
-        #bwcell = tf.contrib.rnn.LSTMCell(hidden_units,forget_bias=0.0,initializer=tf.truncated_normal_initializer, state_is_tuple=True)
-
         fwcell = tf.contrib.rnn.GRUCell(hidden_units)
         bwcell = tf.contrib.rnn.GRUCell(hidden_units)
 
@@ -387,18 +379,6 @@ def define_graph(glove_embeddings_arr):
         bwcell = tf.contrib.rnn.DropoutWrapper(bwcell, variational_recurrent=True, dtype=tf.float32 , output_keep_prob=dropout_keep_prob)
 
         return fwcell,bwcell
-
-    def length(data):
-        length = tf.reduce_sum(tf.sign(data), 1)
-        length = tf.cast(length, tf.int32)
-        return length
-
-    def last(output, length):
-        index = tf.range(0, batch_size) * 40 + (length - 1)
-        flat = tf.reshape(output, [-1, hidden_units])
-        last = tf.gather(flat, index)
-        return last
-
 
 
     if not bidirectional:
@@ -410,15 +390,16 @@ def define_graph(glove_embeddings_arr):
                 #[lstm_cell_with_dropout()]+[lstm_cell_with_dropout_and_skip_connection() for _ in range(num_layers-1)], state_is_tuple=True)
         else:
             cell = tf.contrib.rnn.MultiRNNCell(
-                [lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+                #[lstm_cell_with_dropout() for _ in range(num_layers)], state_is_tuple=True)
+                [lstm_cell_with_layernorm_and_dropout() for _ in range(num_layers)], state_is_tuple=True)
         
         initial_state = cell.zero_state(batch_size, tf.float32)
         outputs, state = tf.nn.dynamic_rnn(
             cell, inputs,sequence_length=input_lengths, initial_state=initial_state, dtype=tf.float32)
     else:
         # trying bidirectional lstm
-        fwcell, bwcell = bidirectional_lstm_cell_with_dropout()  
-        #fwcell, bwcell = bidirectional_gru_cell_with_dropout()      
+        #fwcell, bwcell = bidirectional_lstm_cell_with_dropout()  
+        fwcell, bwcell = bidirectional_gru_cell_with_dropout()      
 
         initial_state_fw = fwcell.zero_state(batch_size, tf.float32)
         initial_state_bw = bwcell.zero_state(batch_size, tf.float32)
@@ -434,15 +415,15 @@ def define_graph(glove_embeddings_arr):
     # Option of a fully connected layer
     if fully_connected_units > 0:
         fully_connected = tf.contrib.layers.fully_connected(
-            last, fully_connected_units, activation_fn=tf.sigmoid)
+            last_output, fully_connected_units, activation_fn=tf.sigmoid)
         fully_connected = tf.contrib.layers.dropout(
             fully_connected, dropout_keep_prob)
     else:
-        fully_connected = last
+        fully_connected = last_output
 
     logits = tf.contrib.layers.fully_connected(fully_connected, 2, activation_fn=None)
     preds = tf.nn.softmax(logits)
-    loss = tf.losses.softmax_cross_entropy(labels, logits)
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels),name="loss")
 
     # Do gradient clipping over all variables
     _optimizer = tf.train.AdamOptimizer()
@@ -450,13 +431,7 @@ def define_graph(glove_embeddings_arr):
     gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
     optimizer = _optimizer.apply_gradients(zip(gradients, variables))
     
-
-    if tf_version == '1.3' or tf_version == '1.2':
-        correct_preds = tf.equal(tf.argmax(preds, 1, output_type=tf.int32), tf.argmax(
-            labels, 1, output_type=tf.int32))
-    else:
-        correct_preds = tf.equal(tf.round(tf.argmax(preds, 1)), tf.round(tf.argmax(
-            labels, 1)))
+    correct_preds = tf.equal(tf.round(tf.argmax(preds, 1)), tf.round(tf.argmax(labels, 1)))
 
     accuracy = tf.reduce_mean(tf.cast(correct_preds, tf.float32),name="accuracy")
 

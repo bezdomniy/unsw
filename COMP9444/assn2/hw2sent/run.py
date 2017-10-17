@@ -25,13 +25,15 @@ def getValBatch():
 
 val_data, val_labels = getValBatch()
 
-saver = tf.train.import_meta_graph('./checkpoints/trained_model.ckpt-100000.meta')
+saver = tf.train.import_meta_graph('./checkpoints/trained_model.ckpt-50000.meta')
 
 #input_data, labels, dropout_keep_prob, optimizer, accuracy, loss = define_graph(embeddings)
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    saver.restore(sess, tf.train.latest_checkpoint('./checkpoints/'))
+
+    #saver.restore(sess, tf.train.latest_checkpoint('./checkpoints/'))
+    saver.restore(sess, './checkpoints/trained_model.ckpt-50000')
 
     graph = tf.get_default_graph()
 

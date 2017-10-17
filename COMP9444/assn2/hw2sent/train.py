@@ -56,24 +56,6 @@ training_data = imp.load_data(glove_dict)
 test_data = imp.load_data(glove_dict,test=True)
 print("Loaded data")
 
-'''
-pos = training_data[:12500]
-print(len(pos))
-neg = training_data[12500:]
-print(len(neg))
-
-shuffle(pos)
-shuffle(neg)
-
-print(len(pos))
-print(len(neg))
-
-training_data = pos + neg
-
-print(len(training_data))
-
-print("Shuffled data"," ",len(pos)," ",len(neg))'''
-
 input_data, labels, dropout_keep_prob, optimizer, accuracy, loss = \
     imp.define_graph(glove_array)
 
@@ -94,7 +76,6 @@ logdir = "tensorboard/" + datetime.datetime.now().strftime(
 writer = tf.summary.FileWriter(logdir, sess.graph)
 
 accuracies = []
-
 
 for i in range(iterations+1):
     batch_data, batch_labels = getTrainBatch()
