@@ -4,6 +4,8 @@ import tensorflow as tf
 import numpy as np
 import random
 import datetime
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 """
 Hyper Parameters
@@ -16,7 +18,7 @@ REPLAY_SIZE = 10000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
 TEST_FREQUENCY = 10  # How many episodes to run before visualizing test accuracy
 SAVE_FREQUENCY = 1000  # How many episodes to run before saving model (unused)
-NUM_EPISODES = 100  # Episode limitation
+NUM_EPISODES = 200  # Episode limitation
 EP_MAX_STEPS = 200  # Step limitation in an episode
 # The number of test iters (with epsilon set to 0) to run every TEST_FREQUENCY episodes
 NUM_TEST_EPS = 4
@@ -72,15 +74,20 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # TO IMPLEMENT: Q network, whose input is state_in, and has action_dim outputs
     # which are the network's esitmation of the Q values for those actions and the
     # input state. The final layer should be assigned to the variable q_values
-    ...
-    q_values = ...
+    #...
+
+    layer1 = tf.layers.dense(state_in,hidden_nodes,activation=None,
+                            kernel_initializer=tf.random_normal_initializer(0., 0.1))
+    q_values = tf.layers.dense(layer1,action_dim,activation=None,
+                                kernel_initializer=tf.random_normal_initializer(0., 0.1))
 
     q_selected_action = \
         tf.reduce_sum(tf.multiply(q_values, action_in), reduction_indices=1)
 
     # TO IMPLEMENT: loss function
     # should only be one line, if target_in is implemented correctly
-    loss = ...
+    loss = tf.reduce_mean(tf.square(target_in - q_selected_action,name="loss"))
+
     optimise_step = tf.train.AdamOptimizer().minimize(loss)
 
     train_loss_summary_op = tf.summary.scalar("TrainingLoss", loss)
@@ -126,11 +133,14 @@ def update_replay_buffer(replay_buffer, state, action, reward, next_state, done,
     Hint: the minibatch passed to do_train_step is one entry (randomly sampled)
     from the replay_buffer
     """
+    #print(action)
     # TO IMPLEMENT: append to the replay_buffer
     # ensure the action is encoded one hot
-    ...
+    #one_hot_action = tf.one_hot(action,action_dim,on_value=1,off_value=0)
+    one_hot_action = np.int32(np.eye(2)[action])
+    #print(state)
     # append to buffer
-    replay_buffer.append(...)
+    replay_buffer.append([state, one_hot_action, reward, next_state, done])
     # Ensure replay_buffer doesn't grow larger than REPLAY_SIZE
     if len(replay_buffer) > REPLAY_SIZE:
         replay_buffer.pop(0)
@@ -180,13 +190,18 @@ def get_train_batch(q_values, state_in, minibatch):
     Q_value_batch = q_values.eval(feed_dict={
         state_in: next_state_batch
     })
+    print(Q_value_batch)
     for i in range(0, BATCH_SIZE):
         sample_is_done = minibatch[i][4]
         if sample_is_done:
             target_batch.append(reward_batch[i])
         else:
             # TO IMPLEMENT: set the target_val to the correct Q value update
-            target_val = ...
+            
+            maxQ = np.max(Q_value_batch)
+            #print(reward_batch)
+            target_val = reward_batch[i]+ GAMMA*maxQ
+            #print(target_val)
             target_batch.append(target_val)
     return target_batch, state_batch, action_batch
 
