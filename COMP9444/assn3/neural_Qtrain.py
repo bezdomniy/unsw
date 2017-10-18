@@ -10,19 +10,19 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 """
 Hyper Parameters
 """
-GAMMA = 0.9  # discount factor for target Q
-INITIAL_EPSILON = 0.6  # starting value of epsilon
-FINAL_EPSILON = 0.1  # final value of epsilon
-EPSILON_DECAY_STEPS = 100
+GAMMA = 0.95  # discount factor for target Q
+INITIAL_EPSILON = 0.8  # starting value of epsilon
+FINAL_EPSILON = 0.01  # final value of epsilon
+EPSILON_DECAY_STEPS = 40
 REPLAY_SIZE = 10000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
 TEST_FREQUENCY = 10  # How many episodes to run before visualizing test accuracy
 SAVE_FREQUENCY = 1000  # How many episodes to run before saving model (unused)
-NUM_EPISODES = 200  # Episode limitation
+NUM_EPISODES = 800  # Episode limitation
 EP_MAX_STEPS = 200  # Step limitation in an episode
 # The number of test iters (with epsilon set to 0) to run every TEST_FREQUENCY episodes
 NUM_TEST_EPS = 4
-HIDDEN_NODES = 5
+HIDDEN_NODES = 64
 
 
 def init(env, env_name):
@@ -74,18 +74,20 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # TO IMPLEMENT: Q network, whose input is state_in, and has action_dim outputs
     # which are the network's esitmation of the Q values for those actions and the
     # input state. The final layer should be assigned to the variable q_values
-    #...
-
-    layer1 = tf.layers.dense(state_in,hidden_nodes,activation=None,
-                            kernel_initializer=tf.random_normal_initializer(0., 0.1))
-    q_values = tf.layers.dense(layer1,action_dim,activation=None,
-                                kernel_initializer=tf.random_normal_initializer(0., 0.1))
+    initializer = tf.random_normal_initializer(0., 0.1)
+    layer1 = tf.layers.dense(state_in,hidden_nodes,activation=tf.nn.relu,
+                            kernel_initializer=initializer)
+    layer2 = tf.layers.dense(layer1,hidden_nodes,activation=tf.nn.relu,
+                            kernel_initializer=initializer)
+    q_values = tf.layers.dense(layer2,action_dim,activation=None,
+                                kernel_initializer=initializer)
 
     q_selected_action = \
         tf.reduce_sum(tf.multiply(q_values, action_in), reduction_indices=1)
 
     # TO IMPLEMENT: loss function
     # should only be one line, if target_in is implemented correctly
+
     loss = tf.reduce_mean(tf.square(target_in - q_selected_action,name="loss"))
 
     optimise_step = tf.train.AdamOptimizer().minimize(loss)
@@ -190,7 +192,7 @@ def get_train_batch(q_values, state_in, minibatch):
     Q_value_batch = q_values.eval(feed_dict={
         state_in: next_state_batch
     })
-    print(Q_value_batch)
+    
     for i in range(0, BATCH_SIZE):
         sample_is_done = minibatch[i][4]
         if sample_is_done:
@@ -198,7 +200,10 @@ def get_train_batch(q_values, state_in, minibatch):
         else:
             # TO IMPLEMENT: set the target_val to the correct Q value update
             
-            maxQ = np.max(Q_value_batch)
+            #print(Q_value_batch[i])
+            maxQ = np.max(Q_value_batch[i])
+            #maxQ = tf.reduce_max(Q_value_batch[i])
+            #print(maxQ)
             #print(reward_batch)
             target_val = reward_batch[i]+ GAMMA*maxQ
             #print(target_val)
@@ -257,6 +262,7 @@ def qtrain(env, state_dim, action_dim,
                 do_train_step(replay_buffer, state_in, action_in, target_in,
                               q_values, q_selected_action, loss, optimise_step,
                               train_loss_summary_op, batch_presentations_count)
+                #print(q_selected_action)
                 batch_presentations_count += 1
 
             if done:
