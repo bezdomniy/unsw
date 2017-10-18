@@ -141,12 +141,9 @@ def update_replay_buffer(replay_buffer, state, action, reward, next_state, done,
     Hint: the minibatch passed to do_train_step is one entry (randomly sampled)
     from the replay_buffer
     """
-    #print(action)
     # TO IMPLEMENT: append to the replay_buffer
     # ensure the action is encoded one hot
-    #one_hot_action = tf.one_hot(action,action_dim,on_value=1,off_value=0)
-    one_hot_action = np.int32(np.eye(2)[action])
-    #print(state)
+    one_hot_action = np.int32(np.eye(action_dim)[action])
     # append to buffer
     replay_buffer.append([state, one_hot_action, reward, next_state, done])
     # Ensure replay_buffer doesn't grow larger than REPLAY_SIZE
@@ -205,14 +202,8 @@ def get_train_batch(q_values, state_in, minibatch):
             target_batch.append(reward_batch[i])
         else:
             # TO IMPLEMENT: set the target_val to the correct Q value update
-            
-            #print(Q_value_batch[i])
             maxQ = np.max(Q_value_batch[i])
-            #maxQ = tf.reduce_max(Q_value_batch[i])
-            #print(maxQ)
-            #print(reward_batch)
             target_val = reward_batch[i]+ GAMMA*maxQ
-            #print(target_val)
             target_batch.append(target_val)
     return target_batch, state_batch, action_batch
 
@@ -308,7 +299,7 @@ def setup():
 
 def main():
     env, state_dim, action_dim, network_vars = setup()
-    qtrain(env, state_dim, action_dim, *network_vars, render=False)
+    qtrain(env, state_dim, action_dim, *network_vars, render=True)
 
 
 if __name__ == "__main__":

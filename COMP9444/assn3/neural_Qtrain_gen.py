@@ -17,7 +17,7 @@ FINAL_EPSILON = 0.01  # final value of epsilon
 EPSILON_DECAY_STEPS = 100
 REPLAY_SIZE = 100000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
-TEST_FREQUENCY = 90  # How many episodes to run before visualizing test accuracy
+TEST_FREQUENCY = 500  # How many episodes to run before visualizing test accuracy
 SAVE_FREQUENCY = 1000  # How many episodes to run before saving model (unused)
 NUM_EPISODES = 800  # Episode limitation
 EP_MAX_STEPS = 1000  # Step limitation in an episode
@@ -48,12 +48,24 @@ def init(env, env_name):
     might help in using the same code for discrete and (discretised) continuous
     action spaces
     """
-    global replay_buffer, epsilon
+    global replay_buffer, epsilon, iscontinuous, action_map
     replay_buffer = []
     epsilon = INITIAL_EPSILON
 
+    iscontinuous = not isinstance(env.action_space,gym.spaces.discrete.Discrete)
+
     state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.n
+
+    if iscontinuous:
+        action_map = dict()
+        BIN_FACTOR = 100
+        action_dim = int((env.action_space.high[0] - env.action_space.low[0]) * BIN_FACTOR)
+        values = np.arange(0,action_dim,1/BIN_FACTOR)
+        for i in range(action_dim):
+            action_map[i] = values[i]
+
+    else:
+        action_dim = env.action_space.n
     return state_dim, action_dim
 
 
@@ -85,8 +97,6 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
                             kernel_initializer=initializer)
     q_values = tf.layers.dense(layer2,action_dim,activation=None,
                                 kernel_initializer=initializer)
-
-    #regularizer = tf.nn.l2_loss(weights)
 
     q_selected_action = \
         tf.reduce_sum(tf.multiply(q_values, action_in), reduction_indices=1)
@@ -129,6 +139,9 @@ def get_env_action(action):
     Modify for continous action spaces that you have discretised, see hints in
     `init()`
     """
+    if iscontinuous:
+        action=[action_map[action]]
+
     return action
 
 
@@ -141,12 +154,9 @@ def update_replay_buffer(replay_buffer, state, action, reward, next_state, done,
     Hint: the minibatch passed to do_train_step is one entry (randomly sampled)
     from the replay_buffer
     """
-    #print(action)
     # TO IMPLEMENT: append to the replay_buffer
     # ensure the action is encoded one hot
-    #one_hot_action = tf.one_hot(action,action_dim,on_value=1,off_value=0)
-    one_hot_action = np.int32(np.eye(2)[action])
-    #print(state)
+    one_hot_action = np.int32(np.eye(action_dim)[action])
     # append to buffer
     replay_buffer.append([state, one_hot_action, reward, next_state, done])
     # Ensure replay_buffer doesn't grow larger than REPLAY_SIZE
@@ -205,14 +215,8 @@ def get_train_batch(q_values, state_in, minibatch):
             target_batch.append(reward_batch[i])
         else:
             # TO IMPLEMENT: set the target_val to the correct Q value update
-            
-            #print(Q_value_batch[i])
             maxQ = np.max(Q_value_batch[i])
-            #maxQ = tf.reduce_max(Q_value_batch[i])
-            #print(maxQ)
-            #print(reward_batch)
             target_val = reward_batch[i]+ GAMMA*maxQ
-            #print(target_val)
             target_batch.append(target_val)
     return target_batch, state_batch, action_batch
 
@@ -294,9 +298,9 @@ def qtrain(env, state_dim, action_dim,
 
 
 def setup():
-    default_env_name = 'CartPole-v0'
-    # default_env_name = 'MountainCar-v0'
-    # default_env_name = 'Pendulum-v0'
+    #default_env_name = 'CartPole-v0'
+    #default_env_name = 'MountainCar-v0'
+    default_env_name = 'Pendulum-v0'
     # if env_name provided as cmd line arg, then use that
     env_name = sys.argv[1] if len(sys.argv) > 1 else default_env_name
     env = gym.make(env_name)
