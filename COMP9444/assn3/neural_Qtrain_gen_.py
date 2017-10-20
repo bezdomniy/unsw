@@ -17,13 +17,14 @@ FINAL_EPSILON = 0.01  # final value of epsilon
 EPSILON_DECAY_STEPS = 100
 REPLAY_SIZE = 100000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
-TEST_FREQUENCY = 90  # How many episodes to run before visualizing test accuracy
+TEST_FREQUENCY = 500  # How many episodes to run before visualizing test accuracy
 SAVE_FREQUENCY = 1000  # How many episodes to run before saving model (unused)
 NUM_EPISODES = 800  # Episode limitation
 EP_MAX_STEPS = 1000  # Step limitation in an episode
 # The number of test iters (with epsilon set to 0) to run every TEST_FREQUENCY episodes
 NUM_TEST_EPS = 100
 HIDDEN_NODES = 64
+TARGET_UPDATE_FREQ = 20
 
 AVERAGE_OVER = 100
 latest_100 = deque(maxlen=AVERAGE_OVER)
@@ -48,13 +49,59 @@ def init(env, env_name):
     might help in using the same code for discrete and (discretised) continuous
     action spaces
     """
-    global replay_buffer, epsilon
+    global replay_buffer, epsilon, iscontinuous, action_map
     replay_buffer = []
     epsilon = INITIAL_EPSILON
 
+    iscontinuous = not isinstance(env.action_space,gym.spaces.discrete.Discrete)
+
     state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.n
+
+    if iscontinuous:
+        action_map = dict()
+        BIN_FACTOR = 100
+        action_dim = int((env.action_space.high[0] - env.action_space.low[0]) * BIN_FACTOR)
+        values = np.arange(0,action_dim,1/BIN_FACTOR)
+        for i in range(action_dim):
+            action_map[i] = values[i]
+
+    else:
+        action_dim = env.action_space.n
     return state_dim, action_dim
+
+
+def get_target_network(state_dim, action_dim,train_weights, hidden_nodes=HIDDEN_NODES):
+    state_in = tf.placeholder("float", [None, state_dim])
+    action_in = tf.placeholder("float", [None, action_dim])  # one hot
+    target_in = tf.placeholder("float",
+                               [None])  # q value for the target network
+
+    initializer = tf.random_normal_initializer(0., 0.1)
+    
+    with tf.variable_scope("target_network"):
+        layer1 = tf.layers.dense(state_in,hidden_nodes,activation=tf.nn.relu,
+                                kernel_initializer=initializer)
+        layer2 = tf.layers.dense(layer1,hidden_nodes,activation=tf.nn.relu,
+                                kernel_initializer=initializer)
+        q_values = tf.layers.dense(layer2,action_dim,activation=None,
+                                    kernel_initializer=initializer)
+
+    q_selected_action = \
+        tf.reduce_sum(tf.multiply(q_values, action_in), reduction_indices=1)
+
+    loss = tf.reduce_mean(tf.square(target_in - q_selected_action,name="loss"))
+
+    update_weights_op = copy_vars_op(train_weights)
+
+    return q_values, update_weights_op                           
+
+def copy_vars_op(train_weights):
+    targets = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='target_network')
+    assign_ops = []
+    for i in range(len(targets)):
+        v = train_weights[i].eval()
+        assign_ops.append(targets[i].assign(v))
+    return tf.group(assign_ops)
 
 
 def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
@@ -79,14 +126,13 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # input state. The final layer should be assigned to the variable q_values
     initializer = tf.random_normal_initializer(0., 0.1)
     
-    layer1 = tf.layers.dense(state_in,hidden_nodes,activation=tf.nn.relu,
-                            kernel_initializer=initializer)
-    layer2 = tf.layers.dense(layer1,hidden_nodes,activation=tf.nn.relu,
-                            kernel_initializer=initializer)
-    q_values = tf.layers.dense(layer2,action_dim,activation=None,
+    with tf.variable_scope("q_network"):
+        layer1 = tf.layers.dense(state_in,hidden_nodes,activation=tf.nn.relu,
                                 kernel_initializer=initializer)
-
-    #regularizer = tf.nn.l2_loss(weights)
+        layer2 = tf.layers.dense(layer1,hidden_nodes,activation=tf.nn.relu,
+                                kernel_initializer=initializer)
+        q_values = tf.layers.dense(layer2,action_dim,activation=None,
+                                    kernel_initializer=initializer)
 
     q_selected_action = \
         tf.reduce_sum(tf.multiply(q_values, action_in), reduction_indices=1)
@@ -129,6 +175,9 @@ def get_env_action(action):
     Modify for continous action spaces that you have discretised, see hints in
     `init()`
     """
+    if iscontinuous:
+        action=[action_map[action]]
+
     return action
 
 
@@ -210,7 +259,7 @@ def get_train_batch(q_values, state_in, minibatch):
 
 def qtrain(env, state_dim, action_dim,
            state_in, action_in, target_in, q_values, q_selected_action,
-           loss, optimise_step, train_loss_summary_op,
+           loss, optimise_step, train_loss_summary_op, eval_q_values, update_weights,
            num_episodes=NUM_EPISODES, ep_max_steps=EP_MAX_STEPS,
            test_frequency=TEST_FREQUENCY, num_test_eps=NUM_TEST_EPS,
            final_epsilon=FINAL_EPSILON, epsilon_decay_steps=EPSILON_DECAY_STEPS,
@@ -256,8 +305,11 @@ def qtrain(env, state_dim, action_dim,
 
             # perform a training step if the replay_buffer has a batch worth of samples
             if (len(replay_buffer) > BATCH_SIZE):
+                if episode % TARGET_UPDATE_FREQ == 0:
+                    session.run(update_weights)
+
                 do_train_step(replay_buffer, state_in, action_in, target_in,
-                              q_values, q_selected_action, loss, optimise_step,
+                              eval_q_values, q_selected_action, loss, optimise_step,
                               train_loss_summary_op, batch_presentations_count)
                 #print(q_selected_action)
                 batch_presentations_count += 1
@@ -279,27 +331,31 @@ def qtrain(env, state_dim, action_dim,
             batch_presentations_count, epsilon
         ))
 
-        #if avg_reward >= 195:
-        #    print("COMPLETE")
-        #    break
+        if avg_reward >= 195:
+            print("COMPLETE")
+            break
 
 
 def setup():
-    default_env_name = 'CartPole-v0'
-    # default_env_name = 'MountainCar-v0'
-    # default_env_name = 'Pendulum-v0'
+    #default_env_name = 'CartPole-v0'
+    #default_env_name = 'MountainCar-v0'
+    default_env_name = 'Pendulum-v0'
     # if env_name provided as cmd line arg, then use that
     env_name = sys.argv[1] if len(sys.argv) > 1 else default_env_name
     env = gym.make(env_name)
     state_dim, action_dim = init(env, env_name)
     network_vars = get_network(state_dim, action_dim)
+    train_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_network')
+    eval_q_values, update_weights = get_target_network(state_dim, action_dim,train_weights)
+    #print([v.name for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='target_network')])
+    #print(train_weight_names)
     init_session()
-    return env, state_dim, action_dim, network_vars
+    return env, state_dim, action_dim, network_vars, eval_q_values, update_weights
 
 
 def main():
-    env, state_dim, action_dim, network_vars = setup()
-    qtrain(env, state_dim, action_dim, *network_vars, render=False)
+    env, state_dim, action_dim, network_vars, eval_q_values, update_weights = setup()
+    qtrain(env, state_dim, action_dim, *network_vars,eval_q_values, update_weights, render=False)
 
 
 if __name__ == "__main__":
