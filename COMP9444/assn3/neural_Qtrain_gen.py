@@ -6,9 +6,8 @@ import random
 import datetime
 import os
 from collections import deque
-#import queue as Q
-import heapq
 from itertools import count
+from sum_tree import SumTree
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 """
@@ -32,6 +31,7 @@ TARGET_UPDATE_FREQ = 4 # How often to update target network weights
 AVERAGE_OVER = 100
 latest_100 = deque(maxlen=AVERAGE_OVER)
 tiebreaker = count()
+batch_init = False
 
 def init(env, env_name):
     """
@@ -54,7 +54,8 @@ def init(env, env_name):
     action spaces
     """
     global replay_buffer, epsilon, iscontinuous, action_map, action_dim
-    replay_buffer = []
+    #replay_buffer = []
+    replay_buffer = SumTree(REPLAY_SIZE)
     epsilon = INITIAL_EPSILON
 
     state_dim = env.observation_space.shape[0]
@@ -199,7 +200,7 @@ def update_replay_buffer(replay_buffer, state, action, reward, next_state, done,
     Hint: the minibatch passed to do_train_step is one entry (randomly sampled)
     from the replay_buffer
     """
-
+    global replay_priority_total, ALPHA, E
     # TO IMPLEMENT: append to the replay_buffer
     # ensure the action is encoded one hot
     one_hot_action = np.int32(np.eye(action_dim)[action])
@@ -209,13 +210,21 @@ def update_replay_buffer(replay_buffer, state, action, reward, next_state, done,
 
     # append to buffer
     #print(-Q_loss[0])
+    ALPHA = 0.9
+    E = 0.000001
+    priority = pow(Q_loss[0] + E,ALPHA)
     
-    heapq.heappush(replay_buffer,(-Q_loss[0],next(tiebreaker), [state, one_hot_action, reward, next_state, done]))
-    
+    #replay_buffer.append([priority, [state, one_hot_action, reward, next_state, done]])
+    replay_buffer.add(priority,[state, one_hot_action, reward, next_state, done])
+
     #replay_buffer.append([state, one_hot_action, reward, next_state, done])
     # Ensure replay_buffer doesn't grow larger than REPLAY_SIZE
-    if len(replay_buffer) > REPLAY_SIZE:
-        replay_buffer.pop()
+    #if len(replay_buffer) > REPLAY_SIZE:
+    #    replay_buffer.pop()
+
+    #replay_priority_total = sum(i for i, j in replay_buffer)
+    replay_priority_total = replay_buffer.total()
+    #print(replay_priority_total)
     return None
 
 
@@ -224,10 +233,25 @@ def do_train_step(replay_buffer, state_in, action_in, target_in,
                   train_loss_summary_op, batch_presentations_count):
     #minibatch = random.sample(replay_buffer, BATCH_SIZE)
     #minibatch = [x[-1] for x in random.sample(replay_buffer, BATCH_SIZE)]
+    global replay_priority_total
     minibatch = []
+    to_update = []
     for _ in range(BATCH_SIZE):
-        n= heapq.heappop(replay_buffer)
-        minibatch.append(n[-1])
+        priority_choice = random.uniform(0,replay_priority_total)
+        idx, _ , choice = replay_buffer.get(priority_choice)
+        minibatch.append(choice)
+        to_update.append(idx)
+
+        '''
+        for i in range(len(replay_buffer)):
+            cumulative += replay_buffer[i][0]
+            if cumulative >= priority_choice:
+                to_update.append(i)
+                minibatch.append(replay_buffer[i][-1])
+                #print("i ",i)
+                break
+        '''
+
 
     target_batch, state_batch, action_batch = \
         get_train_batch(q_values,state_in, minibatch)
@@ -238,9 +262,11 @@ def do_train_step(replay_buffer, state_in, action_in, target_in,
         action_in: action_batch
     })
 
-    for i in range(len(minibatch)):
-        heapq.heappush(replay_buffer,
-                        (-new_loss[i],next(tiebreaker), minibatch[i]))
+    for i in range(len(to_update)):
+        priority = pow(new_loss[i] + E,ALPHA)
+        replay_buffer.update(to_update[i],priority)
+
+    replay_priority_total = replay_buffer.total()
 
     writer.add_summary(summary, batch_presentations_count)
 
@@ -301,7 +327,7 @@ def qtrain(env, state_dim, action_dim,
            test_frequency=TEST_FREQUENCY, num_test_eps=NUM_TEST_EPS,
            final_epsilon=FINAL_EPSILON, epsilon_decay_steps=EPSILON_DECAY_STEPS,
            force_test_mode=False, render=True):
-    global epsilon,Q_loss, q_eval_action,update_weights_op, train_weights, state_in_eval, action_in_eval    # Record the number of times we do a training batch, take a step, and
+    global batch_init, epsilon,Q_loss, q_eval_action,update_weights_op, train_weights, state_in_eval, action_in_eval    # Record the number of times we do a training batch, take a step, and
     # the total_reward across all eps
     batch_presentations_count = total_steps = total_reward = 0
 
@@ -376,7 +402,8 @@ def qtrain(env, state_dim, action_dim,
             state = next_state
 
             # perform a training step if the replay_buffer has a batch worth of samples
-            if (len(replay_buffer) > BATCH_SIZE):
+            if (replay_buffer.write > BATCH_SIZE or batch_init):
+                batch_init = True
                 do_train_step(replay_buffer, state_in, action_in, target_in,
                               q_values, q_selected_action, loss, optimise_step,
                               train_loss_summary_op, batch_presentations_count)
@@ -407,8 +434,8 @@ def qtrain(env, state_dim, action_dim,
 
 
 def setup():
-    default_env_name = 'CartPole-v0'
-    #default_env_name = 'MountainCar-v0'
+    #default_env_name = 'CartPole-v0'
+    default_env_name = 'MountainCar-v0'
     #default_env_name = 'Pendulum-v0'
     # if env_name provided as cmd line arg, then use that
     env_name = sys.argv[1] if len(sys.argv) > 1 else default_env_name
@@ -421,7 +448,7 @@ def setup():
 
 def main():
     env, state_dim, action_dim, network_vars = setup()
-    qtrain(env, state_dim, action_dim, *network_vars, render=False)
+    qtrain(env, state_dim, action_dim, *network_vars, render=True)
 
 
 if __name__ == "__main__":
