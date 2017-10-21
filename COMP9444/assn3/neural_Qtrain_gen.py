@@ -6,6 +6,9 @@ import random
 import datetime
 import os
 from collections import deque
+#import queue as Q
+import heapq
+from itertools import count
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 """
@@ -14,7 +17,7 @@ Hyper Parameters
 GAMMA = 0.99  # discount factor for target Q
 INITIAL_EPSILON = 0.6  # starting value of epsilon
 FINAL_EPSILON = 0.01  # final value of epsilon
-EPSILON_DECAY_STEPS = 200
+EPSILON_DECAY_STEPS = 100
 REPLAY_SIZE = 100000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
 TEST_FREQUENCY = 90  # How many episodes to run before visualizing test accuracy
@@ -28,6 +31,7 @@ TARGET_UPDATE_FREQ = 4 # How often to update target network weights
 
 AVERAGE_OVER = 100
 latest_100 = deque(maxlen=AVERAGE_OVER)
+tiebreaker = count()
 
 def init(env, env_name):
     """
@@ -49,12 +53,25 @@ def init(env, env_name):
     might help in using the same code for discrete and (discretised) continuous
     action spaces
     """
-    global replay_buffer, epsilon
+    global replay_buffer, epsilon, iscontinuous, action_map, action_dim
     replay_buffer = []
     epsilon = INITIAL_EPSILON
 
     state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.n
+
+    iscontinuous = not isinstance(env.action_space,gym.spaces.discrete.Discrete)
+
+    if iscontinuous:
+        action_map = dict()
+        BIN_FACTOR = 100
+        action_dim = int((env.action_space.high[0] - env.action_space.low[0]) * BIN_FACTOR +1)
+        values = np.arange(env.action_space.low[0],env.action_space.high[0]+1,1/BIN_FACTOR)
+        for i in range(action_dim):
+            action_map[i] = values[i]
+
+    else:
+        action_dim = env.action_space.n
+
     return state_dim, action_dim
 
 
@@ -94,11 +111,11 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # TO IMPLEMENT: loss function
     # should only be one line, if target_in is implemented correctly
 
-    loss = tf.reduce_mean(tf.square(target_in - q_selected_action,name="loss"))
+    loss = tf.square(target_in - q_selected_action,name="loss")
 
-    optimise_step = tf.train.AdamOptimizer().minimize(loss)
+    optimise_step = tf.train.AdamOptimizer().minimize(tf.reduce_mean(loss))
 
-    train_loss_summary_op = tf.summary.scalar("TrainingLoss", loss)
+    train_loss_summary_op = tf.summary.scalar("TrainingLoss", tf.reduce_mean(loss))
     return state_in, action_in, target_in, q_values, q_selected_action, \
            loss, optimise_step, train_loss_summary_op
 
@@ -168,6 +185,8 @@ def get_env_action(action):
     Modify for continous action spaces that you have discretised, see hints in
     `init()`
     """
+    if iscontinuous:
+        action=[action_map[action]]
     return action
 
 
@@ -180,34 +199,53 @@ def update_replay_buffer(replay_buffer, state, action, reward, next_state, done,
     Hint: the minibatch passed to do_train_step is one entry (randomly sampled)
     from the replay_buffer
     """
+
     # TO IMPLEMENT: append to the replay_buffer
     # ensure the action is encoded one hot
     one_hot_action = np.int32(np.eye(action_dim)[action])
+    
+    ### Try make another heap with backwards indexes and get() from that to remove them
+##################################################################################
+
     # append to buffer
-    replay_buffer.append([state, one_hot_action, reward, next_state, done])
+    #print(-Q_loss[0])
+    
+    heapq.heappush(replay_buffer,(-Q_loss[0],next(tiebreaker), [state, one_hot_action, reward, next_state, done]))
+    
+    #replay_buffer.append([state, one_hot_action, reward, next_state, done])
     # Ensure replay_buffer doesn't grow larger than REPLAY_SIZE
     if len(replay_buffer) > REPLAY_SIZE:
-        replay_buffer.pop(0)
+        replay_buffer.pop()
     return None
 
 
 def do_train_step(replay_buffer, state_in, action_in, target_in,
-                  q_values, q_selected_action,q_eval_action, state_in_eval, action_in_eval,
-                  action_dim, loss, optimise_step,
+                  q_values, q_selected_action, loss, optimise_step,
                   train_loss_summary_op, batch_presentations_count):
-    minibatch = random.sample(replay_buffer, BATCH_SIZE)
-    target_batch, state_batch, action_batch = \
-        get_train_batch(q_values,q_eval_action, state_in, state_in_eval, action_in_eval, action_dim, minibatch)
+    #minibatch = random.sample(replay_buffer, BATCH_SIZE)
+    #minibatch = [x[-1] for x in random.sample(replay_buffer, BATCH_SIZE)]
+    minibatch = []
+    for _ in range(BATCH_SIZE):
+        n= heapq.heappop(replay_buffer)
+        minibatch.append(n[-1])
 
-    summary, _ = session.run([train_loss_summary_op, optimise_step], feed_dict={
+    target_batch, state_batch, action_batch = \
+        get_train_batch(q_values,state_in, minibatch)
+
+    summary, _, new_loss = session.run([train_loss_summary_op,  optimise_step,loss], feed_dict={
         target_in: target_batch,
         state_in: state_batch,
         action_in: action_batch
     })
+
+    for i in range(len(minibatch)):
+        heapq.heappush(replay_buffer,
+                        (-new_loss[i],next(tiebreaker), minibatch[i]))
+
     writer.add_summary(summary, batch_presentations_count)
 
 
-def get_train_batch(q_values,q_eval_action, state_in, state_in_eval, action_in_eval, action_dim, minibatch):
+def get_train_batch(q_values,state_in, minibatch):
     """
     Generate Batch samples for training by sampling the replay buffer"
     Batches values are suggested to be the following;
@@ -237,10 +275,7 @@ def get_train_batch(q_values,q_eval_action, state_in, state_in_eval, action_in_e
     })
 
     Q_action_batch = np.argmax(Q_values_batch,1)
-
     Q_action_batch = [np.eye(action_dim)[x] for x in Q_action_batch]
-
-    #print(Q_action_batch)
 
     Q_eval = q_eval_action.eval(feed_dict={
         state_in_eval: next_state_batch,
@@ -261,16 +296,16 @@ def get_train_batch(q_values,q_eval_action, state_in, state_in_eval, action_in_e
 
 def qtrain(env, state_dim, action_dim,
            state_in, action_in, target_in, q_values, q_selected_action,
-           loss, optimise_step, train_loss_summary_op,q_eval_action,update_weights_op,
-           train_weights, state_in_eval, action_in_eval,
+           loss, optimise_step, train_loss_summary_op,
            num_episodes=NUM_EPISODES, ep_max_steps=EP_MAX_STEPS,
            test_frequency=TEST_FREQUENCY, num_test_eps=NUM_TEST_EPS,
            final_epsilon=FINAL_EPSILON, epsilon_decay_steps=EPSILON_DECAY_STEPS,
            force_test_mode=False, render=True):
-    global epsilon
-    # Record the number of times we do a training batch, take a step, and
+    global epsilon,Q_loss, q_eval_action,update_weights_op, train_weights, state_in_eval, action_in_eval    # Record the number of times we do a training batch, take a step, and
     # the total_reward across all eps
     batch_presentations_count = total_steps = total_reward = 0
+
+    state_in_eval, action_in_eval, q_eval_action, update_weights_op, train_weights = get_target_network(state_dim, action_dim)
     q_network_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_network')[:6]
 
     for episode in range(num_episodes):
@@ -292,7 +327,7 @@ def qtrain(env, state_dim, action_dim,
             #print("============== COPYING WEIGHTS ===============")
             #print(update_weights_op)
             weight_upates = [x.eval() for x in q_network_vars]
-            i=0
+            #i=0
 
             
 
@@ -303,7 +338,7 @@ def qtrain(env, state_dim, action_dim,
                     feed_dict={train_weights[i]:weight_upates[i]})
                 #if i == 0:
                 #    print("running: ",result)
-                i+=1
+                #i+=1
 
         ep_reward = 0
         for step in range(ep_max_steps):
@@ -315,11 +350,27 @@ def qtrain(env, state_dim, action_dim,
             env_action = get_env_action(action)
             next_state, reward, done, _ = env.step(env_action)
             ep_reward += reward
+            #print("A: ",action)
+            #print("E: ",env_action)
 
             # display the updated environment
             if render: env.render()  # comment this line to possibly reduce training time
 
+            one_hot_action = np.int32(np.eye(action_dim)[action])
             # add the s,a,r,s' samples to the replay_buffer
+            target = q_eval_action.eval(feed_dict={
+                state_in_eval: [next_state],
+                action_in_eval: [one_hot_action]
+            })
+
+            target = reward+ GAMMA*target
+
+            Q_loss = loss.eval(feed_dict={
+                state_in: [state],
+                action_in: [one_hot_action],
+                target_in: target
+                })
+
             update_replay_buffer(replay_buffer, state, action, reward,
                                  next_state, done, action_dim)
             state = next_state
@@ -327,8 +378,7 @@ def qtrain(env, state_dim, action_dim,
             # perform a training step if the replay_buffer has a batch worth of samples
             if (len(replay_buffer) > BATCH_SIZE):
                 do_train_step(replay_buffer, state_in, action_in, target_in,
-                              q_values, q_selected_action,q_eval_action, state_in_eval, action_in_eval,
-                              action_dim,loss, optimise_step,
+                              q_values, q_selected_action, loss, optimise_step,
                               train_loss_summary_op, batch_presentations_count)
                 #print(q_selected_action)
                 batch_presentations_count += 1
@@ -343,6 +393,7 @@ def qtrain(env, state_dim, action_dim,
         avg_reward = np.mean(latest_100)
 
         test_or_train = "test" if test_mode else "train"
+        #print(replay_buffer.qsize())
         print("end {0} episode {1}, ep reward: {2}, ave reward: {3}, \
             Batch presentations: {4}, epsilon: {5}".format(
             #test_or_train, episode, ep_reward, total_reward / (episode + 1),
@@ -356,8 +407,8 @@ def qtrain(env, state_dim, action_dim,
 
 
 def setup():
-    #default_env_name = 'CartPole-v0'
-    default_env_name = 'MountainCar-v0'
+    default_env_name = 'CartPole-v0'
+    #default_env_name = 'MountainCar-v0'
     #default_env_name = 'Pendulum-v0'
     # if env_name provided as cmd line arg, then use that
     env_name = sys.argv[1] if len(sys.argv) > 1 else default_env_name
@@ -365,14 +416,12 @@ def setup():
     state_dim, action_dim = init(env, env_name)
     network_vars = get_network(state_dim, action_dim)
     init_session()
-   
-    state_in_eval, action_in_eval, q_eval_action, update_weights_op, train_weights = get_target_network(state_dim, action_dim)
-    return env, state_dim, action_dim, network_vars, q_eval_action, update_weights_op, train_weights, state_in_eval, action_in_eval
+    return env, state_dim, action_dim, network_vars
 
 
 def main():
-    env, state_dim, action_dim, network_vars,q_eval_action, update_weights_op, train_weights, state_in_eval, action_in_eval = setup()
-    qtrain(env, state_dim, action_dim, *network_vars,q_eval_action, update_weights_op, train_weights, state_in_eval, action_in_eval, render=False)
+    env, state_dim, action_dim, network_vars = setup()
+    qtrain(env, state_dim, action_dim, *network_vars, render=False)
 
 
 if __name__ == "__main__":
