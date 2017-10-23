@@ -12,18 +12,18 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 Hyper Parameters
 """
 GAMMA = 0.99  # discount factor for target Q
-INITIAL_EPSILON = 0.6  # starting value of epsilon
+INITIAL_EPSILON = 0.3  # starting value of epsilon
 FINAL_EPSILON = 0.01  # final value of epsilon
 EPSILON_DECAY_STEPS = 100
 REPLAY_SIZE = 100000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
-TEST_FREQUENCY = 90  # How many episodes to run before visualizing test accuracy
+TEST_FREQUENCY = 100  # How many episodes to run before visualizing test accuracy
 SAVE_FREQUENCY = 1000  # How many episodes to run before saving model (unused)
 NUM_EPISODES = 800  # Episode limitation
 EP_MAX_STEPS = 1000  # Step limitation in an episode
 # The number of test iters (with epsilon set to 0) to run every TEST_FREQUENCY episodes
 NUM_TEST_EPS = 100
-HIDDEN_NODES = 64
+HIDDEN_NODES = 512
 
 AVERAGE_OVER = 100
 latest_100 = deque(maxlen=AVERAGE_OVER)
@@ -204,7 +204,9 @@ def get_train_batch(q_values, state_in, minibatch):
             # TO IMPLEMENT: set the target_val to the correct Q value update
             maxQ = np.max(Q_value_batch[i])
             target_val = reward_batch[i]+ GAMMA*maxQ
+
             target_batch.append(target_val)
+    print(target_batch)        
     return target_batch, state_batch, action_batch
 
 
@@ -255,7 +257,7 @@ def qtrain(env, state_dim, action_dim,
             state = next_state
 
             # perform a training step if the replay_buffer has a batch worth of samples
-            if (len(replay_buffer) > BATCH_SIZE):
+            if (len(replay_buffer) > BATCH_SIZE and not test_mode):
                 do_train_step(replay_buffer, state_in, action_in, target_in,
                               q_values, q_selected_action, loss, optimise_step,
                               train_loss_summary_op, batch_presentations_count)
