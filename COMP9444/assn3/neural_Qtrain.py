@@ -94,7 +94,7 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # TO IMPLEMENT: loss function
     # should only be one line, if target_in is implemented correctly
 
-    loss = tf.reduce_mean(tf.square(target_in - q_selected_action,name="loss"))
+    loss = tf.reduce_sum(tf.square(target_in - q_selected_action,name="loss"))
 
     optimise_step = tf.train.AdamOptimizer().minimize(loss)
 
@@ -206,7 +206,7 @@ def get_train_batch(q_values, state_in, minibatch):
             target_val = reward_batch[i]+ GAMMA*maxQ
 
             target_batch.append(target_val)
-    print(target_batch)        
+  
     return target_batch, state_batch, action_batch
 
 

@@ -12,10 +12,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 Hyper Parameters
 """
 GAMMA = 0.99  # discount factor for target Q
-INITIAL_EPSILON = 0.3  # starting value of epsilon
+INITIAL_EPSILON = 0.4  # starting value of epsilon
 FINAL_EPSILON = 0.01  # final value of epsilon
 EPSILON_DECAY_STEPS = 100
-REPLAY_SIZE = 100000  # experience replay buffer size
+REPLAY_SIZE = 500000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
 TEST_FREQUENCY = 1000  # How many episodes to run before visualizing test accuracy
 SAVE_FREQUENCY = 1000  # How many episodes to run before saving model (unused)
@@ -24,10 +24,10 @@ NUM_TEST_EPS = 100
 NUM_EPISODES = TEST_FREQUENCY + NUM_TEST_EPS  # Episode limitation
 EP_MAX_STEPS = 1000  # Step limitation in an episode
 
-HIDDEN_NODES = 512
+HIDDEN_NODES = 256
 
 FIRST_TARGET_UPDATE = 0
-TARGET_UPDATE_FREQ = 1000 # How often to update target network weights
+TARGET_UPDATE_FREQ = 100 # How often to update target network weights
 
 AVERAGE_OVER = 100
 latest_100 = deque(maxlen=AVERAGE_OVER)
@@ -110,7 +110,7 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # TO IMPLEMENT: loss function
     # should only be one line, if target_in is implemented correctly
 
-    loss = tf.reduce_mean(tf.square(target_in - q_selected_action,name="loss"))
+    loss = tf.reduce_sum(tf.square(target_in - q_selected_action,name="loss"))
 
     optimise_step = tf.train.AdamOptimizer().minimize(loss)
 
@@ -339,7 +339,7 @@ def qtrain(env, state_dim, action_dim,
                 batch_presentations_count += 1
 
 
-            if (total_steps > FIRST_TARGET_UPDATE) and (total_steps % TARGET_UPDATE_FREQ == 0) and not test_mode:
+            if (total_steps >= FIRST_TARGET_UPDATE) and (total_steps % TARGET_UPDATE_FREQ == 0) and not test_mode:
                 #print("============== COPYING WEIGHTS ===============")
                 weight_upates = [x.eval() for x in q_network_vars]
                 for i in range(len(update_weights_op)):
@@ -370,9 +370,9 @@ def qtrain(env, state_dim, action_dim,
 
 
 def setup():
-    default_env_name = 'CartPole-v0'
+    #default_env_name = 'CartPole-v0'
     #default_env_name = 'MountainCar-v0'
-    #default_env_name = 'Pendulum-v0'
+    default_env_name = 'Pendulum-v0'
     # if env_name provided as cmd line arg, then use that
     env_name = sys.argv[1] if len(sys.argv) > 1 else default_env_name
     env = gym.make(env_name)
