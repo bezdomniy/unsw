@@ -12,18 +12,18 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 Hyper Parameters
 """
 GAMMA = 0.99  # discount factor for target Q
-INITIAL_EPSILON = 0.3  # starting value of epsilon
-FINAL_EPSILON = 0.01  # final value of epsilon
+INITIAL_EPSILON = 0.6  # starting value of epsilon
+FINAL_EPSILON = 0.1  # final value of epsilon
 EPSILON_DECAY_STEPS = 100
 REPLAY_SIZE = 100000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
 TEST_FREQUENCY = 100  # How many episodes to run before visualizing test accuracy
 SAVE_FREQUENCY = 1000  # How many episodes to run before saving model (unused)
-NUM_EPISODES = 800  # Episode limitation
+NUM_EPISODES = 1000  # Episode limitation
 EP_MAX_STEPS = 1000  # Step limitation in an episode
 # The number of test iters (with epsilon set to 0) to run every TEST_FREQUENCY episodes
 NUM_TEST_EPS = 100
-HIDDEN_NODES = 512
+HIDDEN_NODES = 256
 
 AVERAGE_OVER = 100
 latest_100 = deque(maxlen=AVERAGE_OVER)
@@ -48,14 +48,25 @@ def init(env, env_name):
     might help in using the same code for discrete and (discretised) continuous
     action spaces
     """
-    global replay_buffer, epsilon
+    global replay_buffer, epsilon, iscontinuous
     replay_buffer = []
     epsilon = INITIAL_EPSILON
 
     state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.n
-    return state_dim, action_dim
 
+    # Check if action space is continuous, and if so break the action space into BIN_FACTOR discrete actions
+    iscontinuous = not isinstance(env.action_space,gym.spaces.discrete.Discrete)
+    if iscontinuous:
+        action_map = dict()
+        BIN_FACTOR = 100
+        action_dim = int((env.action_space.high[0] - env.action_space.low[0]) * BIN_FACTOR +1)
+        values = np.arange(env.action_space.low[0],env.action_space.high[0]+1,1/BIN_FACTOR)
+        for i in range(action_dim):
+            action_map[i] = values[i]
+    else:
+        action_dim = env.action_space.n
+
+    return state_dim, action_dim
 
 def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     """Define the neural network used to approximate the q-function
@@ -77,7 +88,8 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # TO IMPLEMENT: Q network, whose input is state_in, and has action_dim outputs
     # which are the network's esitmation of the Q values for those actions and the
     # input state. The final layer should be assigned to the variable q_values
-    initializer = tf.random_normal_initializer(0., 0.1)
+    #tf.random_normal_initializer(0., 0.1)
+    initializer = tf.contrib.layers.xavier_initializer()
     
     layer1 = tf.layers.dense(state_in,hidden_nodes,activation=tf.nn.relu,
                             kernel_initializer=initializer)
@@ -86,15 +98,12 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     q_values = tf.layers.dense(layer2,action_dim,activation=None,
                                 kernel_initializer=initializer)
 
-    #regularizer = tf.nn.l2_loss(weights)
-
     q_selected_action = \
         tf.reduce_sum(tf.multiply(q_values, action_in), reduction_indices=1)
 
     # TO IMPLEMENT: loss function
     # should only be one line, if target_in is implemented correctly
-
-    loss = tf.reduce_sum(tf.square(target_in - q_selected_action,name="loss"))
+    loss = tf.reduce_mean(tf.square(target_in - q_selected_action,name="loss"))
 
     optimise_step = tf.train.AdamOptimizer().minimize(loss)
 
@@ -129,6 +138,8 @@ def get_env_action(action):
     Modify for continous action spaces that you have discretised, see hints in
     `init()`
     """
+    if iscontinuous:
+        action=[action_map[action]]
     return action
 
 
@@ -246,6 +257,7 @@ def qtrain(env, state_dim, action_dim,
                                 action_dim)
             env_action = get_env_action(action)
             next_state, reward, done, _ = env.step(env_action)
+
             ep_reward += reward
 
             # display the updated environment

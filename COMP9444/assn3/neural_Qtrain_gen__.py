@@ -12,19 +12,22 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 Hyper Parameters
 """
 GAMMA = 0.99  # discount factor for target Q
-INITIAL_EPSILON = 0.6  # starting value of epsilon
+INITIAL_EPSILON = 0.8  # starting value of epsilon
 FINAL_EPSILON = 0.01  # final value of epsilon
 EPSILON_DECAY_STEPS = 200
 REPLAY_SIZE = 100000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
-TEST_FREQUENCY = 90  # How many episodes to run before visualizing test accuracy
+TEST_FREQUENCY = 1000  # How many episodes to run before visualizing test accuracy
 SAVE_FREQUENCY = 1000  # How many episodes to run before saving model (unused)
-NUM_EPISODES = 2000  # Episode limitation
-EP_MAX_STEPS = 1000  # Step limitation in an episode
 # The number of test iters (with epsilon set to 0) to run every TEST_FREQUENCY episodes
-NUM_TEST_EPS = 0
-HIDDEN_NODES = 64
-TARGET_UPDATE_FREQ = 4 # How often to update target network weights
+NUM_TEST_EPS = 100
+NUM_EPISODES = TEST_FREQUENCY + NUM_TEST_EPS  # Episode limitation
+EP_MAX_STEPS = 1000  # Step limitation in an episode
+
+HIDDEN_NODES = 256
+
+FIRST_TARGET_UPDATE = 0
+TARGET_UPDATE_FREQ = 1000 # How often to update target network weights
 
 AVERAGE_OVER = 100
 latest_100 = deque(maxlen=AVERAGE_OVER)
@@ -54,6 +57,7 @@ def init(env, env_name):
     epsilon = INITIAL_EPSILON
 
     state_dim = env.observation_space.shape[0]
+
     iscontinuous = not isinstance(env.action_space,gym.spaces.discrete.Discrete)
 
     if iscontinuous:
@@ -66,6 +70,7 @@ def init(env, env_name):
 
     else:
         action_dim = env.action_space.n
+
     return state_dim, action_dim
 
 
@@ -109,7 +114,7 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
 
     optimise_step = tf.train.AdamOptimizer().minimize(loss)
 
-    train_loss_summary_op = tf.summary.scalar("TrainingLoss", loss)
+    train_loss_summary_op = tf.summary.scalar("TrainingLoss", tf.reduce_mean(loss))
     return state_in, action_in, target_in, q_values, q_selected_action, \
            loss, optimise_step, train_loss_summary_op
 
@@ -193,34 +198,37 @@ def update_replay_buffer(replay_buffer, state, action, reward, next_state, done,
     Hint: the minibatch passed to do_train_step is one entry (randomly sampled)
     from the replay_buffer
     """
+    global replay_priority_total
     # TO IMPLEMENT: append to the replay_buffer
     # ensure the action is encoded one hot
     one_hot_action = np.int32(np.eye(action_dim)[action])
-    # append to buffer
+
     replay_buffer.append([state, one_hot_action, reward, next_state, done])
     # Ensure replay_buffer doesn't grow larger than REPLAY_SIZE
     if len(replay_buffer) > REPLAY_SIZE:
         replay_buffer.pop(0)
+
     return None
 
 
 def do_train_step(replay_buffer, state_in, action_in, target_in,
-                  q_values, q_selected_action,q_eval_action, state_in_eval, action_in_eval,
-                  action_dim, loss, optimise_step,
+                  q_values, q_selected_action, loss, optimise_step,
                   train_loss_summary_op, batch_presentations_count):
     minibatch = random.sample(replay_buffer, BATCH_SIZE)
-    target_batch, state_batch, action_batch = \
-        get_train_batch(q_values,q_eval_action, state_in, state_in_eval, action_in_eval, action_dim, minibatch)
 
-    summary, _ = session.run([train_loss_summary_op, optimise_step], feed_dict={
+    target_batch, state_batch, action_batch = \
+        get_train_batch(q_values,state_in, minibatch)
+
+    summary, _, new_loss = session.run([train_loss_summary_op,  optimise_step,loss], feed_dict={
         target_in: target_batch,
         state_in: state_batch,
         action_in: action_batch
     })
+
     writer.add_summary(summary, batch_presentations_count)
 
 
-def get_train_batch(q_values,q_eval_action, state_in, state_in_eval, action_in_eval, action_dim, minibatch):
+def get_train_batch(q_values,state_in, minibatch):
     """
     Generate Batch samples for training by sampling the replay buffer"
     Batches values are suggested to be the following;
@@ -250,10 +258,7 @@ def get_train_batch(q_values,q_eval_action, state_in, state_in_eval, action_in_e
     })
 
     Q_action_batch = np.argmax(Q_values_batch,1)
-
     Q_action_batch = [np.eye(action_dim)[x] for x in Q_action_batch]
-
-    #print(Q_action_batch)
 
     Q_eval = q_eval_action.eval(feed_dict={
         state_in_eval: next_state_batch,
@@ -269,21 +274,22 @@ def get_train_batch(q_values,q_eval_action, state_in, state_in_eval, action_in_e
             # TO IMPLEMENT: set the target_val to the correct Q value update
             target_val = reward_batch[i]+ GAMMA*Q_eval[i]
             target_batch.append(target_val)
+    
     return target_batch, state_batch, action_batch
 
 
 def qtrain(env, state_dim, action_dim,
            state_in, action_in, target_in, q_values, q_selected_action,
-           loss, optimise_step, train_loss_summary_op,q_eval_action,update_weights_op,
-           train_weights, state_in_eval, action_in_eval,
+           loss, optimise_step, train_loss_summary_op,
            num_episodes=NUM_EPISODES, ep_max_steps=EP_MAX_STEPS,
            test_frequency=TEST_FREQUENCY, num_test_eps=NUM_TEST_EPS,
            final_epsilon=FINAL_EPSILON, epsilon_decay_steps=EPSILON_DECAY_STEPS,
            force_test_mode=False, render=True):
-    global epsilon
-    # Record the number of times we do a training batch, take a step, and
+    global batch_init, epsilon,Q_loss, q_eval_action,update_weights_op, train_weights, state_in_eval, action_in_eval    # Record the number of times we do a training batch, take a step, and
     # the total_reward across all eps
     batch_presentations_count = total_steps = total_reward = 0
+
+    state_in_eval, action_in_eval, q_eval_action, update_weights_op, train_weights = get_target_network(state_dim, action_dim)
     q_network_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_network')[:6]
 
     for episode in range(num_episodes):
@@ -301,22 +307,12 @@ def qtrain(env, state_dim, action_dim,
                     )
         if test_mode: print("Test mode (epsilon set to 0.0)")
 
-        if episode % TARGET_UPDATE_FREQ == 0:
-            #print("============== COPYING WEIGHTS ===============")
-            #print(update_weights_op)
-            weight_upates = [x.eval() for x in q_network_vars]
-            i=0
-
-            
-
-            for i in range(len(update_weights_op)):
-                #print("running: ",op)
-                
-                result= session.run(update_weights_op[i],
-                    feed_dict={train_weights[i]:weight_upates[i]})
-                #if i == 0:
-                #    print("running: ",result)
-                i+=1
+        #if (episode == 0 or episode > FIRST_TARGET_UPDATE) and (episode % TARGET_UPDATE_FREQ == 0):
+        if (episode == 0):
+                weight_upates = [x.eval() for x in q_network_vars]
+                for i in range(len(update_weights_op)):
+                    result= session.run(update_weights_op[i],
+                        feed_dict={train_weights[i]:weight_upates[i]})
 
         ep_reward = 0
         for step in range(ep_max_steps):
@@ -328,23 +324,27 @@ def qtrain(env, state_dim, action_dim,
             env_action = get_env_action(action)
             next_state, reward, done, _ = env.step(env_action)
             ep_reward += reward
-
             # display the updated environment
             if render: env.render()  # comment this line to possibly reduce training time
 
-            # add the s,a,r,s' samples to the replay_buffer
             update_replay_buffer(replay_buffer, state, action, reward,
                                  next_state, done, action_dim)
             state = next_state
 
             # perform a training step if the replay_buffer has a batch worth of samples
-            if (len(replay_buffer) > BATCH_SIZE):
+            if (len(replay_buffer) > BATCH_SIZE and not test_mode):
                 do_train_step(replay_buffer, state_in, action_in, target_in,
-                              q_values, q_selected_action,q_eval_action, state_in_eval, action_in_eval,
-                              action_dim,loss, optimise_step,
+                              q_values, q_selected_action, loss, optimise_step,
                               train_loss_summary_op, batch_presentations_count)
-                #print(q_selected_action)
                 batch_presentations_count += 1
+
+
+            if (total_steps > FIRST_TARGET_UPDATE) and (total_steps % TARGET_UPDATE_FREQ == 0) and not test_mode:
+                #print("============== COPYING WEIGHTS ===============")
+                weight_upates = [x.eval() for x in q_network_vars]
+                for i in range(len(update_weights_op)):
+                    result= session.run(update_weights_op[i],
+                        feed_dict={train_weights[i]:weight_upates[i]})
 
             if done:
                 break
@@ -356,11 +356,12 @@ def qtrain(env, state_dim, action_dim,
         avg_reward = np.mean(latest_100)
 
         test_or_train = "test" if test_mode else "train"
+        #print(replay_buffer.qsize())
         print("end {0} episode {1}, ep reward: {2}, ave reward: {3}, \
-            Batch presentations: {4}, epsilon: {5}".format(
+            Batch presentations: {4}, epsilon: {5}, total_steps: {6}".format(
             #test_or_train, episode, ep_reward, total_reward / (episode + 1),
             test_or_train, episode, ep_reward, avg_reward,
-            batch_presentations_count, epsilon
+            batch_presentations_count, epsilon, total_steps
         ))
 
         #if avg_reward >= 195:
@@ -369,8 +370,8 @@ def qtrain(env, state_dim, action_dim,
 
 
 def setup():
-    #default_env_name = 'CartPole-v0'
-    default_env_name = 'MountainCar-v0'
+    default_env_name = 'CartPole-v0'
+    #default_env_name = 'MountainCar-v0'
     #default_env_name = 'Pendulum-v0'
     # if env_name provided as cmd line arg, then use that
     env_name = sys.argv[1] if len(sys.argv) > 1 else default_env_name
@@ -378,14 +379,12 @@ def setup():
     state_dim, action_dim = init(env, env_name)
     network_vars = get_network(state_dim, action_dim)
     init_session()
-   
-    state_in_eval, action_in_eval, q_eval_action, update_weights_op, train_weights = get_target_network(state_dim, action_dim)
-    return env, state_dim, action_dim, network_vars, q_eval_action, update_weights_op, train_weights, state_in_eval, action_in_eval
+    return env, state_dim, action_dim, network_vars
 
 
 def main():
-    env, state_dim, action_dim, network_vars,q_eval_action, update_weights_op, train_weights, state_in_eval, action_in_eval = setup()
-    qtrain(env, state_dim, action_dim, *network_vars,q_eval_action, update_weights_op, train_weights, state_in_eval, action_in_eval, render=False)
+    env, state_dim, action_dim, network_vars = setup()
+    qtrain(env, state_dim, action_dim, *network_vars, render=False)
 
 
 if __name__ == "__main__":

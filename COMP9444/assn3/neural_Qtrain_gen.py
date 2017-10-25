@@ -12,8 +12,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 Hyper Parameters
 """
 GAMMA = 0.99  # discount factor for target Q
-INITIAL_EPSILON = 0.4  # starting value of epsilon
-FINAL_EPSILON = 0.01  # final value of epsilon
+INITIAL_EPSILON = 0.6  # starting value of epsilon
+FINAL_EPSILON = 0.1  # final value of epsilon
 EPSILON_DECAY_STEPS = 100
 REPLAY_SIZE = 500000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
@@ -26,8 +26,8 @@ EP_MAX_STEPS = 1000  # Step limitation in an episode
 
 HIDDEN_NODES = 256
 
-FIRST_TARGET_UPDATE = 0
-TARGET_UPDATE_FREQ = 100 # How often to update target network weights
+#FIRST_TARGET_UPDATE = 0
+TARGET_UPDATE_FREQ = 1000 # How often to update target network weights if during an episode
 
 AVERAGE_OVER = 100
 latest_100 = deque(maxlen=AVERAGE_OVER)
@@ -58,8 +58,8 @@ def init(env, env_name):
 
     state_dim = env.observation_space.shape[0]
 
+    # Check if action space is continuous, and if so break the action space into BIN_FACTOR discrete actions
     iscontinuous = not isinstance(env.action_space,gym.spaces.discrete.Discrete)
-
     if iscontinuous:
         action_map = dict()
         BIN_FACTOR = 100
@@ -67,7 +67,6 @@ def init(env, env_name):
         values = np.arange(env.action_space.low[0],env.action_space.high[0]+1,1/BIN_FACTOR)
         for i in range(action_dim):
             action_map[i] = values[i]
-
     else:
         action_dim = env.action_space.n
 
@@ -94,7 +93,7 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # TO IMPLEMENT: Q network, whose input is state_in, and has action_dim outputs
     # which are the network's esitmation of the Q values for those actions and the
     # input state. The final layer should be assigned to the variable q_values
-    initializer = tf.random_normal_initializer(0., 0.1)
+    initializer = tf.contrib.layers.xavier_initializer()
     
     with tf.variable_scope("q_network"):
         layer1 = tf.layers.dense(state_in,hidden_nodes,activation=tf.nn.relu,
@@ -110,7 +109,7 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # TO IMPLEMENT: loss function
     # should only be one line, if target_in is implemented correctly
 
-    loss = tf.reduce_sum(tf.square(target_in - q_selected_action,name="loss"))
+    loss = tf.reduce_mean(tf.square(target_in - q_selected_action,name="loss"))
 
     optimise_step = tf.train.AdamOptimizer().minimize(loss)
 
@@ -308,11 +307,12 @@ def qtrain(env, state_dim, action_dim,
         if test_mode: print("Test mode (epsilon set to 0.0)")
 
         #if (episode == 0 or episode > FIRST_TARGET_UPDATE) and (episode % TARGET_UPDATE_FREQ == 0):
-        if (episode == 0):
-                weight_upates = [x.eval() for x in q_network_vars]
-                for i in range(len(update_weights_op)):
-                    result= session.run(update_weights_op[i],
-                        feed_dict={train_weights[i]:weight_upates[i]})
+        #if (episode == 0):
+        # Update target network every new episode
+        weight_upates = [x.eval() for x in q_network_vars]
+        for i in range(len(update_weights_op)):
+            result = session.run(update_weights_op[i],
+                feed_dict={train_weights[i]:weight_upates[i]})
 
         ep_reward = 0
         for step in range(ep_max_steps):
@@ -339,8 +339,8 @@ def qtrain(env, state_dim, action_dim,
                 batch_presentations_count += 1
 
 
-            if (total_steps >= FIRST_TARGET_UPDATE) and (total_steps % TARGET_UPDATE_FREQ == 0) and not test_mode:
-                #print("============== COPYING WEIGHTS ===============")
+            if (step % TARGET_UPDATE_FREQ == 0) and not (test_mode or step == 0):
+                #print("============== COPYING WEIGHTS MID-EPISODE ===============")
                 weight_upates = [x.eval() for x in q_network_vars]
                 for i in range(len(update_weights_op)):
                     result= session.run(update_weights_op[i],
@@ -356,7 +356,7 @@ def qtrain(env, state_dim, action_dim,
         avg_reward = np.mean(latest_100)
 
         test_or_train = "test" if test_mode else "train"
-        #print(replay_buffer.qsize())
+
         print("end {0} episode {1}, ep reward: {2}, ave reward: {3}, \
             Batch presentations: {4}, epsilon: {5}, total_steps: {6}".format(
             #test_or_train, episode, ep_reward, total_reward / (episode + 1),
@@ -371,8 +371,9 @@ def qtrain(env, state_dim, action_dim,
 
 def setup():
     #default_env_name = 'CartPole-v0'
-    #default_env_name = 'MountainCar-v0'
-    default_env_name = 'Pendulum-v0'
+    default_env_name = 'MountainCar-v0'
+    #default_env_name = 'MountainCarContinuous-v0'
+    #default_env_name = 'Pendulum-v0'
     # if env_name provided as cmd line arg, then use that
     env_name = sys.argv[1] if len(sys.argv) > 1 else default_env_name
     env = gym.make(env_name)
