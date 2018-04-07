@@ -52,7 +52,7 @@ def init(env, env_name):
     might help in using the same code for discrete and (discretised) continuous
     action spaces
     """
-    global replay_buffer, epsilon, iscontinuous, action_map, action_dim
+    global replay_buffer, epsilon, iscontinuous, action_map, action_dim, state_in_eval, action_in_eval, q_eval_action, update_weights_op, train_weights
     replay_buffer = []
     epsilon = INITIAL_EPSILON
 
@@ -69,6 +69,8 @@ def init(env, env_name):
             action_map[i] = values[i]
     else:
         action_dim = env.action_space.n
+
+    state_in_eval, action_in_eval, q_eval_action, update_weights_op, train_weights = get_target_network(state_dim, action_dim)
 
     return state_dim, action_dim
 
@@ -288,7 +290,7 @@ def qtrain(env, state_dim, action_dim,
     # the total_reward across all eps
     batch_presentations_count = total_steps = total_reward = 0
 
-    state_in_eval, action_in_eval, q_eval_action, update_weights_op, train_weights = get_target_network(state_dim, action_dim)
+    #state_in_eval, action_in_eval, q_eval_action, update_weights_op, train_weights = get_target_network(state_dim, action_dim)
     q_network_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_network')[:6]
 
     for episode in range(num_episodes):
