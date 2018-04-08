@@ -3,11 +3,11 @@ package CircularDHT;
 import java.io.*;
 import java.net.*;
 
-public class PingServer {
+public class Server {
 	private DatagramSocket socket;
 	private PingListenerThread listener;
 	
-	public PingServer(int port) throws SocketException {
+	public Server(int port) throws SocketException {
 		this.socket = new DatagramSocket(50000+port);
 		this.listener = new PingListenerThread(this.socket);
 	}
@@ -22,7 +22,7 @@ public class PingServer {
 	}
 	
 	public static void main(String[] args) throws IOException, InterruptedException {
-		PingServer serv = new PingServer(2000);
+		Server serv = new Server(2000);
 		serv.initialise();
 		Thread.sleep(1000);
 

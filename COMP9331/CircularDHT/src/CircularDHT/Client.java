@@ -8,24 +8,24 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 
-public class PingClient {
+public class Client {
 	private DatagramSocket socket;
 	private InetAddress localhostIP;
 	
-	public PingClient(int port) throws SocketException, UnknownHostException {
+	public Client(int port) throws SocketException, UnknownHostException {
 		this.socket = new DatagramSocket(40000 + port);
 		this.localhostIP = InetAddress.getLocalHost();
 		this.socket.setSoTimeout(1000);
 	}
 	
 	public boolean ping(int serverPort) throws IOException {
-		
-		String message = "## TO-DO";
-		byte[] data = new byte[1024];
+		String message = String.valueOf(this.socket.getLocalPort()-40000);
+		//System.out.println(message);
+		byte[] data = new byte[256];
 		data = message.getBytes();
 		
 		DatagramPacket sendPacket = new DatagramPacket(data, data.length, this.localhostIP, 50000 + serverPort);
-		DatagramPacket replyPacket = new DatagramPacket(new byte[1024], 1024);
+		DatagramPacket replyPacket = new DatagramPacket(new byte[256], 256);
 		socket.send(sendPacket);
 		
 		try {
@@ -35,6 +35,8 @@ public class PingClient {
 		} 
 		
 		String reply = new String(replyPacket.getData(), 0, replyPacket.getLength());
+		System.out.println("A response message has been received from "+reply);
+		//System.out.println(reply);
 		return true;
 		
 	}

@@ -1,33 +1,46 @@
 package CircularDHT;
 
 import java.io.IOException;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class DHTPeer {
 	private int firstNeighbourPort;
 	private int secondNeighbourPort;
-	private PingServer pingServer;
-	private PingClient pingClient;
+	private Server pingServer;
+	private Client pingClient;
 	
 	public DHTPeer(int port, int firstNeighbour, int secondNeighbour) throws IOException {
 		setFirstNeighbourPort(firstNeighbour);
 		setSecondNeighbourPort(secondNeighbour);
 		
-		pingServer = new PingServer(port);
+		pingServer = new Server(port);
 		pingServer.initialise();
 		
-		pingClient = new PingClient(port);
+		pingClient = new Client(port);
 	}
 	
 
-	public int pingNeighbours() throws IOException {
+	public PingResult pingNeighbours() throws IOException {
+		boolean firstActive = false;
+		boolean secondActive = false;
 		if (pingClient.ping(this.firstNeighbourPort)) {
-			return 0;
+			firstActive = true;
 		}
-		else if (pingClient.ping(this.secondNeighbourPort)) {
-			return 1;
+		if (pingClient.ping(this.secondNeighbourPort)) {
+			secondActive = true;
 		}
-		return 2;		
+		
+		PingResult ret = new PingResult(firstActive, secondActive);
+		
+		return ret;
+		
+		
 	}
 
 	

@@ -17,17 +17,24 @@ public class PingListenerThread extends Thread {
 	@Override
 	public void run() {
 		while(!isInterrupted()) {
-			DatagramPacket request = new DatagramPacket(new byte[1024], 1024);
+			DatagramPacket receivedPacket = new DatagramPacket(new byte[256], 256);
+			
 			//System.out.println("Init!");
 	        try {
-				this.socket.receive(request);
-				SocketAddress requestServer = request.getSocketAddress();
-				String message = "## TO-DO";
-				byte[] data = new byte[1024];
-				data = message.getBytes();
+				this.socket.receive(receivedPacket);
 				
-				DatagramPacket sendPacket = new DatagramPacket(data, data.length, requestServer);
-				socket.send(sendPacket);
+				String receivedData = new String(receivedPacket.getData(), 0, receivedPacket.getLength());
+				
+				System.out.println("A request message has been received from "+receivedData);
+				
+				SocketAddress requestServer = receivedPacket.getSocketAddress();
+				
+				byte[] response = new byte[256];
+				response = String.valueOf(socket.getLocalPort()-50000).getBytes();
+				
+				DatagramPacket responsePacket = new DatagramPacket(response, response.length, requestServer);
+				
+				socket.send(responsePacket);
 				
 			} catch (IOException e) {
 				e.printStackTrace();
