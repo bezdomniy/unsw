@@ -10,24 +10,35 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 """
 Hyper Parameters
+
+Note: The assignment specification was not clear on whether algorithms which
+consistently solve the problem specification were preferable to faster, but 
+less consistent algorithms. 
+
+I have gone with more emphasis on speed and thus have set EPSILON_DECAY_STEPS
+lower to increase the ability of algorithm to solve all problems.
+More consistent solutions can be found much with EPSILON_DECAY_STEPS set higher
+(300-1000 steps), but will take much longer to converge.
 """
+
 GAMMA = 0.99  # discount factor for target Q
-INITIAL_EPSILON = 0.6  # starting value of epsilon
-FINAL_EPSILON = 0.1  # final value of epsilon
-EPSILON_DECAY_STEPS = 100
+INITIAL_EPSILON = 0.8  # starting value of epsilon
+FINAL_EPSILON = 0.01  # final value of epsilon
+EPSILON_DECAY_STEPS = 200
 REPLAY_SIZE = 500000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
-TEST_FREQUENCY = 1000  # How many episodes to run before visualizing test accuracy
+TEST_FREQUENCY = 900  # How many episodes to run before visualizing test accuracy
 SAVE_FREQUENCY = 1000  # How many episodes to run before saving model (unused)
 # The number of test iters (with epsilon set to 0) to run every TEST_FREQUENCY episodes
 NUM_TEST_EPS = 100
 NUM_EPISODES = TEST_FREQUENCY + NUM_TEST_EPS  # Episode limitation
 EP_MAX_STEPS = 1000  # Step limitation in an episode
 
-HIDDEN_NODES = 256
+HIDDEN_NODES = 512
 
-#FIRST_TARGET_UPDATE = 0
-TARGET_UPDATE_FREQ = 1000 # How often to update target network weights if during an episode
+UPDATE_EVERY_EP = True # Update target network weights at the start of each episode
+## OR ##
+TARGET_UPDATE_FREQ = 40 # How often to update target network weights
 
 AVERAGE_OVER = 100
 latest_100 = deque(maxlen=AVERAGE_OVER)
@@ -58,6 +69,8 @@ def init(env, env_name):
 
     state_dim = env.observation_space.shape[0]
 
+    
+
     # Check if action space is continuous, and if so break the action space into BIN_FACTOR discrete actions
     iscontinuous = not isinstance(env.action_space,gym.spaces.discrete.Discrete)
     if iscontinuous:
@@ -70,6 +83,10 @@ def init(env, env_name):
     else:
         action_dim = env.action_space.n
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> c6c1c8d70e5dd4629a36b3882f29aed03b11a52f
     state_in_eval, action_in_eval, q_eval_action, update_weights_op, train_weights = get_target_network(state_dim, action_dim)
 
     return state_dim, action_dim
@@ -100,8 +117,10 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     with tf.variable_scope("q_network"):
         layer1 = tf.layers.dense(state_in,hidden_nodes,activation=tf.nn.relu,
                                 kernel_initializer=initializer)
-        layer2 = tf.layers.dense(layer1,hidden_nodes,activation=tf.nn.relu,
+        layer2 = tf.layers.dense(layer1,hidden_nodes/2,activation=tf.nn.relu,
                                 kernel_initializer=initializer)
+        #layer3 = tf.layers.dense(layer2,hidden_nodes/4,activation=tf.nn.relu,
+        #                        kernel_initializer=initializer)
         q_values = tf.layers.dense(layer2,action_dim,activation=None,
                                     kernel_initializer=initializer)
 
@@ -114,8 +133,8 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     loss = tf.reduce_mean(tf.square(target_in - q_selected_action,name="loss"))
 
     optimise_step = tf.train.AdamOptimizer().minimize(loss)
-
-    train_loss_summary_op = tf.summary.scalar("TrainingLoss", tf.reduce_mean(loss))
+    
+    train_loss_summary_op = tf.summary.scalar("TrainingLoss", loss)
     return state_in, action_in, target_in, q_values, q_selected_action, \
            loss, optimise_step, train_loss_summary_op
 
@@ -126,24 +145,23 @@ def get_target_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
 
     w1 = tf.placeholder("float", [state_dim, hidden_nodes])
     b1 = tf.placeholder("float", [hidden_nodes])
-    w2 = tf.placeholder("float", [hidden_nodes, hidden_nodes])
-    b2 = tf.placeholder("float", [hidden_nodes])
-    w3 = tf.placeholder("float", [hidden_nodes, action_dim])
+    w2 = tf.placeholder("float", [hidden_nodes, hidden_nodes/2])
+    b2 = tf.placeholder("float", [hidden_nodes/2])
+    #w3 = tf.placeholder("float", [hidden_nodes/2, hidden_nodes/4])
+    #b3 = tf.placeholder("float", [hidden_nodes/4])
+    w3 = tf.placeholder("float", [hidden_nodes/2, action_dim])
     b3 = tf.placeholder("float", [action_dim])
 
-    train_weights = w1, b1, w2, b2, w3, b3
-    initializer = tf.random_normal_initializer(0., 0.1)
+    train_weights = w1, b1, w2, b2, w3, b3 #, w4, b4
     
     with tf.variable_scope("target_network"):
-        layer1 = tf.layers.dense(state_in,hidden_nodes,activation=tf.nn.relu,
-                                kernel_initializer=initializer)
-        layer2 = tf.layers.dense(layer1,hidden_nodes,activation=tf.nn.relu,
-                                kernel_initializer=initializer)
-        q_values = tf.layers.dense(layer2,action_dim,activation=None,
-                                    kernel_initializer=initializer)
+        layer1 = tf.layers.dense(state_in,hidden_nodes,activation=tf.nn.relu)
+        layer2 = tf.layers.dense(layer1,hidden_nodes/2,activation=tf.nn.relu)
+        #layer3 = tf.layers.dense(layer2,hidden_nodes/4,activation=tf.nn.relu)
+        q_values = tf.layers.dense(layer2,action_dim,activation=None)
 
-    q_selected_action = \
-        tf.reduce_sum(tf.multiply(q_values, action_in), reduction_indices=1)
+        q_selected_action = \
+            tf.reduce_sum(tf.multiply(q_values, action_in), reduction_indices=1)
     update_weights_op = copy_vars_op(train_weights)
 
     return state_in, action_in, q_selected_action, update_weights_op, train_weights                    
@@ -286,11 +304,15 @@ def qtrain(env, state_dim, action_dim,
            test_frequency=TEST_FREQUENCY, num_test_eps=NUM_TEST_EPS,
            final_epsilon=FINAL_EPSILON, epsilon_decay_steps=EPSILON_DECAY_STEPS,
            force_test_mode=False, render=True):
-    global batch_init, epsilon,Q_loss, q_eval_action,update_weights_op, train_weights, state_in_eval, action_in_eval    # Record the number of times we do a training batch, take a step, and
+    global epsilon, q_eval_action,update_weights_op, train_weights, state_in_eval, action_in_eval    # Record the number of times we do a training batch, take a step, and
     # the total_reward across all eps
     batch_presentations_count = total_steps = total_reward = 0
 
     #state_in_eval, action_in_eval, q_eval_action, update_weights_op, train_weights = get_target_network(state_dim, action_dim)
+<<<<<<< HEAD
+    #x,y,z,a,b = get_target_network(state_dim, action_dim)
+=======
+>>>>>>> c6c1c8d70e5dd4629a36b3882f29aed03b11a52f
     q_network_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_network')[:6]
 
     for episode in range(num_episodes):
@@ -308,13 +330,12 @@ def qtrain(env, state_dim, action_dim,
                     )
         if test_mode: print("Test mode (epsilon set to 0.0)")
 
-        #if (episode == 0 or episode > FIRST_TARGET_UPDATE) and (episode % TARGET_UPDATE_FREQ == 0):
-        #if (episode == 0):
-        # Update target network every new episode
-        weight_upates = [x.eval() for x in q_network_vars]
-        for i in range(len(update_weights_op)):
-            result = session.run(update_weights_op[i],
-                feed_dict={train_weights[i]:weight_upates[i]})
+        # Update target network at start of training
+        if (episode == 0 or UPDATE_EVERY_EP):
+            weight_upates = [x.eval() for x in q_network_vars]
+            for i in range(len(update_weights_op)):
+                result = session.run(update_weights_op[i],
+                    feed_dict={train_weights[i]:weight_upates[i]})
 
         ep_reward = 0
         for step in range(ep_max_steps):
@@ -341,7 +362,7 @@ def qtrain(env, state_dim, action_dim,
                 batch_presentations_count += 1
 
 
-            if (step % TARGET_UPDATE_FREQ == 0) and not (test_mode or step == 0):
+            if (total_steps % TARGET_UPDATE_FREQ == 0) and not (UPDATE_EVERY_EP or test_mode or total_steps == 0):
                 #print("============== COPYING WEIGHTS MID-EPISODE ===============")
                 weight_upates = [x.eval() for x in q_network_vars]
                 for i in range(len(update_weights_op)):
@@ -366,14 +387,11 @@ def qtrain(env, state_dim, action_dim,
             batch_presentations_count, epsilon, total_steps
         ))
 
-        #if avg_reward >= 195:
-        #    print("COMPLETE")
-        #    break
-
 
 def setup():
     #default_env_name = 'CartPole-v0'
-    default_env_name = 'MountainCar-v0'
+    default_env_name ='Go9x9-v0'
+    #default_env_name = 'MountainCar-v0'
     #default_env_name = 'MountainCarContinuous-v0'
     #default_env_name = 'Pendulum-v0'
     # if env_name provided as cmd line arg, then use that
