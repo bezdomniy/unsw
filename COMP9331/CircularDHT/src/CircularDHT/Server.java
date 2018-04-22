@@ -5,11 +5,11 @@ import java.net.*;
 
 public class Server {
 	private DatagramSocket socket;
-	private PingListenerThread listener;
+	private PingListener listener;
 	
 	public Server(int port) throws SocketException {
 		this.socket = new DatagramSocket(50000+port);
-		this.listener = new PingListenerThread(this.socket);
+		this.listener = new PingListener(this.socket);
 	}
 	
 	public void initialise() throws IOException {
@@ -19,16 +19,6 @@ public class Server {
 	
 	public void terminate() {
 		this.listener.interrupt();
-	}
-	
-	public static void main(String[] args) throws IOException, InterruptedException {
-		Server serv = new Server(2000);
-		serv.initialise();
-		Thread.sleep(1000);
-
-		serv.terminate();
-		System.out.println("Great success!");
-		System.exit(0);
 	}
 	
 }
