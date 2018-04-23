@@ -3,35 +3,40 @@ package CircularDHT;
 import java.io.IOException;
 
 public class DHTPeer {
-	private int firstNeighbourPort;
-	private int secondNeighbourPort;
-	private Server pingServer;
-	private Client pingClient;
+	private Integer firstSuccessorPort;
+	private Integer secondSuccessorPort;
+	
+	private Integer[] predecessorPorts = {null,null};
+
+	private PingServer pingServer;
+	private PingClient pingClient;
 	
 	private PingResult pingResult;
 	
-	public DHTPeer(int port, int firstNeighbour, int secondNeighbour) throws IOException {
-		setFirstNeighbourPort(firstNeighbour);
-		setSecondNeighbourPort(secondNeighbour);
+	public DHTPeer(Integer port, Integer firstSuccessorPort, Integer secondSuccessorPort) throws IOException {
+		setFirstSuccessorPort(firstSuccessorPort);
+		setSecondSuccessorPort(secondSuccessorPort);
 		
 		this.pingResult = new PingResult(false,false);
 		
-		pingServer = new Server(port);
-		pingServer.initialise();
-		
-		pingClient = new Client(port);
-		pingClient.initiatePingSender(firstNeighbourPort, secondNeighbourPort, pingResult);
+		pingServer = new PingServer(port, this.predecessorPorts);
+		pingServer.initialise();		
+		pingClient = new PingClient(port);
+		pingClient.initialisePingSender(this.firstSuccessorPort, this.secondSuccessorPort, pingResult);
+
 	}
 
-	
-	public void setFirstNeighbourPort(int firstNeighbourPort) {
-		this.firstNeighbourPort = firstNeighbourPort;
+
+	public void setFirstSuccessorPort(Integer firstSuccessorPort) {
+		this.firstSuccessorPort = firstSuccessorPort;
 	}
 
-	public void setSecondNeighbourPort(int secondNeighbourPort) {
-		this.secondNeighbourPort = secondNeighbourPort;
+
+	public void setSecondSuccessorPort(Integer secondSuccessorPort) {
+		this.secondSuccessorPort = secondSuccessorPort;
 	}
-	
+
+
 	public PingResult getPingResult() {
 		return pingResult;
 	}

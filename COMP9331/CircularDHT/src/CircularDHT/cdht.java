@@ -1,7 +1,6 @@
 package CircularDHT;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 public class cdht {
 	public static void main(String[] args) throws IOException, InterruptedException {
@@ -9,10 +8,10 @@ public class cdht {
 		DHTPeer peer2 = new DHTPeer(2, 3, 1);
 		DHTPeer peer3 = new DHTPeer(3, 1, 2);
 		
-		Thread.sleep(5000);
+		Thread.sleep(1000);
 		
-		System.out.println(peer2.getPingResult());
-		System.exit(0);
-		
+		//System.out.println(peer2.getPingResult());
+		//System.exit(0);
+
 	}
 }

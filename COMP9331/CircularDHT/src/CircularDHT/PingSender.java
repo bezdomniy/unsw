@@ -9,12 +9,12 @@ import java.net.SocketTimeoutException;
 public class PingSender implements Runnable {
 	private DatagramSocket socket;
 	private InetAddress host;
-	private int firstPort;
-	private int secondPort;
+	private Integer firstPort;
+	private Integer secondPort;
 	
 	private PingResult result;
 	
-	public PingSender(InetAddress host, DatagramSocket socket, int firstPort, int secondPort, PingResult pingResult) {
+	public PingSender(InetAddress host, DatagramSocket socket, Integer firstPort, Integer secondPort, PingResult pingResult) {
 		this.socket = socket;
 		this.host = host;
 		this.firstPort = firstPort;
