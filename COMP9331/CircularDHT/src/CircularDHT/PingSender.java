@@ -25,7 +25,7 @@ public class PingSender implements Runnable {
 	
 	
 	public boolean ping(int serverPort) throws IOException {
-		String message = String.valueOf(this.socket.getLocalPort()-40000);
+		String message = String.valueOf(this.socket.getLocalPort()-50256);
 		//System.out.println(message);
 		byte[] data = new byte[256];
 		data = message.getBytes();
@@ -43,7 +43,7 @@ public class PingSender implements Runnable {
 		} 
 		
 		String reply = new String(replyPacket.getData(), 0, replyPacket.getLength());
-		System.out.println("Server "+this.socket.getLocalPort()+": "+"A response message has been received from "+reply);
+		System.out.println("Server "+(this.socket.getLocalPort()-50256)+": "+"A response message has been received from "+reply);
 		//System.out.println(reply);
 		return true;
 		

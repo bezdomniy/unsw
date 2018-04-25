@@ -10,6 +10,9 @@ public class cdht {
 		
 		Thread.sleep(1000);
 		
+		peer1.sendRequest("test");
+		//System.out.println("Success");
+		
 		//System.out.println(peer2.getPingResult());
 		//System.exit(0);
 

@@ -8,8 +8,8 @@ public class DHTPeer {
 	
 	private Integer[] predecessorPorts = {null,null};
 
-	private PingServer pingServer;
-	private PingClient pingClient;
+	private Server server;
+	private Client client;
 	
 	private PingResult pingResult;
 	
@@ -19,11 +19,15 @@ public class DHTPeer {
 		
 		this.pingResult = new PingResult(false,false);
 		
-		pingServer = new PingServer(port, this.predecessorPorts);
-		pingServer.initialise();		
-		pingClient = new PingClient(port);
-		pingClient.initialisePingSender(this.firstSuccessorPort, this.secondSuccessorPort, pingResult);
+		server = new Server(port, this.predecessorPorts);
+		server.initialise();		
+		client = new Client(port);
+		client.initialisePingSender(this.firstSuccessorPort, this.secondSuccessorPort, pingResult);
 
+	}
+	
+	public void sendRequest(String sentence) throws IOException {
+		this.client.sendData(sentence);
 	}
 
 
