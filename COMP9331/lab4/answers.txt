@@ -1,0 +1,16 @@
+Lab 4:
+
+Q1: 192.168.1.102, Port: 1161
+Q2: 128.119.245.12 Port: 80
+Q3: Sequence 232129012, Flags 0x002 Syn: Set
+Q4: Sequence number of SYNACK = 883061785, 
+	Acknowledgement field = 232129013, 
+
+	It determines the ack field number by adding the TCP segment length to the sequence number host. Although the length of the TCP segment is 0, since the packet has a SYN flag the host sequence number incremented by 1.
+	
+	Segment 0x012 idenitifies this as a SYNACK 
+	
+Q9: minimum advertised buffer space: smallest window size at first ACK: 5840 bytes
+No, it is never throttled by lack of buffer.
+
+Q11: The reciever typically acknowledges either 1460 or 2920 bytes in an ACK. Since the TCP segment lengths being sent but the host are 1460, when an ACK is for example 2920, it is acknowledging 2 TCP packets in 1 cumulative ACK, for example in numbers 60 and 61.
