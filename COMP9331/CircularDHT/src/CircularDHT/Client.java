@@ -31,7 +31,6 @@ public class Client {
 		
 		this.localhostIP = InetAddress.getLocalHost();
 		
-		
 		this.udpSocket.setSoTimeout(UDP_RESPONSE_TIMEOUT);
 	}
 	
@@ -40,8 +39,12 @@ public class Client {
 		final ScheduledFuture<?> pingHandler = scheduler.scheduleAtFixedRate(pingSender, 0, PING_INTERVAL, TimeUnit.SECONDS);
 	}
 	
-	public void sendData(String dataToSend) throws IOException {
-		Socket tcpSocket = new Socket(this.localhostIP, 50256 + this.peerIdentity);
+	public void terminatePingSender() {
+		this.scheduler.shutdown();
+	}
+	
+	public void sendData(String dataToSend, Integer targetPort) throws IOException {
+		Socket tcpSocket = new Socket(this.localhostIP, targetPort + 50256);
 		DataOutputStream request = new DataOutputStream(tcpSocket.getOutputStream());
 		request.writeBytes(dataToSend + "\n");
 		
@@ -51,6 +54,8 @@ public class Client {
 		
 		tcpSocket.close();
 	}
+
+	
 
 
 }

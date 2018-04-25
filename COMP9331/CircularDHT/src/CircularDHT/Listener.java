@@ -14,26 +14,19 @@ import java.net.SocketException;
 public class Listener extends Thread {
 	private DatagramSocket udpSocket;
 	private ServerSocket tcpSocket;
-	private Integer[] predecessorPorts;
+	private RequestTrigger trigger;
 	
 	private static final int TCP_ACCEPT_TIMEOUT = 1000;
 
 		
-	public Listener(DatagramSocket udpSocket, ServerSocket tcpSocket, Integer[] predecessorPorts) throws SocketException {
+	public Listener(DatagramSocket udpSocket, ServerSocket tcpSocket, RequestTrigger trigger) throws SocketException {
 		this.udpSocket = udpSocket;
 		this.tcpSocket = tcpSocket;
 		this.tcpSocket.setSoTimeout(TCP_ACCEPT_TIMEOUT);
-		this.predecessorPorts = predecessorPorts;
+		this.trigger = trigger;
 	}
 	
-	private void updatePredecessors(Integer receivedInteger) {
-		if (this.predecessorPorts[0] == null) {
-			this.predecessorPorts[0] = receivedInteger;
-		} else if (!this.predecessorPorts[0].equals(receivedInteger)) {
-			this.predecessorPorts[1] = receivedInteger;
-		}
 
-	}
 	
 	@Override
 	public void run() {
@@ -45,11 +38,10 @@ public class Listener extends Thread {
 				
 				String receivedData = new String(receivedPacket.getData(), 0, receivedPacket.getLength());
 				
-				updatePredecessors(Integer.parseInt(receivedData));
+				this.trigger.updatePredecessors(receivedData);
 
 				System.out.println("Server "+(this.udpSocket.getLocalPort() - 50000)+": "+"A request message has been received from "+receivedData);
 				
-				// System.out.println("Peer: "+this.socket.getLocalPort()+" First "+this.predecessorPorts[0]+", "+"Second "+this.predecessorPorts[1]);
 				
 				SocketAddress requestServer = receivedPacket.getSocketAddress();
 				
@@ -69,7 +61,15 @@ public class Listener extends Thread {
 				BufferedReader receivedData = new BufferedReader(new InputStreamReader(tcpConnectionSocket.getInputStream()));
 				
 				DataOutputStream outToClient = new DataOutputStream(tcpConnectionSocket.getOutputStream());
-				outToClient.writeBytes("Got it mate: " + receivedData.readLine() + '\n');
+				String requestBuffer = receivedData.readLine();
+				
+				int requesterPort = tcpConnectionSocket.getPort();
+				if (requestBuffer.substring(0, 4).equals("quit")) {
+					Integer requesterFirstNeighbourPort = Integer.parseInt(requestBuffer.substring(4,7).trim());
+					this.trigger.updateSuccessor(requesterPort, requesterFirstNeighbourPort);
+				}
+				
+				outToClient.writeBytes("Server "+(this.udpSocket.getLocalPort() - 50000)+"Got it mate: " + requestBuffer + '\n');
 
 			} catch (IOException ignore) {} 
 

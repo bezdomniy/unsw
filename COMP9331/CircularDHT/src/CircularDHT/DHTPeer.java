@@ -13,21 +13,40 @@ public class DHTPeer {
 	
 	private PingResult pingResult;
 	
+	public Integer getFirstSuccessorPort() {
+		return firstSuccessorPort;
+	}
+
+	public Integer getSecondSuccessorPort() {
+		return secondSuccessorPort;
+	}
+
+	public Client getClient() {
+		return client;
+	}
+
 	public DHTPeer(Integer port, Integer firstSuccessorPort, Integer secondSuccessorPort) throws IOException {
 		setFirstSuccessorPort(firstSuccessorPort);
 		setSecondSuccessorPort(secondSuccessorPort);
 		
 		this.pingResult = new PingResult(false,false);
 		
-		server = new Server(port, this.predecessorPorts);
+		server = new Server(this, port);
 		server.initialise();		
 		client = new Client(port);
 		client.initialisePingSender(this.firstSuccessorPort, this.secondSuccessorPort, pingResult);
 
 	}
 	
-	public void sendRequest(String sentence) throws IOException {
-		this.client.sendData(sentence);
+	public void sendRequest(String sentence, Integer targetPort) throws IOException {
+		this.client.sendData(sentence, targetPort);
+	}
+	
+	public void quit() throws IOException {
+		sendRequest("quit  "+this.firstSuccessorPort.toString(), this.predecessorPorts[0]);
+		sendRequest("quit  "+this.firstSuccessorPort.toString(), this.predecessorPorts[1]);
+		this.server.terminate();
+		this.client.terminatePingSender();
 	}
 
 
@@ -43,6 +62,14 @@ public class DHTPeer {
 
 	public PingResult getPingResult() {
 		return pingResult;
+	}
+
+	public Integer[] getPredecessorPorts() {
+		return predecessorPorts;
+	}
+
+	public void setPredecessorPorts(Integer[] predecessorPorts) {
+		this.predecessorPorts = predecessorPorts;
 	}
 
 }
