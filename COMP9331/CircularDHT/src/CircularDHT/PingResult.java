@@ -1,44 +1,27 @@
 package CircularDHT;
 
 public class PingResult {
-	private boolean firstActive;
-	private boolean secondActive;
+	private boolean isActive;
+	private Integer firstNeighbour;
+	private Integer secondNeighbour;
 	
-	public boolean isFirstActive() {
-		return firstActive;
+	public PingResult(boolean isActive, Integer firstNeighbour, Integer secondNeighbour) {
+		this.isActive = isActive;
+		this.firstNeighbour = firstNeighbour;
+		this.secondNeighbour = secondNeighbour;
 	}
 
-	public void setFirstActive(boolean firstActive) {
-		this.firstActive = firstActive;
+	public boolean isActive() {
+		return isActive;
 	}
 
-	public boolean isSecondActive() {
-		return secondActive;
+	public Integer getFirstNeighbour() {
+		return firstNeighbour;
 	}
 
-	public void setSecondActive(boolean secondActive) {
-		this.secondActive = secondActive;
-	}
-
-	
-	public PingResult(boolean firstNeighbourActive, boolean secondNeighbourActive) {
-		this.firstActive = firstNeighbourActive;
-		this.secondActive = secondNeighbourActive;
+	public Integer getSecondNeighbour() {
+		return secondNeighbour;
 	}
 	
-	@Override
-	public String toString() {
-		if (this.firstActive && this.secondActive) {
-			return "Both active";
-		}
-		else if (this.firstActive) {
-			return "Second dropped";
-		}
-		else if (this.secondActive) {
-			return "First dropped";
-		}
-		else {
-			return "Both dropped";
-		}
-	}
+
 }

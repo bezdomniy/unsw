@@ -7,13 +7,11 @@ public class Server {
 	private DatagramSocket udpSocket;
 	private ServerSocket tcpSocket;
 	private Listener listener;
-	private RequestTrigger requestTrigger;
 
 	public Server(DHTPeer peer, Integer port) throws IOException {
 		this.udpSocket = new DatagramSocket(50000+port);
 		this.tcpSocket = new ServerSocket(50256+port);
-		this.requestTrigger = new RequestTrigger(peer);
-		this.listener = new Listener(this.udpSocket, this.tcpSocket, this.requestTrigger);
+		this.listener = new Listener(peer, this.udpSocket, this.tcpSocket);
 	}
 
 

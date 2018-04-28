@@ -14,64 +14,72 @@ import java.net.SocketException;
 public class Listener extends Thread {
 	private DatagramSocket udpSocket;
 	private ServerSocket tcpSocket;
-	private RequestTrigger trigger;
-	
+	private DHTPeer peer;
+
 	private static final int TCP_ACCEPT_TIMEOUT = 1000;
 
-		
-	public Listener(DatagramSocket udpSocket, ServerSocket tcpSocket, RequestTrigger trigger) throws SocketException {
+	public Listener(DHTPeer peer, DatagramSocket udpSocket, ServerSocket tcpSocket) throws SocketException {
+		this.peer = peer;
 		this.udpSocket = udpSocket;
 		this.tcpSocket = tcpSocket;
 		this.tcpSocket.setSoTimeout(TCP_ACCEPT_TIMEOUT);
-		this.trigger = trigger;
 	}
-	
 
-	
 	@Override
 	public void run() {
-		while(!isInterrupted()) {
+		//System.out.println(this.peer.getClient().getPeerIdentity()+" running");
+		while (!isInterrupted()) {
 			DatagramPacket receivedPacket = new DatagramPacket(new byte[256], 256);
 
-	        try {
+			try {
 				this.udpSocket.receive(receivedPacket);
-				
-				String receivedData = new String(receivedPacket.getData(), 0, receivedPacket.getLength());
-				
-				this.trigger.updatePredecessors(receivedData);
 
-				System.out.println("Server "+(this.udpSocket.getLocalPort() - 50000)+": "+"A request message has been received from "+receivedData);
-				
-				
+				String receivedData = new String(receivedPacket.getData(), 0, receivedPacket.getLength());
+
+				RequestTrigger.updatePredecessors(this.peer, receivedData);
+
+				System.out.println("Server " + (this.udpSocket.getLocalPort() - 50000) + ": "
+						+ "A request message has been received from " + receivedData);
+
 				SocketAddress requestServer = receivedPacket.getSocketAddress();
-				
+
 				byte[] response = new byte[256];
-				response = String.valueOf(udpSocket.getLocalPort()-50000).getBytes();
-				
+				// add first and second peer to message
+				String responseMessage = String.valueOf(this.udpSocket.getLocalPort() - 50000)
+						+ String.valueOf(this.peer.getFirstSuccessorPort())
+						+ String.valueOf(this.peer.getSecondSuccessorPort());
+				response = responseMessage.getBytes();
+
 				DatagramPacket responsePacket = new DatagramPacket(response, response.length, requestServer);
-				
-				udpSocket.send(responsePacket);
-				
-				//System.out.println("Server "+this.socket.getLocalPort()+": "+"A response message has been sent");
-				
-			} catch (IOException ignore) {} 
-	        
-	        try {
+
+				this.udpSocket.send(responsePacket);
+
+				// System.out.println("Server "+this.socket.getLocalPort()+": "+"A response
+				// message has been sent");
+
+			} catch (IOException ignore) {
+			}
+
+			try {
 				Socket tcpConnectionSocket = this.tcpSocket.accept();
-				BufferedReader receivedData = new BufferedReader(new InputStreamReader(tcpConnectionSocket.getInputStream()));
-				
+				BufferedReader receivedData = new BufferedReader(
+						new InputStreamReader(tcpConnectionSocket.getInputStream()));
+
 				DataOutputStream outToClient = new DataOutputStream(tcpConnectionSocket.getOutputStream());
 				String requestBuffer = receivedData.readLine();
-				
-				int requesterPort = tcpConnectionSocket.getPort();
-				if (requestBuffer.substring(0, 4).equals("quit")) {
-					Integer requesterFirstNeighbourPort = Integer.parseInt(requestBuffer.substring(4,7).trim());
-					this.trigger.updateSuccessor(requesterPort, requesterFirstNeighbourPort);
-				}
-				
-				outToClient.writeBytes("Server "+(this.udpSocket.getLocalPort() - 50000)+"Got it mate: " + requestBuffer + '\n');
 
-			} catch (IOException ignore) {} 
+				int requesterPort = Integer.parseInt(requestBuffer.substring(4, 7).trim());
+				if (requestBuffer.substring(0, 4).equals("quit")) {
+					Integer requesterFirstNeighbourPort = Integer.parseInt(requestBuffer.substring(7, 10).trim());
+					Integer requesterSecondNeighbourPort = Integer.parseInt(requestBuffer.substring(10, 13).trim());
+					RequestTrigger.updateSuccessor(this.peer, requesterPort, requesterFirstNeighbourPort, requesterSecondNeighbourPort);
+				}
+
+				outToClient.writeBytes(
+						"Server " + (this.udpSocket.getLocalPort() - 50000) + "Got it mate: " + requestBuffer + '\n');
+
+			} catch (IOException ignore) {
+			}
 
 		}
 	}

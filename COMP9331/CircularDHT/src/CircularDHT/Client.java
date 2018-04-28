@@ -21,7 +21,7 @@ public class Client {
 	private Integer peerIdentity;
 	
 	private static final int PING_INTERVAL = 5;
-	private static final int UDP_RESPONSE_TIMEOUT = 1000;
+	private static final int UDP_RESPONSE_TIMEOUT = 3000;
 	
 	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 		
@@ -34,8 +34,12 @@ public class Client {
 		this.udpSocket.setSoTimeout(UDP_RESPONSE_TIMEOUT);
 	}
 	
-	public void initialisePingSender(Integer firstNeighbourPort, Integer secondNeighbourPort, PingResult pingResult) {
-		this.pingSender = new PingSender(this.localhostIP, this.udpSocket, firstNeighbourPort, secondNeighbourPort, pingResult);	
+	public Integer getPeerIdentity() {
+		return peerIdentity;
+	}
+
+	public void initialisePingSender(DHTPeer peer) {
+		this.pingSender = new PingSender(this.localhostIP, this.udpSocket, peer);	
 		final ScheduledFuture<?> pingHandler = scheduler.scheduleAtFixedRate(pingSender, 0, PING_INTERVAL, TimeUnit.SECONDS);
 	}
 	
@@ -51,7 +55,6 @@ public class Client {
 		BufferedReader responseBuffer = new BufferedReader(new InputStreamReader(tcpSocket.getInputStream()));
 		String response = responseBuffer.readLine();
 		System.out.println(response);
-		
 		tcpSocket.close();
 	}
 

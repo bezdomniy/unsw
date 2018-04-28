@@ -5,14 +5,13 @@ import java.io.IOException;
 public class DHTPeer {
 	private Integer firstSuccessorPort;
 	private Integer secondSuccessorPort;
-	
-	private Integer[] predecessorPorts = {null,null};
+	private Integer peerIdentity;
+
+	private Integer[] predecessorPorts = { null, null };
 
 	private Server server;
 	private Client client;
-	
-	private PingResult pingResult;
-	
+
 	public Integer getFirstSuccessorPort() {
 		return firstSuccessorPort;
 	}
@@ -28,40 +27,40 @@ public class DHTPeer {
 	public DHTPeer(Integer port, Integer firstSuccessorPort, Integer secondSuccessorPort) throws IOException {
 		setFirstSuccessorPort(firstSuccessorPort);
 		setSecondSuccessorPort(secondSuccessorPort);
-		
-		this.pingResult = new PingResult(false,false);
-		
+
+		this.peerIdentity = port;
 		server = new Server(this, port);
-		server.initialise();		
 		client = new Client(port);
-		client.initialisePingSender(this.firstSuccessorPort, this.secondSuccessorPort, pingResult);
+		server.initialise();
+
+		client.initialisePingSender(this);
 
 	}
-	
-	public void sendRequest(String sentence, Integer targetPort) throws IOException {
-		this.client.sendData(sentence, targetPort);
+
+	public void sendRequest(String message, Integer targetPort) throws IOException {
+		this.client.sendData(message, targetPort);
 	}
-	
+
 	public void quit() throws IOException {
-		sendRequest("quit  "+this.firstSuccessorPort.toString(), this.predecessorPorts[0]);
-		sendRequest("quit  "+this.firstSuccessorPort.toString(), this.predecessorPorts[1]);
+		String message = "quit  " + this.peerIdentity.toString() + "  " + this.firstSuccessorPort.toString() + "  "
+				+ this.secondSuccessorPort.toString();
+		sendRequest(message, this.predecessorPorts[0]);
+		sendRequest(message, this.predecessorPorts[1]);
 		this.server.terminate();
 		this.client.terminatePingSender();
 	}
 
+	public void kill() {
+		this.server.terminate();
+		this.client.terminatePingSender();
+	}
 
 	public void setFirstSuccessorPort(Integer firstSuccessorPort) {
 		this.firstSuccessorPort = firstSuccessorPort;
 	}
 
-
 	public void setSecondSuccessorPort(Integer secondSuccessorPort) {
 		this.secondSuccessorPort = secondSuccessorPort;
-	}
-
-
-	public PingResult getPingResult() {
-		return pingResult;
 	}
 
 	public Integer[] getPredecessorPorts() {

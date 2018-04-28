@@ -1,14 +1,9 @@
 package CircularDHT;
 
 public class RequestTrigger {
-	private DHTPeer peer ;
-	public RequestTrigger(DHTPeer peer) {
-		this.peer = peer;
-	}
-	
-	public void updatePredecessors(String request) {
+	public static void updatePredecessors(DHTPeer peer, String request) {
 		Integer receivedInteger = Integer.parseInt(request);
-		Integer[] predecessorPorts = this.peer.getPredecessorPorts();
+		Integer[] predecessorPorts = peer.getPredecessorPorts();
 		
 		if (predecessorPorts[0] == null) {
 			predecessorPorts[0] = receivedInteger;
@@ -20,18 +15,26 @@ public class RequestTrigger {
 
 	}
 	
-	public void updateSuccessor(Integer quitterPort, Integer quitterFirstNeighbourPort) {
-		if (quitterPort.equals(this.peer.getFirstSuccessorPort())) {
-			this.peer.setFirstSuccessorPort(this.peer.getSecondSuccessorPort());
+	public static void updateSuccessor(DHTPeer peer,Integer quitterPort, Integer requesterFirstNeighbourPort, Integer requesterSecondNeighbourPort) {
+		if (quitterPort.equals(peer.getFirstSuccessorPort())) {
+			peer.setFirstSuccessorPort(peer.getSecondSuccessorPort());
+			peer.setSecondSuccessorPort(requesterSecondNeighbourPort);
 		}
-		else if (quitterPort.equals(this.peer.getSecondSuccessorPort())) {
-			this.peer.setSecondSuccessorPort(quitterFirstNeighbourPort);
+		else {
+			peer.setSecondSuccessorPort(requesterFirstNeighbourPort);
 		}
-		
-		
-		this.peer.getClient().initialisePingSender(this.peer.getFirstSuccessorPort(), this.peer.getSecondSuccessorPort(), this.peer.getPingResult());
+
+		peer.getClient().initialisePingSender(peer);
 		
 		//System.out.println("First "+predecessorPorts[0]+", "+"Second "+predecessorPorts[1]);
+
+	}
+	
+	public static void updateDroppedSuccessor(DHTPeer peer, Integer droppedNeighbourPort, Integer replacementNeighbour) {
+		if (droppedNeighbourPort.equals(peer.getFirstSuccessorPort())) {
+			peer.setFirstSuccessorPort(peer.getSecondSuccessorPort());
+		}
+		peer.setSecondSuccessorPort(replacementNeighbour);
 
 	}
 }
