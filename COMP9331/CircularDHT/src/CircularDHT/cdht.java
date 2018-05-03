@@ -4,7 +4,8 @@ import java.io.IOException;
 
 public class cdht {
 	
-	// TO DO - Make peer close off last ping request if quitting between ping and reponse
+	// TO DO - Make peer close off last ping request if quitting between ping and response
+	// TO DO - Make sure peer tries to ping twice before assuming drop
 	
 	public static void main(String[] args) throws IOException, InterruptedException {
 		DHTPeer peer1 = new DHTPeer(1, 2, 3);
@@ -12,7 +13,7 @@ public class cdht {
 		DHTPeer peer3 = new DHTPeer(3, 4, 1);
 		DHTPeer peer4 = new DHTPeer(4, 1, 2);
 		
-		Thread.sleep(8000);
+		Thread.sleep(1000);
 		
 		
 		//peer4.kill();

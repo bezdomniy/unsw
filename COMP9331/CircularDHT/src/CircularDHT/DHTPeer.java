@@ -42,10 +42,11 @@ public class DHTPeer {
 	}
 
 	public void quit() throws IOException {
-		String message = "quit  " + this.peerIdentity.toString() + "  " + this.firstSuccessorPort.toString() + "  "
-				+ this.secondSuccessorPort.toString();
+		String message = "quit" + padString(this.peerIdentity.toString(), 3)
+				+ padString(this.firstSuccessorPort.toString(), 3) + padString(this.secondSuccessorPort.toString(), 3);
 		sendRequest(message, this.predecessorPorts[0]);
 		sendRequest(message, this.predecessorPorts[1]);
+
 		this.server.terminate();
 		this.client.terminatePingSender();
 	}
@@ -69,6 +70,23 @@ public class DHTPeer {
 
 	public void setPredecessorPorts(Integer[] predecessorPorts) {
 		this.predecessorPorts = predecessorPorts;
+	}
+
+	private String padString(String s, int desiredLength) {
+		StringBuilder ret;
+		if (s.length() == desiredLength) {
+			return s;
+		} else if (s.length() < desiredLength) {
+			int padLength = desiredLength - s.length();
+			ret = new StringBuilder();
+			for (int i = 0; i < padLength; i++) {
+				ret.append(' ');
+			}
+			ret.append(s);
+			return ret.toString();
+		} else {
+			return null;
+		}
 	}
 
 }
