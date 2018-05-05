@@ -10,15 +10,16 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.util.Scanner;
 
-public class Listener extends Thread {
+public class ServerListener extends Thread {
 	private DatagramSocket udpSocket;
 	private ServerSocket tcpSocket;
 	private DHTPeer peer;
 
 	private static final int TCP_ACCEPT_TIMEOUT = 1000;
 
-	public Listener(DHTPeer peer, DatagramSocket udpSocket, ServerSocket tcpSocket) throws SocketException {
+	public ServerListener(DHTPeer peer, DatagramSocket udpSocket, ServerSocket tcpSocket) throws SocketException {
 		this.peer = peer;
 		this.udpSocket = udpSocket;
 		this.tcpSocket = tcpSocket;
@@ -27,10 +28,9 @@ public class Listener extends Thread {
 
 	@Override
 	public void run() {
-		//System.out.println(this.peer.getClient().getPeerIdentity()+" running");
 		while (!isInterrupted()) {
+			// Receive ping requests
 			DatagramPacket receivedPacket = new DatagramPacket(new byte[256], 256);
-
 			try {
 				this.udpSocket.receive(receivedPacket);
 
@@ -44,7 +44,6 @@ public class Listener extends Thread {
 				SocketAddress requestServer = receivedPacket.getSocketAddress();
 
 				byte[] response = new byte[256];
-				// add first and second peer to message
 				String responseMessage = String.valueOf(this.udpSocket.getLocalPort() - 50000)
 						+ String.valueOf(this.peer.getFirstSuccessorPort())
 						+ String.valueOf(this.peer.getSecondSuccessorPort());
@@ -60,26 +59,53 @@ public class Listener extends Thread {
 			} catch (IOException ignore) {
 			}
 
+			// Receive TCP connection requests
 			try {
 				Socket tcpConnectionSocket = this.tcpSocket.accept();
 				BufferedReader receivedData = new BufferedReader(
 						new InputStreamReader(tcpConnectionSocket.getInputStream()));
-
-				DataOutputStream outToClient = new DataOutputStream(tcpConnectionSocket.getOutputStream());
 				String requestBuffer = receivedData.readLine();
 
-				int requesterPort = Integer.parseInt(requestBuffer.substring(4, 7).trim());
+				
 				if (requestBuffer.substring(0, 4).equals("quit")) {
+					DataOutputStream outToClient = new DataOutputStream(tcpConnectionSocket.getOutputStream());
+					int requesterPort = Integer.parseInt(requestBuffer.substring(4, 7).trim());
 					Integer requesterFirstNeighbourPort = Integer.parseInt(requestBuffer.substring(7, 10).trim());
 					Integer requesterSecondNeighbourPort = Integer.parseInt(requestBuffer.substring(10, 13).trim());
 					RequestTrigger.updateSuccessor(this.peer, requesterPort, requesterFirstNeighbourPort, requesterSecondNeighbourPort);
+					outToClient.writeBytes(
+							"Server " + (this.udpSocket.getLocalPort() - 50000) + "Got it mate: " + requestBuffer + '\n');
+				}
+				
+				
+				else if (requestBuffer.substring(0, 4).equals("File")) {
+					String fileName = requestBuffer.substring(4, 8).trim();
+					String respondingPeer = requestBuffer.substring(8, 11).trim();
+					System.out.println("Received a response message from peer "+ respondingPeer +", which has the file "+ fileName +".");
+				}
+				
+				else if (requestBuffer.substring(0, 7).equals("request")) {
+					System.out.println("message "+requestBuffer);
+					String fileName = requestBuffer.substring(7, 11);
+					int fileHash = DHTPeer.hashFunction(fileName.trim());
+					if (fileHash == peer.getPeerIdentity()) {
+						System.out.println("File "+fileName.trim()+" is here.");
+						int originPeerPort = Integer.parseInt(requestBuffer.substring(11, 14).trim());
+						System.out.println("A response message, destined for peer "+ originPeerPort +", has been sent.");
+						peer.getClient().sendData("File"+fileName+fileName+DHTPeer.padString(String.valueOf(this.peer.getPeerIdentity()),3), originPeerPort);
+					}
+					else {
+						System.out.println("File "+fileName.trim()+" is not stored here.");
+						peer.forwardRequest(fileName, requestBuffer.substring(10, 13));
+					}
 				}
 
-				outToClient.writeBytes(
-						"Server " + (this.udpSocket.getLocalPort() - 50000) + "Got it mate: " + requestBuffer + '\n');
+				
 
 			} catch (IOException ignore) {
 			}
+			
+			
 
 		}
 	}

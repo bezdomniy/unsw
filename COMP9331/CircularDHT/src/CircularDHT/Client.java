@@ -20,7 +20,7 @@ public class Client {
 	private PingSender pingSender;
 	private Integer peerIdentity;
 	
-	private static final int PING_INTERVAL = 5;
+	private static final int PING_INTERVAL = 10;
 	private static final int UDP_RESPONSE_TIMEOUT = 3000;
 	
 	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -40,7 +40,7 @@ public class Client {
 
 	public void initialisePingSender(DHTPeer peer) {
 		this.pingSender = new PingSender(this.localhostIP, this.udpSocket, peer);	
-		final ScheduledFuture<?> pingHandler = scheduler.scheduleAtFixedRate(pingSender, 0, PING_INTERVAL, TimeUnit.SECONDS);
+		final ScheduledFuture<?> pingHandler = scheduler.scheduleAtFixedRate(pingSender, 2, PING_INTERVAL, TimeUnit.SECONDS);
 	}
 	
 	public void terminatePingSender() {

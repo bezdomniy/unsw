@@ -30,8 +30,8 @@ public class PingSender implements Runnable {
 		DatagramPacket sendPacket = new DatagramPacket(data, data.length, this.host, 50000 + serverPort);
 		DatagramPacket replyPacket = new DatagramPacket(new byte[256], 256);
 		socket.send(sendPacket);
-		System.out.println("***** Server " + (this.socket.getLocalPort() - 50256) + ": A ping message has been sent to "
-				+ serverPort);
+//		System.out.println("***** Server " + (this.socket.getLocalPort() - 50256) + ": A ping message has been sent to "
+//				+ serverPort+"\r");
 
 		try {
 			this.socket.receive(replyPacket);
