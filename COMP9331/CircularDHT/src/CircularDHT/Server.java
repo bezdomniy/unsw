@@ -6,22 +6,25 @@ import java.net.*;
 public class Server {
 	private DatagramSocket udpSocket;
 	private ServerSocket tcpSocket;
-	private ServerListener listener;
+	private UDPListener udpListener;
+	private TCPListener tcpListener;
 
 	public Server(DHTPeer peer, Integer port) throws IOException {
 		this.udpSocket = new DatagramSocket(50000+port);
 		this.tcpSocket = new ServerSocket(50256+port);
-		this.listener = new ServerListener(peer, this.udpSocket, this.tcpSocket);
+		this.udpListener = new UDPListener(peer, this.udpSocket);
+		this.tcpListener = new TCPListener(peer, this.tcpSocket);
 	}
 
 
 	public void initialise() throws IOException {
-		this.listener.start();
+		this.udpListener.start();
+		this.tcpListener.start();
 
 	}
 	
 	public void terminate() {
-		this.listener.interrupt();
+		this.udpListener.interrupt();
 	}
 
 }
