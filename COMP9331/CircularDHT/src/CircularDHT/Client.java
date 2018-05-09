@@ -40,11 +40,12 @@ public class Client {
 
 	public void initialisePingSender(DHTPeer peer) {
 		this.pingSender = new PingSender(this.localhostIP, this.udpSocket, peer);	
-		final ScheduledFuture<?> pingHandler = scheduler.scheduleAtFixedRate(pingSender, 2, PING_INTERVAL, TimeUnit.SECONDS);
+		scheduler.scheduleAtFixedRate(pingSender, 2, PING_INTERVAL, TimeUnit.SECONDS);
 	}
 	
 	public void terminatePingSender() {
-		this.scheduler.shutdown();
+		//this.scheduler.shutdown();
+		this.scheduler.shutdownNow();
 	}
 	
 	public void sendData(String dataToSend, Integer targetPort) throws IOException {
@@ -52,9 +53,9 @@ public class Client {
 		DataOutputStream request = new DataOutputStream(tcpSocket.getOutputStream());
 		request.writeBytes(dataToSend + "\n");
 		
-		BufferedReader responseBuffer = new BufferedReader(new InputStreamReader(tcpSocket.getInputStream()));
-		String response = responseBuffer.readLine();
-		System.out.println(response);
+		//BufferedReader responseBuffer = new BufferedReader(new InputStreamReader(tcpSocket.getInputStream()));
+		//String response = responseBuffer.readLine();
+		//System.out.println(response);
 		tcpSocket.close();
 	}
 
