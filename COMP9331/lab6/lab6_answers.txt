@@ -1,0 +1,32 @@
+NAT_home_side: seq# 4164040421
+125 at 6.452270000
+source: 71.192.34.104: 4335
+destination: 64.233.169.104: 80
+
+Exercise 1:
+Q3: If he wants to be contactable on just 1 IP address
+    If he wants to change local IPs without notifying the outside world
+    If he wants to change ISP without changing IPs on local devices
+
+Exercise 2:
+Q4: SYN 4164040420
+7.075657000
+source: 192.168.1.100: 4335
+destination: 64.233.169.104: 80
+
+Q5: ACK 3914283156
+source: 64.233.169.104: 80
+destination: 192.168.1.100: 4335
+received: 7.108986000
+
+Q9: Only checksum was changed - why? Because the NAT modifies the port number and IP address which requires a recalculation of the TCP and IP checksum.
+
+Q13:
+SYN:
+Source: 71.192.34.104
+Destination: 64.233.169.104
+ACK:
+Source: 64.233.169.104
+Destination: 71.192.32.104
+
+Different: Source for SYN and destination for ACK. So the client IP is different. Server IPs are the same.
