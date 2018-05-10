@@ -11,9 +11,8 @@ public class UserInputPrinter extends Thread {
 	public void run() {
 		UserInputListener inputLister = new UserInputListener();
 		while (!isInterrupted()) {
-			System.out.print(">>");
-			System.out.print(String.format("\033[%dA",1)); // Move up
-			System.out.print("\033[2K");
+			System.out.print("");
+
 			try {
 				Thread.sleep(100);
 			} catch (InterruptedException e) {

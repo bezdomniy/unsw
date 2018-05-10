@@ -20,7 +20,7 @@ public class Client {
 	private PingSender pingSender;
 	private Integer peerIdentity;
 	
-	private static final int PING_INTERVAL = 10;
+	private static final int PING_INTERVAL = 3;
 	private static final int UDP_RESPONSE_TIMEOUT = 3000;
 	
 	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
