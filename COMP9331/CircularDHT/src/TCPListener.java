@@ -35,6 +35,7 @@ public class TCPListener extends Thread {
 					Integer requesterSecondNeighbourPort = Integer.parseInt(requestBuffer.substring(10, 13).trim());
 					RequestTrigger.updateSuccessor(this.peer, requesterPort, requesterFirstNeighbourPort,
 							requesterSecondNeighbourPort);
+					System.out.println("Peer "+requesterPort+" will depart from the network.");
 					outToClient.writeBytes("Got it mate: " + requestBuffer + '\n');
 				}
 

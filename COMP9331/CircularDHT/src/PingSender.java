@@ -13,8 +13,8 @@ public class PingSender implements Runnable {
 
 	public PingSender(InetAddress host, DatagramSocket socket, DHTPeer peer) {
 		// Remove this output
-		System.out.println("Restarting client with successors " + peer.getFirstSuccessorPort() + " and "
-				+ peer.getSecondSuccessorPort());
+		//System.out.println("Restarting client with successors " + peer.getFirstSuccessorPort() + " and "
+		//		+ peer.getSecondSuccessorPort());
 		this.socket = socket;
 		this.host = host;
 
@@ -66,14 +66,18 @@ public class PingSender implements Runnable {
 			System.exit(0);
 		} else if (!firstActive.isActive()) {
 			// Remove this output
-			System.out.println("Oh shit, my first successor Peer " + peer.getFirstSuccessorPort() + " has dropped");
+			System.out.println("Peer " + peer.getFirstSuccessorPort() + " is no longer alive.");
 			RequestTrigger.updateDroppedSuccessor(this.peer, this.peer.getFirstSuccessorPort(),
 					secondActive.getFirstNeighbour());
+			System.out.println("My first successor is now " + peer.getFirstSuccessorPort() + ".");
+			System.out.println("My second successor is now " + peer.getSecondSuccessorPort() + ".");
 		} else if (!secondActive.isActive()) {
-			System.out.println("Oh shit, my second successor Peer " + peer.getSecondSuccessorPort() + " has dropped");
+			System.out.println("Peer " + peer.getSecondSuccessorPort() + " is no longer alive");
 			RequestTrigger.updateDroppedSuccessor(this.peer, this.peer.getSecondSuccessorPort(),
 					firstActive.getSecondNeighbour());
+			System.out.println("My second successor is now " + peer.getSecondSuccessorPort() + ".");
 		}
+		
 		// System.out.println("Server "+this.socket.getLocalPort()+":
 		// "+result.toString());
 

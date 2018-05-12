@@ -140,25 +140,26 @@ public class DHTPeer {
 			if (this.getFirstSuccessorPort() >= target) {
 				return new Pair(1, 1);
 			}
-			if (this.getSecondSuccessorPort() >= target) {
-				return new Pair(2, 1);
-			}
+			// if (this.getSecondSuccessorPort() >= target) {
+			// return new Pair(2, 1);
+			// }
 			if (this.getFirstSuccessorPort() < this.getPeerIdentity()) {
 				return new Pair(1, 1);
 			}
-			if (this.getSecondSuccessorPort() < this.getPeerIdentity()) {
-				return new Pair(2, 1);
-			}
-			return new Pair(2, 0);
+			// if (this.getSecondSuccessorPort() < this.getPeerIdentity()) {
+			// return new Pair(2, 1);
+			// }
+			return new Pair(1, 0);
 		}
 		if (this.getPeerIdentity() > target) {
-			if (this.getFirstSuccessorPort() < this.getPeerIdentity()) {
+			if (this.getFirstSuccessorPort() < this.getPeerIdentity() && this.getFirstSuccessorPort() >= target
+					&& this.getSecondSuccessorPort() > target) {
 				return new Pair(1, 1);
 			}
-			if (this.getSecondSuccessorPort() < this.getPeerIdentity()) {
-				return new Pair(2, 1);
-			}
-			return new Pair(2, 0);
+			// if (this.getSecondSuccessorPort() < this.getPeerIdentity()) {
+			// return new Pair(2, 1);
+			// }
+			return new Pair(1, 0);
 		}
 
 		return new Pair(0, 1);
