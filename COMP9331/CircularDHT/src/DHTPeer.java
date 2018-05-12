@@ -1,4 +1,3 @@
-package CircularDHT;
 
 import java.io.IOException;
 
@@ -11,7 +10,7 @@ public class DHTPeer {
 
 	private Server server;
 	private Client client;
-	private UserInputPrinter inputPrinter;
+	private UserInputListener inputListener;
 
 	public static int hashFunction(String input) {
 		return Integer.parseInt(input.trim()) % 256;
@@ -38,8 +37,8 @@ public class DHTPeer {
 		client = new Client(port);
 		server.initialise();
 
-		inputPrinter = new UserInputPrinter();
-		inputPrinter.start();
+		inputListener = new UserInputListener(this);
+		inputListener.start();
 
 		client.initialisePingSender(this);
 
@@ -55,11 +54,13 @@ public class DHTPeer {
 		sendRequest(message, this.predecessorPorts[0]);
 		sendRequest(message, this.predecessorPorts[1]);
 
+		this.inputListener.interrupt();
 		this.server.terminate();
 		this.client.terminatePingSender();
 	}
 
 	public void kill() {
+		this.inputListener.interrupt();
 		this.server.terminate();
 		this.client.terminatePingSender();
 	}
@@ -78,7 +79,6 @@ public class DHTPeer {
 		} else {
 			sendRequest(message, this.secondSuccessorPort);
 		}
-
 	}
 
 	public void forwardRequest(String fileName, String originPeerIdentity) throws IOException {
@@ -86,9 +86,10 @@ public class DHTPeer {
 		System.out.println("File request message has been forwarded to my successor.");
 		int fileHash = hashFunction(fileName);
 		Pair checkFileInSuccessor = CheckFileInSuccessor(fileHash);
-		
-		String message = "request" + padString(String.valueOf(fileName), 4) + originPeerIdentity + checkFileInSuccessor.getSecond();
-		
+
+		String message = "request" + padString(String.valueOf(fileName), 4) + originPeerIdentity
+				+ checkFileInSuccessor.getSecond();
+
 		if (checkFileInSuccessor.getFirst() == 1) {
 			sendRequest(message, this.firstSuccessorPort);
 		} else {
@@ -137,42 +138,45 @@ public class DHTPeer {
 	private Pair CheckFileInSuccessor(int target) {
 		if (this.getPeerIdentity() < target) {
 			if (this.getFirstSuccessorPort() >= target) {
-				return new Pair(1,1);
+				return new Pair(1, 1);
 			}
 			if (this.getSecondSuccessorPort() >= target) {
-				return new Pair(2,1);
+				return new Pair(2, 1);
 			}
 			if (this.getFirstSuccessorPort() < this.getPeerIdentity()) {
-				return new Pair(1,1);
+				return new Pair(1, 1);
 			}
 			if (this.getSecondSuccessorPort() < this.getPeerIdentity()) {
-				return new Pair(2,1);
+				return new Pair(2, 1);
 			}
-			return new Pair(2,0);
+			return new Pair(2, 0);
 		}
 		if (this.getPeerIdentity() > target) {
 			if (this.getFirstSuccessorPort() < this.getPeerIdentity()) {
-				return new Pair(1,1);
+				return new Pair(1, 1);
 			}
 			if (this.getSecondSuccessorPort() < this.getPeerIdentity()) {
-				return new Pair(2,1);
+				return new Pair(2, 1);
 			}
-			return new Pair(2,0);
+			return new Pair(2, 0);
 		}
 
-		return new Pair(0,1);
+		return new Pair(0, 1);
 	}
-	
+
 	private class Pair {
 		private int first;
 		private int second;
+
 		public Pair(int first, int second) {
 			this.first = first;
 			this.second = second;
 		}
+
 		public int getFirst() {
 			return first;
 		}
+
 		public int getSecond() {
 			return second;
 		}

@@ -1,16 +1,9 @@
-package CircularDHT;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.Scanner;
 
 public class UDPListener extends Thread {
 	private DatagramSocket udpSocket;
@@ -33,8 +26,7 @@ public class UDPListener extends Thread {
 
 				RequestTrigger.updatePredecessors(this.peer, receivedData);
 
-				System.out.println("Server " + (this.udpSocket.getLocalPort() - 50000) + ": "
-						+ "A request message has been received from " + receivedData);
+				System.out.println("A request message has been received from " + receivedData);
 
 				SocketAddress requestServer = receivedPacket.getSocketAddress();
 
@@ -54,7 +46,6 @@ public class UDPListener extends Thread {
 			} catch (IOException ignore) {
 			}
 
-			
 		}
 	}
 

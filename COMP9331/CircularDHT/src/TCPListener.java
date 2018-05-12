@@ -1,5 +1,3 @@
-package CircularDHT;
-
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -37,8 +35,7 @@ public class TCPListener extends Thread {
 					Integer requesterSecondNeighbourPort = Integer.parseInt(requestBuffer.substring(10, 13).trim());
 					RequestTrigger.updateSuccessor(this.peer, requesterPort, requesterFirstNeighbourPort,
 							requesterSecondNeighbourPort);
-					outToClient.writeBytes("Server " + this.peer.getPeerIdentity() + "Got it mate: "
-							+ requestBuffer + '\n');
+					outToClient.writeBytes("Got it mate: " + requestBuffer + '\n');
 				}
 
 				else if (requestBuffer.substring(0, 4).equals("File")) {
@@ -50,12 +47,11 @@ public class TCPListener extends Thread {
 
 				else if (requestBuffer.substring(0, 7).equals("request")) {
 					String fileName = requestBuffer.substring(7, 11);
-//					int fileHash = DHTPeer.hashFunction(fileName.trim());
+					// int fileHash = DHTPeer.hashFunction(fileName.trim());
 					boolean fileIsHere = requestBuffer.substring(14, 15).equals("1");
 					if (fileIsHere) {
 						int originPeerPort = Integer.parseInt(requestBuffer.substring(11, 14).trim());
-						System.out
-								.println("File " + fileName.trim() + " is stored here.");
+						System.out.println("File " + fileName.trim() + " is stored here.");
 						System.out.println(
 								"A response message, destined for peer " + originPeerPort + ", has been sent.");
 						peer.getClient().sendData(
@@ -69,6 +65,5 @@ public class TCPListener extends Thread {
 			}
 		}
 	}
-
 
 }

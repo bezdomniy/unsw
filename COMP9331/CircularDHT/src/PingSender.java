@@ -1,4 +1,3 @@
-package CircularDHT;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -13,8 +12,9 @@ public class PingSender implements Runnable {
 	private DHTPeer peer;
 
 	public PingSender(InetAddress host, DatagramSocket socket, DHTPeer peer) {
-		System.out.println("Server " + peer.getClient().getPeerIdentity() + " restarting client with successors "
-				+ peer.getFirstSuccessorPort() + " and " + peer.getSecondSuccessorPort());
+		// Remove this output
+		System.out.println("Restarting client with successors " + peer.getFirstSuccessorPort() + " and "
+				+ peer.getSecondSuccessorPort());
 		this.socket = socket;
 		this.host = host;
 
@@ -30,8 +30,9 @@ public class PingSender implements Runnable {
 		DatagramPacket sendPacket = new DatagramPacket(data, data.length, this.host, 50000 + serverPort);
 		DatagramPacket replyPacket = new DatagramPacket(new byte[256], 256);
 		socket.send(sendPacket);
-//		System.out.println("***** Server " + (this.socket.getLocalPort() - 50256) + ": A ping message has been sent to "
-//				+ serverPort+"\r");
+		// System.out.println("***** Server " + (this.socket.getLocalPort() - 50256) +
+		// ": A ping message has been sent to "
+		// + serverPort+"\r");
 
 		try {
 			this.socket.receive(replyPacket);
@@ -42,8 +43,7 @@ public class PingSender implements Runnable {
 		}
 
 		String reply = new String(replyPacket.getData(), 0, replyPacket.getLength());
-		System.out.println("Server " + (this.socket.getLocalPort() - 50256) + ": "
-				+ "A response message has been received from " + reply.substring(0, 1));
+		System.out.println("A response message has been received from " + reply.substring(0, 1));
 		// System.out.println(reply);
 		return new PingResult(true, Integer.parseInt(reply.substring(1, 2)), Integer.parseInt(reply.substring(2, 3)));
 
@@ -61,19 +61,18 @@ public class PingSender implements Runnable {
 		} catch (IOException ignore) {
 		}
 
-		if (!firstActive.isActive()) {
-			System.out.println(this.peer.getClient().getPeerIdentity() + " Oh shit, my first successor Peer "
-					+ peer.getFirstSuccessorPort() + " has dropped");
+		if (!firstActive.isActive() && !secondActive.isActive()) {
+			System.out.println("Both peers dropped at once, no way to recover from this! Exiting...");
+			System.exit(0);
+		} else if (!firstActive.isActive()) {
+			// Remove this output
+			System.out.println("Oh shit, my first successor Peer " + peer.getFirstSuccessorPort() + " has dropped");
 			RequestTrigger.updateDroppedSuccessor(this.peer, this.peer.getFirstSuccessorPort(),
 					secondActive.getFirstNeighbour());
 		} else if (!secondActive.isActive()) {
-			System.out.println(this.peer.getClient().getPeerIdentity() + " Oh shit, my second successor Peer "
-					+ peer.getSecondSuccessorPort() + " has dropped");
+			System.out.println("Oh shit, my second successor Peer " + peer.getSecondSuccessorPort() + " has dropped");
 			RequestTrigger.updateDroppedSuccessor(this.peer, this.peer.getSecondSuccessorPort(),
 					firstActive.getSecondNeighbour());
-		} else if (!firstActive.isActive() && !secondActive.isActive()) {
-			System.out.println("Both peers dropped at once, no way to recover from this! Exiting...");
-			System.exit(0);
 		}
 		// System.out.println("Server "+this.socket.getLocalPort()+":
 		// "+result.toString());
