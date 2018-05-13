@@ -23,17 +23,18 @@ public class UDPListener extends Thread {
 				this.udpSocket.receive(receivedPacket);
 
 				String receivedData = new String(receivedPacket.getData(), 0, receivedPacket.getLength());
+				String pingSender = receivedData.substring(0, 3).trim();
+				String sequenceNumber = receivedData.substring(3).trim();
 
-				RequestTrigger.updatePredecessors(this.peer, receivedData);
+				RequestTrigger.updatePredecessors(this.peer, pingSender);
 
-				System.out.println("A ping request message has been received from " + receivedData);
+				System.out.println("A ping request message has been received from " + pingSender.trim());
 
 				SocketAddress requestServer = receivedPacket.getSocketAddress();
 
 				byte[] response = new byte[256];
 				String responseMessage = DHTPeer.padString(String.valueOf(this.peer.getPeerIdentity()), 3)
-						+ String.valueOf(this.peer.getFirstSuccessorPort())
-						+ String.valueOf(this.peer.getSecondSuccessorPort());
+						+ sequenceNumber;
 				response = responseMessage.getBytes();
 
 				DatagramPacket responsePacket = new DatagramPacket(response, response.length, requestServer);

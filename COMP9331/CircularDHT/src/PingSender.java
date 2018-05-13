@@ -8,22 +8,30 @@ import java.net.SocketTimeoutException;
 public class PingSender implements Runnable {
 	private DatagramSocket socket;
 	private InetAddress host;
+	private int firstPeerSequenceNumber;
+	private int secondPeerSequenceNumber;
+	
+	private Integer firstSuccessorReplySequence;
+	private Integer secondSuccessorReplySequence;
 
 	private DHTPeer peer;
 
 	public PingSender(InetAddress host, DatagramSocket socket, DHTPeer peer) {
-		// Remove this output
-		// System.out.println("Restarting client with successors " +
-		// peer.getFirstSuccessorPort() + " and "
-		// + peer.getSecondSuccessorPort());
 		this.socket = socket;
 		this.host = host;
 
+		this.firstPeerSequenceNumber = 0;
+		this.secondPeerSequenceNumber = 0;
+		
+		this.firstSuccessorReplySequence = 0;
+		this.secondSuccessorReplySequence = 0;
+		
 		this.peer = peer;
 	}
 
-	public boolean ping(int serverPort) throws IOException {
-		String message = String.valueOf(this.peer.getPeerIdentity());
+	public Integer ping(int serverPort, int sequenceNumber, int replySequence) throws IOException {
+		String message = DHTPeer.padString(String.valueOf(this.peer.getPeerIdentity()), 3)
+				+ DHTPeer.padString(String.valueOf(sequenceNumber), 2);
 		// System.out.println(message);
 		byte[] data = new byte[256];
 		data = message.getBytes();
@@ -40,51 +48,54 @@ public class PingSender implements Runnable {
 		} catch (SocketTimeoutException e) {
 			// System.out.println("Server "+this.socket.getLocalPort()+": "+"A response
 			// message has not been received from "+serverPort);
-			return false;
+			return replySequence;
 		}
 
 		String reply = new String(replyPacket.getData(), 0, replyPacket.getLength());
-		System.out.println(
-				"A ping response message has been received from " + reply.substring(0, 3).replaceFirst("^0+(?!$)", "").trim());
+		System.out.println("A ping response message has been received from "
+				+ reply.substring(0, 3).trim());
 		// System.out.println(reply);
-		return true;
+		return Integer.parseInt(reply.substring(3).trim());
 
 	}
 
 	@Override
 	public void run() {
-		boolean firstActive = false;
-		boolean secondActive = false;
-
 		try {
-			firstActive = ping(this.peer.getFirstSuccessorPort());
-			secondActive = ping(this.peer.getSecondSuccessorPort());
+			this.firstSuccessorReplySequence = ping(this.peer.getFirstSuccessorPort(), this.firstPeerSequenceNumber, this.firstSuccessorReplySequence);
+			this.secondSuccessorReplySequence = ping(this.peer.getSecondSuccessorPort(), this.secondPeerSequenceNumber,this.secondSuccessorReplySequence);
 
 		} catch (IOException ignore) {
 		}
 
-		if (!firstActive && !secondActive) {
-			System.out.println("Both peers dropped at once, no way to recover from this! Exiting...");
-			System.exit(0);
-		} else if (!firstActive) {
-			// Remove this output
+		
+		if (this.firstSuccessorReplySequence + 3 <= this.firstPeerSequenceNumber) {
 			System.out.println("Peer " + this.peer.getFirstSuccessorPort() + " is no longer alive.");
 			String replacementSuccessor = this.peer.sendRequest("successor1", this.peer.getSecondSuccessorPort());
+			
+			this.firstPeerSequenceNumber = 0;
+			this.firstSuccessorReplySequence = 0;
 
 			RequestTrigger.updateSuccessor(this.peer, this.peer.getFirstSuccessorPort(), 0,
 					Integer.parseInt(replacementSuccessor));
 
-		} else if (!secondActive) {
+		} else {
+			this.firstPeerSequenceNumber++;
+		}
+		
+		if (this.secondSuccessorReplySequence + 3 <= this.secondPeerSequenceNumber) {
 			System.out.println("Peer " + peer.getSecondSuccessorPort() + " is no longer alive");
 			String replacementSuccessor = this.peer.sendRequest("successor2", this.peer.getFirstSuccessorPort());
+			
+			this.secondPeerSequenceNumber = 0;
+			this.secondSuccessorReplySequence = 0;
 
 			RequestTrigger.updateSuccessor(this.peer, this.peer.getSecondSuccessorPort(),
 					Integer.parseInt(replacementSuccessor), 0);
 
+		} else {
+			this.secondPeerSequenceNumber++;
 		}
-
-		// System.out.println("Server "+this.socket.getLocalPort()+":
-		// "+result.toString());
 
 	}
 
