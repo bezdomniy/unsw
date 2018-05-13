@@ -1,6 +1,8 @@
 
+import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -18,6 +20,7 @@ public class Client {
 
 	private static final int PING_INTERVAL = 30;
 	private static final int UDP_RESPONSE_TIMEOUT = 3000;
+	private static final int TCP_RESPONSE_TIMEOUT = 2000;
 
 	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -45,7 +48,7 @@ public class Client {
 	}
 
 	public void sendData(String dataToSend, Integer targetPort) throws IOException {
-		Socket tcpSocket = new Socket(this.localhostIP, targetPort + 50256);
+		Socket tcpSocket = new Socket(this.localhostIP, targetPort + 50000);
 		DataOutputStream request = new DataOutputStream(tcpSocket.getOutputStream());
 		request.writeBytes(dataToSend + "\n");
 
@@ -54,6 +57,19 @@ public class Client {
 		// String response = responseBuffer.readLine();
 		// System.out.println(response);
 		tcpSocket.close();
+	}
+	
+	public String sendRequest(String dataToSend, Integer targetPort) throws IOException {
+		Socket tcpSocket = new Socket(this.localhostIP, targetPort + 50000);
+		tcpSocket.setSoTimeout(TCP_RESPONSE_TIMEOUT);
+		
+		DataOutputStream request = new DataOutputStream(tcpSocket.getOutputStream());
+		request.writeBytes(dataToSend + "\n");
+
+		BufferedReader responseBuffer = new BufferedReader(new InputStreamReader(tcpSocket.getInputStream()));
+		String response = responseBuffer.readLine();
+		tcpSocket.close();
+		return response;
 	}
 
 }

@@ -10,7 +10,7 @@ public class Server {
 
 	public Server(DHTPeer peer, Integer port) throws IOException {
 		this.udpSocket = new DatagramSocket(50000 + port);
-		this.tcpSocket = new ServerSocket(50256 + port);
+		this.tcpSocket = new ServerSocket(50000 + port);
 		this.udpListener = new UDPListener(peer, this.udpSocket);
 		this.tcpListener = new TCPListener(peer, this.tcpSocket);
 	}

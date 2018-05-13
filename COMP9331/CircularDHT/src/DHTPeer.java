@@ -44,8 +44,12 @@ public class DHTPeer {
 
 	}
 
-	public void sendRequest(String message, Integer targetPort) throws IOException {
-		this.client.sendData(message, targetPort);
+	public String sendRequest(String message, Integer targetPort) {
+		String ret = null;
+		try {
+			ret = this.client.sendRequest(message, targetPort);
+		} catch (IOException ignore) {}
+		return ret;
 	}
 
 	public void quit() throws IOException {

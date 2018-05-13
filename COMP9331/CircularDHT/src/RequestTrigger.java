@@ -20,12 +20,11 @@ public class RequestTrigger {
 		if (quitterPort.equals(peer.getFirstSuccessorPort())) {
 			peer.setFirstSuccessorPort(peer.getSecondSuccessorPort());
 			peer.setSecondSuccessorPort(requesterSecondNeighbourPort);
-			System.out.println("My first successor is now " + peer.getFirstSuccessorPort() + ".");
-			System.out.println("My second successor is now " + peer.getSecondSuccessorPort() + ".");
 		} else {
 			peer.setSecondSuccessorPort(requesterFirstNeighbourPort);
-			System.out.println("My second successor is now " + peer.getSecondSuccessorPort() + ".");
 		}
+		System.out.println("My first successor is now " + peer.getFirstSuccessorPort() + ".");
+		System.out.println("My second successor is now " + peer.getSecondSuccessorPort() + ".");
 
 		//peer.getClient().initialisePingSender(peer);
 

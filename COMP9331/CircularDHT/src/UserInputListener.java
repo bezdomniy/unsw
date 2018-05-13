@@ -23,8 +23,7 @@ public class UserInputListener extends Thread {
 				} catch (IOException ignore) {
 				}
 			}
-			// Check if substring even has 7 chars first
-			else if (userInput.substring(0, 7).equals("request")) {
+			else if (userInput.length() > 8 && userInput.substring(0, 7).equals("request")) {
 				String fileName = userInput.substring(8);
 				try {
 					this.peer.requestFile(fileName);

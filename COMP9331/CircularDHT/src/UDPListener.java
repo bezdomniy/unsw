@@ -26,12 +26,12 @@ public class UDPListener extends Thread {
 
 				RequestTrigger.updatePredecessors(this.peer, receivedData);
 
-				System.out.println("A request message has been received from " + receivedData);
+				System.out.println("A ping request message has been received from " + receivedData);
 
 				SocketAddress requestServer = receivedPacket.getSocketAddress();
 
 				byte[] response = new byte[256];
-				String responseMessage = String.valueOf(this.udpSocket.getLocalPort() - 50000)
+				String responseMessage = DHTPeer.padString(String.valueOf(this.peer.getPeerIdentity()), 3)
 						+ String.valueOf(this.peer.getFirstSuccessorPort())
 						+ String.valueOf(this.peer.getSecondSuccessorPort());
 				response = responseMessage.getBytes();
@@ -39,9 +39,6 @@ public class UDPListener extends Thread {
 				DatagramPacket responsePacket = new DatagramPacket(response, response.length, requestServer);
 
 				this.udpSocket.send(responsePacket);
-
-				// System.out.println("Server "+this.socket.getLocalPort()+": "+"A response
-				// message has been sent");
 
 			} catch (IOException ignore) {
 			}
