@@ -48,7 +48,8 @@ public class DHTPeer {
 		String ret = null;
 		try {
 			ret = this.client.sendRequest(message, targetPort);
-		} catch (IOException ignore) {}
+		} catch (IOException ignore) {
+		}
 		return ret;
 	}
 
@@ -122,6 +123,29 @@ public class DHTPeer {
 		this.predecessorPorts = predecessorPorts;
 	}
 
+	public void updatePredecessors(String request) {
+		Integer receivedInteger = Integer.parseInt(request);
+		Integer[] predecessorPorts = this.getPredecessorPorts();
+
+		if (predecessorPorts[0] == null) {
+			predecessorPorts[0] = receivedInteger;
+		} else if (!predecessorPorts[0].equals(receivedInteger)) {
+			predecessorPorts[1] = receivedInteger;
+		}
+	}
+
+	public void updateSuccessor(Integer quitterPort, Integer requesterFirstNeighbourPort,
+			Integer requesterSecondNeighbourPort) {
+		if (quitterPort.equals(this.getFirstSuccessorPort())) {
+			this.setFirstSuccessorPort(this.getSecondSuccessorPort());
+			this.setSecondSuccessorPort(requesterSecondNeighbourPort);
+		} else {
+			this.setSecondSuccessorPort(requesterFirstNeighbourPort);
+		}
+		System.out.println("My first successor is now " + this.getFirstSuccessorPort() + ".");
+		System.out.println("My second successor is now " + this.getSecondSuccessorPort() + ".");
+	}
+
 	public static String padString(String s, int desiredLength) {
 		StringBuilder ret;
 		if (s.length() == desiredLength) {
@@ -140,6 +164,8 @@ public class DHTPeer {
 	}
 
 	private Pair CheckFileInSuccessor(int target) {
+		// Uncomment lines in this function if you want requests to fast forward to
+		// successors
 		if (this.getPeerIdentity() < target) {
 			if (this.getFirstSuccessorPort() >= target) {
 				return new Pair(1, 1);

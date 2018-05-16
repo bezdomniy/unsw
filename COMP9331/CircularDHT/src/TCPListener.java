@@ -29,15 +29,12 @@ public class TCPListener extends Thread {
 				String requestBuffer = receivedData.readLine();
 
 				if (requestBuffer.substring(0, 4).equals("quit")) {
-					//DataOutputStream outToClient = new DataOutputStream(tcpConnectionSocket.getOutputStream());
 					int requesterPort = Integer.parseInt(requestBuffer.substring(4, 7).trim());
 					Integer requesterFirstNeighbourPort = Integer.parseInt(requestBuffer.substring(7, 10).trim());
 					Integer requesterSecondNeighbourPort = Integer.parseInt(requestBuffer.substring(10, 13).trim());
-					System.out.println("Peer "+requesterPort+" will depart from the network.");
-					RequestTrigger.updateSuccessor(this.peer, requesterPort, requesterFirstNeighbourPort,
+					System.out.println("Peer " + requesterPort + " will depart from the network.");
+					this.peer.updateSuccessor(requesterPort, requesterFirstNeighbourPort,
 							requesterSecondNeighbourPort);
-					
-					//outToClient.writeBytes("Got it mate: " + requestBuffer + '\n');
 				}
 
 				else if (requestBuffer.substring(0, 4).equals("File")) {
@@ -46,10 +43,9 @@ public class TCPListener extends Thread {
 					System.out.println("Received a response message from peer " + respondingPeer
 							+ ", which has the file " + fileName + ".");
 				}
-				
+
 				else if (requestBuffer.substring(0, 7).equals("request")) {
 					String fileName = requestBuffer.substring(7, 11);
-					// int fileHash = DHTPeer.hashFunction(fileName.trim());
 					boolean fileIsHere = requestBuffer.substring(14, 15).equals("1");
 					if (fileIsHere) {
 						int originPeerPort = Integer.parseInt(requestBuffer.substring(11, 14).trim());
@@ -63,21 +59,20 @@ public class TCPListener extends Thread {
 						peer.forwardRequest(fileName, requestBuffer.substring(11, 14));
 					}
 				}
-				
-				else if (requestBuffer.substring(0,9).equals("successor")) {
+
+				else if (requestBuffer.substring(0, 9).equals("successor")) {
 					String message = "";
-					
+
 					DataOutputStream outToClient = new DataOutputStream(tcpConnectionSocket.getOutputStream());
 					if (requestBuffer.substring(9).equals("1")) {
 						message = String.valueOf(this.peer.getFirstSuccessorPort());
-					}
-					else if (requestBuffer.substring(9).equals("2")) {
+					} else if (requestBuffer.substring(9).equals("2")) {
 						message = String.valueOf(this.peer.getSecondSuccessorPort());
 					}
-					
+
 					outToClient.writeBytes(message + '\n');
 				}
-				
+
 			} catch (IOException ignore) {
 			}
 		}

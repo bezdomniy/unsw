@@ -43,7 +43,6 @@ public class Client {
 	}
 
 	public void terminatePingSender() {
-		// this.scheduler.shutdown();
 		this.scheduler.shutdownNow();
 	}
 
@@ -52,17 +51,13 @@ public class Client {
 		DataOutputStream request = new DataOutputStream(tcpSocket.getOutputStream());
 		request.writeBytes(dataToSend + "\n");
 
-		// BufferedReader responseBuffer = new BufferedReader(new
-		// InputStreamReader(tcpSocket.getInputStream()));
-		// String response = responseBuffer.readLine();
-		// System.out.println(response);
 		tcpSocket.close();
 	}
-	
+
 	public String sendRequest(String dataToSend, Integer targetPort) throws IOException {
 		Socket tcpSocket = new Socket(this.localhostIP, targetPort + 50000);
 		tcpSocket.setSoTimeout(TCP_RESPONSE_TIMEOUT);
-		
+
 		DataOutputStream request = new DataOutputStream(tcpSocket.getOutputStream());
 		request.writeBytes(dataToSend + "\n");
 

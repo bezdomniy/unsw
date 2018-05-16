@@ -6,11 +6,13 @@ import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 
 public class PingSender implements Runnable {
+	private static final int MISSED_PACKETS_ALLOWED = 3;
+
 	private DatagramSocket socket;
 	private InetAddress host;
 	private int firstPeerSequenceNumber;
 	private int secondPeerSequenceNumber;
-	
+
 	private Integer firstSuccessorReplySequence;
 	private Integer secondSuccessorReplySequence;
 
@@ -22,39 +24,31 @@ public class PingSender implements Runnable {
 
 		this.firstPeerSequenceNumber = 0;
 		this.secondPeerSequenceNumber = 0;
-		
+
 		this.firstSuccessorReplySequence = 0;
 		this.secondSuccessorReplySequence = 0;
-		
+
 		this.peer = peer;
 	}
 
 	public Integer ping(int serverPort, int sequenceNumber, int replySequence) throws IOException {
 		String message = DHTPeer.padString(String.valueOf(this.peer.getPeerIdentity()), 3)
 				+ DHTPeer.padString(String.valueOf(sequenceNumber), 2);
-		// System.out.println(message);
 		byte[] data = new byte[256];
 		data = message.getBytes();
 
 		DatagramPacket sendPacket = new DatagramPacket(data, data.length, this.host, 50000 + serverPort);
 		DatagramPacket replyPacket = new DatagramPacket(new byte[256], 256);
 		socket.send(sendPacket);
-		// System.out.println("***** Server " + (this.socket.getLocalPort() - 50256) +
-		// ": A ping message has been sent to "
-		// + serverPort+"\r");
 
 		try {
 			this.socket.receive(replyPacket);
 		} catch (SocketTimeoutException e) {
-			// System.out.println("Server "+this.socket.getLocalPort()+": "+"A response
-			// message has not been received from "+serverPort);
 			return replySequence;
 		}
 
 		String reply = new String(replyPacket.getData(), 0, replyPacket.getLength());
-		System.out.println("A ping response message has been received from "
-				+ reply.substring(0, 3).trim());
-		// System.out.println(reply);
+		System.out.println("A ping response message has been received from " + reply.substring(0, 3).trim());
 		return Integer.parseInt(reply.substring(3).trim());
 
 	}
@@ -62,36 +56,48 @@ public class PingSender implements Runnable {
 	@Override
 	public void run() {
 		try {
-			this.firstSuccessorReplySequence = ping(this.peer.getFirstSuccessorPort(), this.firstPeerSequenceNumber, this.firstSuccessorReplySequence);
-			this.secondSuccessorReplySequence = ping(this.peer.getSecondSuccessorPort(), this.secondPeerSequenceNumber,this.secondSuccessorReplySequence);
+			this.firstSuccessorReplySequence = ping(this.peer.getFirstSuccessorPort(), this.firstPeerSequenceNumber,
+					this.firstSuccessorReplySequence);
+			this.secondSuccessorReplySequence = ping(this.peer.getSecondSuccessorPort(), this.secondPeerSequenceNumber,
+					this.secondSuccessorReplySequence);
 
 		} catch (IOException ignore) {
 		}
 
-		
-		if (this.firstSuccessorReplySequence + 3 <= this.firstPeerSequenceNumber) {
+		if (this.firstSuccessorReplySequence + MISSED_PACKETS_ALLOWED <= this.firstPeerSequenceNumber) {
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException ignore) {
+			}
 			System.out.println("Peer " + this.peer.getFirstSuccessorPort() + " is no longer alive.");
+
+			peer.setFirstSuccessorPort(peer.getSecondSuccessorPort());
+
 			String replacementSuccessor = this.peer.sendRequest("successor1", this.peer.getSecondSuccessorPort());
-			
+
+			peer.setSecondSuccessorPort(Integer.parseInt(replacementSuccessor.trim()));
+
 			this.firstPeerSequenceNumber = 0;
 			this.firstSuccessorReplySequence = 0;
 
-			RequestTrigger.updateSuccessor(this.peer, this.peer.getFirstSuccessorPort(), 0,
-					Integer.parseInt(replacementSuccessor));
+			System.out.println("My first successor is now " + peer.getFirstSuccessorPort() + ".");
+			System.out.println("My second successor is now " + peer.getSecondSuccessorPort() + ".");
 
 		} else {
 			this.firstPeerSequenceNumber++;
 		}
-		
-		if (this.secondSuccessorReplySequence + 3 <= this.secondPeerSequenceNumber) {
+
+		if (this.secondSuccessorReplySequence + MISSED_PACKETS_ALLOWED <= this.secondPeerSequenceNumber) {
+
 			System.out.println("Peer " + peer.getSecondSuccessorPort() + " is no longer alive");
 			String replacementSuccessor = this.peer.sendRequest("successor2", this.peer.getFirstSuccessorPort());
-			
+			peer.setSecondSuccessorPort(Integer.parseInt(replacementSuccessor.trim()));
+
 			this.secondPeerSequenceNumber = 0;
 			this.secondSuccessorReplySequence = 0;
 
-			RequestTrigger.updateSuccessor(this.peer, this.peer.getSecondSuccessorPort(),
-					Integer.parseInt(replacementSuccessor), 0);
+			System.out.println("My first successor is now " + peer.getFirstSuccessorPort() + ".");
+			System.out.println("My second successor is now " + peer.getSecondSuccessorPort() + ".");
 
 		} else {
 			this.secondPeerSequenceNumber++;

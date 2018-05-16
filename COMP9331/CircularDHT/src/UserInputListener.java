@@ -22,8 +22,7 @@ public class UserInputListener extends Thread {
 					this.peer.quit();
 				} catch (IOException ignore) {
 				}
-			}
-			else if (userInput.length() > 8 && userInput.substring(0, 7).equals("request")) {
+			} else if (userInput.length() > 8 && userInput.substring(0, 7).equals("request")) {
 				String fileName = userInput.substring(8);
 				try {
 					this.peer.requestFile(fileName);
