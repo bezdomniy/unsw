@@ -65,10 +65,6 @@ public class PingSender implements Runnable {
 		}
 
 		if (this.firstSuccessorReplySequence + MISSED_PACKETS_ALLOWED <= this.firstPeerSequenceNumber) {
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException ignore) {
-			}
 			System.out.println("Peer " + this.peer.getFirstSuccessorPort() + " is no longer alive.");
 
 			peer.setFirstSuccessorPort(peer.getSecondSuccessorPort());
@@ -88,10 +84,16 @@ public class PingSender implements Runnable {
 		}
 
 		if (this.secondSuccessorReplySequence + MISSED_PACKETS_ALLOWED <= this.secondPeerSequenceNumber) {
-
 			System.out.println("Peer " + peer.getSecondSuccessorPort() + " is no longer alive");
 			String replacementSuccessor = this.peer.sendRequest("successor2", this.peer.getFirstSuccessorPort());
-			peer.setSecondSuccessorPort(Integer.parseInt(replacementSuccessor.trim()));
+			String successorUpdatedCheck = this.peer.sendRequest("successor1", this.peer.getFirstSuccessorPort());
+
+			if (Integer.parseInt(successorUpdatedCheck) == this.peer.getSecondSuccessorPort()) {
+				peer.setSecondSuccessorPort(Integer.parseInt(replacementSuccessor.trim()));
+			} else {
+				peer.setSecondSuccessorPort(Integer.parseInt(successorUpdatedCheck.trim()));
+				;
+			}
 
 			this.secondPeerSequenceNumber = 0;
 			this.secondSuccessorReplySequence = 0;

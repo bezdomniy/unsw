@@ -18,7 +18,7 @@ public class Client {
 	private PingSender pingSender;
 	private Integer peerIdentity;
 
-	private static final int PING_INTERVAL = 5;
+	private static final int PING_INTERVAL = 10;
 	private static final int UDP_RESPONSE_TIMEOUT = 2000;
 	private static final int TCP_RESPONSE_TIMEOUT = 2000;
 
