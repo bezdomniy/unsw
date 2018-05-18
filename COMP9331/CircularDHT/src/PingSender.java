@@ -88,11 +88,11 @@ public class PingSender implements Runnable {
 			String replacementSuccessor = this.peer.sendRequest("successor2", this.peer.getFirstSuccessorPort());
 			String successorUpdatedCheck = this.peer.sendRequest("successor1", this.peer.getFirstSuccessorPort());
 
+			// Check if your first successor has discovered that his first peer is dead yet
 			if (Integer.parseInt(successorUpdatedCheck) == this.peer.getSecondSuccessorPort()) {
 				peer.setSecondSuccessorPort(Integer.parseInt(replacementSuccessor.trim()));
 			} else {
 				peer.setSecondSuccessorPort(Integer.parseInt(successorUpdatedCheck.trim()));
-				;
 			}
 
 			this.secondPeerSequenceNumber = 0;
