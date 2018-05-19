@@ -24,6 +24,10 @@ public class UserInputListener extends Thread {
 				}
 			} else if (userInput.length() > 8 && userInput.substring(0, 7).equals("request")) {
 				String fileName = userInput.substring(8);
+				if (fileName.length() > 4) {
+					System.out.println("File name too long, must be 4 characters or fewer.");
+					continue;
+				}
 				try {
 					this.peer.requestFile(fileName);
 				} catch (IOException ignore) {

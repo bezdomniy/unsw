@@ -62,6 +62,7 @@ public class DHTPeer {
 		this.inputListener.interrupt();
 		this.server.terminate();
 		this.client.terminatePingSender();
+		System.exit(0);
 	}
 
 	public void kill() {
@@ -73,7 +74,7 @@ public class DHTPeer {
 	public void requestFile(String fileName) throws IOException {
 		System.out.println("File request message for " + fileName.trim() + " has been sent to my successor.");
 		int fileHash = hashFunction(fileName);
-		Pair checkFileInSuccessor = CheckFileInSuccessor(fileHash);
+		Pair checkFileInSuccessor = checkFileInSuccessor(fileHash);
 		String message = "request" + padString(String.valueOf(fileName), 4)
 				+ padString(String.valueOf(this.peerIdentity), 3) + checkFileInSuccessor.getSecond();
 
@@ -90,7 +91,7 @@ public class DHTPeer {
 		System.out.println("File " + fileName.trim() + " is not stored here.");
 		System.out.println("File request message has been forwarded to my successor.");
 		int fileHash = hashFunction(fileName);
-		Pair checkFileInSuccessor = CheckFileInSuccessor(fileHash);
+		Pair checkFileInSuccessor = checkFileInSuccessor(fileHash);
 
 		String message = "request" + padString(String.valueOf(fileName), 4) + originPeerIdentity
 				+ checkFileInSuccessor.getSecond();
@@ -163,7 +164,7 @@ public class DHTPeer {
 		}
 	}
 
-	private Pair CheckFileInSuccessor(int target) {
+	private Pair checkFileInSuccessor(int target) {
 		// Uncomment lines in this function if you want requests to fast forward to
 		// successors
 		if (this.getPeerIdentity() < target) {

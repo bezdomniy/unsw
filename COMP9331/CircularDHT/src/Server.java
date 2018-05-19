@@ -23,6 +23,7 @@ public class Server {
 
 	public void terminate() {
 		this.udpListener.interrupt();
+		this.tcpListener.interrupt();
 	}
 
 }
