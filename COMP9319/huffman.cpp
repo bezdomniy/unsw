@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <iostream>
 #include <map>
+#include <unordered_set>
 #include <algorithm>
+#include <vector>
+#include <queue>
 
 #define BUFFERLENGTH 1
 
@@ -15,6 +18,23 @@ class Node {
         HuffmanPair getValue();
         Node *getLeftChild();
         Node *getRightChild();
+
+/*         bool operator< (const Node &other) const
+            {
+                return this->value.second < other.value.second;
+            } */
+
+        bool operator== (const Node &other) const
+            {
+                return this->value.first == other.value.first;
+            }
+            
+        HuffmanPair getValue() const {
+            return this->value;
+        }
+        void updateFrequency(int newFreq) {
+            this->value.second = newFreq;
+        }
 
     private:
         HuffmanPair value;
@@ -31,111 +51,108 @@ Node::Node(HuffmanPair v) {
 }
 Node::Node(void) {
 }
-HuffmanPair Node::getValue() {
-    return value;
-}
+
 Node *Node::getLeftChild() {
     return leftChild;
 }
-
 Node *Node::getRightChild() {
     return rightChild;
 }
 
-
-struct CompareValue
-{
-    bool operator()(const HuffmanPair & left, const HuffmanPair & right) const
-    {
-        return left.second < right.second;
+struct nodeHash {
+    size_t operator() (const Node &node ) const {
+        return node.getValue().first;
     }
 };
 
-HuffmanPair getMin(std::map<char, int> mymap) 
+/*
+struct nodeEqual {
+    bool operator() (const Node &node1, const Node &node2) const {
+        return node1.getValue().first == node2.getValue().first;
+    }
+};*/
+
+struct CompareValue
 {
-    std::pair<char, int> min 
-      = *std::min_element(mymap.begin(), mymap.end(), CompareValue());
+    bool operator()(const Node &node1, const Node &node2) const
+    {
+        return node1.getValue().second < node2.getValue().second;
+    }
+};
+
+Node getMin(std::unordered_set<Node, nodeHash> nodeSet) 
+{
+    Node min 
+      = *std::min_element(nodeSet.begin(), nodeSet.end(), CompareValue());
+
     return min;
 }
 
 int main(int argc, char const *argv[])
 {
-    FILE *filePointer = fopen("warandpeace.txt", "r");
+    FILE *filePointer = fopen("example1.txt", "r");
     
     char buffer[BUFFERLENGTH+1];
     size_t charactersRead = 0;
     
-    std::map<char,int> frequencyTable;
+    std::unordered_set<Node, nodeHash> forest;
+    std::priority_queue<Node, std::vector<Node>, CompareValue> forestPq;
     
     if (filePointer != NULL) {
         while (charactersRead = fread(buffer, sizeof(char), BUFFERLENGTH, filePointer) > 0) {
             char character = *buffer;
 
-            if (frequencyTable.find(character) == frequencyTable.end()) {
-                frequencyTable[character] = 1;
+            HuffmanPair newPair(character,1);
+            Node newNode(newPair);
+            std::unordered_set<Node, nodeHash>::iterator nodeInSet = forest.find(newNode);
+
+            if (nodeInSet != forest.end()) {
+                forest.erase(newNode);
+                int newFreq = nodeInSet->getValue().second + 1;
+                newNode.updateFrequency(newFreq);
             }
-            else {
-                frequencyTable[character]++;
+            forest.insert(newNode);
+        }
+
+        for (std::unordered_set<Node, nodeHash>::iterator forestIterator = forest.begin();
+            forestIterator != forest.end(); ++forestIterator) {
+                forestPq.push(*forestIterator);
             }
+
+        /*for (const auto &p : forest) {
+            std::cout << "forest[" << p.getValue().first << "] = " << p.getValue().second << '\n';
+        } */
+
+        if (!forestPq.empty()) {
+            Node test = forestPq.top();
+            forestPq.pop();
+            std::cout << test.getValue().first;
         }
-
-        /*for (const auto &p : frequencyTable) {
-            std::cout << "frequencyTable[" << p.first << "] = " << p.second << '\n';
-        }*/
-    }
-
-    HuffmanPair min1 = getMin(frequencyTable);
-    frequencyTable.erase(min1.first);
-    HuffmanPair min2 = getMin(frequencyTable);
-    frequencyTable.erase(min2.first);
-    Node right(min1);
-    Node left(min2);
-
-    HuffmanPair val(NULL, min1.second + min2.second);
-
-    Node *root = new Node(val, &left, &right);
-
-    printf("%c,%i\n",root->getValue().first,root->getValue().second);
-    printf("%c,%i\n",root->getLeftChild()->getValue().first,root->getLeftChild()->getValue().second);
-    printf("%c,%i\n\n",root->getRightChild()->getValue().first,root->getRightChild()->getValue().second);
-    
-    //printf("'%c,%c,%c' | ",root.getValue().first,root.getLeftChild().getValue().first,root.getRightChild().getValue().first);
-    while (!frequencyTable.empty()) {
-        HuffmanPair min = getMin(frequencyTable);
-        frequencyTable.erase(min.first);
-
-        HuffmanPair newVal(NULL, root->getValue().second + min.second);
-        Node newNode(min);
-
-        if (min.second < root->getValue().second) {
-            Node *newRoot = new Node(newVal, root, &newNode);
-            root = newRoot;
-            //std::cout << "here";
-        }
-        else {
-            Node *newRoot = new Node(newVal, &newNode, root);
-            root = newRoot;
-            //std::cout << "here2";
-        }
-
-        printf("%c,%i\n",root->getValue().first,root->getValue().second);
-        printf("%c,%i\n",root->getLeftChild()->getValue().first,root->getLeftChild()->getValue().second);
-        printf("%c,%i\n\n",root->getRightChild()->getValue().first,root->getRightChild()->getValue().second);
-
         
-        //printf("'%c,%c,%c' | ",root.getValue().first,root.getLeftChild().getValue().first,root.getRightChild().getValue().first);
-        //std::cout << root.getValue().first << root.getLeftChild().getValue().first << root.getRightChild().getValue().first;
     }
-    //std::cout << root.getValue().first << root.getLeftChild().getValue().first << root.getRightChild().getValue().first ;
 
+    //printf("%c",getMin(forest).getValue().first);
+
+ /*   while (forest.size() > 1) {
+        Node min1 = getMin(forest);
+        forest.erase(min1);
+        Node min2 = getMin(forest);
+        forest.erase(min2);
+
+        HuffmanPair newVal(NULL, min1.getValue().second + min2.getValue().second);
+        Node newNode(newVal,&min1,&min2);
+        forest.insert(newNode);
+    }*/
+
+/*     
     Node *current = root;
 
     //printf("%c\n",current.getValue().second);
     
-    while (current->getLeftChild() != NULL) {
+    while (current->getRightChild() != NULL) {
         printf("%i\n",current->getValue().second);
-        current = current->getLeftChild();
-    }
-
+        current = current->getRightChild();
+    }*/
+ 
     return 0;
 }
