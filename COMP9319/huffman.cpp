@@ -15,9 +15,9 @@ class Node {
         Node(HuffmanPair value, Node *left, Node *right);
         Node(HuffmanPair value);
         Node();
-        HuffmanPair getValue();
-        Node *getLeftChild();
-        Node *getRightChild();
+        //HuffmanPair getValue();
+        Node *getLeftChild() const;
+        Node *getRightChild() const;
 
 /*         bool operator< (const Node &other) const
             {
@@ -52,10 +52,10 @@ Node::Node(HuffmanPair v) {
 Node::Node(void) {
 }
 
-Node *Node::getLeftChild() {
+Node *Node::getLeftChild() const {
     return leftChild;
 }
-Node *Node::getRightChild() {
+Node *Node::getRightChild() const {
     return rightChild;
 }
 
@@ -111,11 +111,15 @@ int main(int argc, char const *argv[])
                 int newFreq = nodeInSet->getValue().second + 1;
                 newNode.updateFrequency(newFreq);
             }
+            
             forest.insert(newNode);
         }
 
+
+
         for (std::unordered_set<Node, nodeHash>::iterator forestIterator = forest.begin();
             forestIterator != forest.end(); ++forestIterator) {
+                
                 forestPq.push(*forestIterator);
             }
 
@@ -123,36 +127,37 @@ int main(int argc, char const *argv[])
             std::cout << "forest[" << p.getValue().first << "] = " << p.getValue().second << '\n';
         } */
 
-        if (!forestPq.empty()) {
-            Node test = forestPq.top();
-            forestPq.pop();
-            std::cout << test.getValue().first;
-        }
-        
     }
 
     //printf("%c",getMin(forest).getValue().first);
 
- /*   while (forest.size() > 1) {
-        Node min1 = getMin(forest);
-        forest.erase(min1);
-        Node min2 = getMin(forest);
-        forest.erase(min2);
+    while (forestPq.size() > 1) {
+        
+        Node min1 = forestPq.top();
+
+        printf("%i\n",min1.getValue().second);
+        forestPq.pop();
+        Node min2 = forestPq.top();
+        forestPq.pop();
+        printf("%i\n",min2.getValue().second);
 
         HuffmanPair newVal(NULL, min1.getValue().second + min2.getValue().second);
         Node newNode(newVal,&min1,&min2);
-        forest.insert(newNode);
-    }*/
+        forestPq.push(newNode);
+    }
 
-/*     
-    Node *current = root;
+/*     Node current = forestPq.top();
+    printf("%i\n",current.getLeftChild()->getValue().second); */
+     
+     /*
+    const Node* current = &forestPq.top();
 
     //printf("%c\n",current.getValue().second);
     
     while (current->getRightChild() != NULL) {
-        printf("%i\n",current->getValue().second);
+        printf("%c\n",current->getValue().first);
         current = current->getRightChild();
-    }*/
+    } */
  
     return 0;
 }
