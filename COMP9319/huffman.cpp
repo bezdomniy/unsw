@@ -5,14 +5,44 @@
 
 #define BUFFERLENGTH 1
 
-typedef struct Node {
-    unsigned int data;
-    char letter;
-    struct node *leftChild;
-    struct node *rightChild;
-} Node;
-
 typedef std::pair<char, int> HuffmanPair;
+
+class Node {
+    public:
+        Node(HuffmanPair value, Node *left, Node *right);
+        Node(HuffmanPair value);
+        Node();
+        HuffmanPair getValue();
+        Node *getLeftChild();
+        Node *getRightChild();
+
+    private:
+        HuffmanPair value;
+        Node *leftChild = NULL;
+        Node *rightChild = NULL;
+};
+Node::Node(HuffmanPair v, Node *left, Node *right) {
+    value = v;
+    leftChild = left;
+    rightChild = right;
+};
+Node::Node(HuffmanPair v) {
+    value = v;
+}
+Node::Node(void) {
+}
+HuffmanPair Node::getValue() {
+    return value;
+}
+Node *Node::getLeftChild() {
+    return leftChild;
+}
+
+Node *Node::getRightChild() {
+    return rightChild;
+}
+
+
 struct CompareValue
 {
     bool operator()(const HuffmanPair & left, const HuffmanPair & right) const
@@ -49,15 +79,63 @@ int main(int argc, char const *argv[])
             }
         }
 
-        for (const auto &p : frequencyTable) {
+        /*for (const auto &p : frequencyTable) {
             std::cout << "frequencyTable[" << p.first << "] = " << p.second << '\n';
-        }
+        }*/
     }
 
-    HuffmanPair min = getMin(frequencyTable);
+    HuffmanPair min1 = getMin(frequencyTable);
+    frequencyTable.erase(min1.first);
+    HuffmanPair min2 = getMin(frequencyTable);
+    frequencyTable.erase(min2.first);
+    Node right(min1);
+    Node left(min2);
 
+    HuffmanPair val(NULL, min1.second + min2.second);
 
-    std::cout << min.first << '\n';
+    Node *root = new Node(val, &left, &right);
+
+    printf("%c,%i\n",root->getValue().first,root->getValue().second);
+    printf("%c,%i\n",root->getLeftChild()->getValue().first,root->getLeftChild()->getValue().second);
+    printf("%c,%i\n\n",root->getRightChild()->getValue().first,root->getRightChild()->getValue().second);
+    
+    //printf("'%c,%c,%c' | ",root.getValue().first,root.getLeftChild().getValue().first,root.getRightChild().getValue().first);
+    while (!frequencyTable.empty()) {
+        HuffmanPair min = getMin(frequencyTable);
+        frequencyTable.erase(min.first);
+
+        HuffmanPair newVal(NULL, root->getValue().second + min.second);
+        Node newNode(min);
+
+        if (min.second < root->getValue().second) {
+            Node *newRoot = new Node(newVal, root, &newNode);
+            root = newRoot;
+            //std::cout << "here";
+        }
+        else {
+            Node *newRoot = new Node(newVal, &newNode, root);
+            root = newRoot;
+            //std::cout << "here2";
+        }
+
+        printf("%c,%i\n",root->getValue().first,root->getValue().second);
+        printf("%c,%i\n",root->getLeftChild()->getValue().first,root->getLeftChild()->getValue().second);
+        printf("%c,%i\n\n",root->getRightChild()->getValue().first,root->getRightChild()->getValue().second);
+
+        
+        //printf("'%c,%c,%c' | ",root.getValue().first,root.getLeftChild().getValue().first,root.getRightChild().getValue().first);
+        //std::cout << root.getValue().first << root.getLeftChild().getValue().first << root.getRightChild().getValue().first;
+    }
+    //std::cout << root.getValue().first << root.getLeftChild().getValue().first << root.getRightChild().getValue().first ;
+
+    Node *current = root;
+
+    //printf("%c\n",current.getValue().second);
+    
+    while (current->getLeftChild() != NULL) {
+        printf("%i\n",current->getValue().second);
+        current = current->getLeftChild();
+    }
 
     return 0;
 }
