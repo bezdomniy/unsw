@@ -74,19 +74,19 @@ struct nodeEqual {
 
 struct CompareValue
 {
-    bool operator()(const Node &node1, const Node &node2) const
+    bool operator()(const Node* node1, const Node* node2) const
     {
-        return node1.getValue().second < node2.getValue().second;
+        return node1->getValue().second > node2->getValue().second;
     }
 };
 
-Node getMin(std::unordered_set<Node, nodeHash> nodeSet) 
+/* Node getMin(std::unordered_set<Node, nodeHash> nodeSet) 
 {
     Node min 
       = *std::min_element(nodeSet.begin(), nodeSet.end(), CompareValue());
 
     return min;
-}
+} */
 
 int main(int argc, char const *argv[])
 {
@@ -95,32 +95,26 @@ int main(int argc, char const *argv[])
     char buffer[BUFFERLENGTH+1];
     size_t charactersRead = 0;
     
-    std::unordered_set<Node, nodeHash> forest;
-    std::priority_queue<Node, std::vector<Node>, CompareValue> forestPq;
-    
+    std::map<char, int> frequency_table;
+    std::priority_queue<Node*, std::vector<Node*>, CompareValue> forestPq;
+
     if (filePointer != NULL) {
         while (charactersRead = fread(buffer, sizeof(char), BUFFERLENGTH, filePointer) > 0) {
             char character = *buffer;
+            std::map<char, int>::iterator charInSet = frequency_table.find(character);
 
-            HuffmanPair newPair(character,1);
-            Node newNode(newPair);
-            std::unordered_set<Node, nodeHash>::iterator nodeInSet = forest.find(newNode);
-
-            if (nodeInSet != forest.end()) {
-                forest.erase(newNode);
-                int newFreq = nodeInSet->getValue().second + 1;
-                newNode.updateFrequency(newFreq);
+            if (charInSet == frequency_table.end()) {
+                frequency_table.insert(std::pair<char, int>(character,0));
             }
-            
-            forest.insert(newNode);
+            frequency_table[character] ++;
+           
         }
 
-
-
-        for (std::unordered_set<Node, nodeHash>::iterator forestIterator = forest.begin();
-            forestIterator != forest.end(); ++forestIterator) {
-                
-                forestPq.push(*forestIterator);
+        for (std::map<char, int>::iterator frequency_iterator = frequency_table.begin();
+            frequency_iterator != frequency_table.end(); ++frequency_iterator) {
+                HuffmanPair newVal(*frequency_iterator);
+                Node *newNode = new Node(newVal);
+                forestPq.push(newNode);
             }
 
         /*for (const auto &p : forest) {
@@ -129,35 +123,39 @@ int main(int argc, char const *argv[])
 
     }
 
-    //printf("%c",getMin(forest).getValue().first);
-
     while (forestPq.size() > 1) {
-        
-        Node min1 = forestPq.top();
-
-        printf("%i\n",min1.getValue().second);
+        Node* min1 = forestPq.top();
         forestPq.pop();
-        Node min2 = forestPq.top();
+        Node* min2 = forestPq.top();
         forestPq.pop();
-        printf("%i\n",min2.getValue().second);
 
-        HuffmanPair newVal(NULL, min1.getValue().second + min2.getValue().second);
-        Node newNode(newVal,&min1,&min2);
+        //printf("%i\n",min1.getValue().second);
+        //printf("%i\n",min2.getValue().second);
+
+        HuffmanPair newVal(NULL, min1->getValue().second + min2->getValue().second);
+        Node *newNode = new Node(newVal,min1,min2);
         forestPq.push(newNode);
     }
 
-/*     Node current = forestPq.top();
-    printf("%i\n",current.getLeftChild()->getValue().second); */
-     
-     /*
-    const Node* current = &forestPq.top();
+    Node* current = forestPq.top();
+
+    printf("%i\n",current->getValue().second); 
+    //printf("%i\n",current->getRightChild()->getValue().second); 
+    printf("%i\n",current->getLeftChild()->getValue().second); 
+
+    //printf("%i\n",current->getLeftChild()->getRightChild()->getValue().second); 
+    //std::cout << (current->getLeftChild()->getLeftChild() != NULL) << "\n";
+    printf("%i\n",current->getLeftChild()->getLeftChild()->getValue().second);  
+    
+
+    /* Node* current = forestPq.top();
 
     //printf("%c\n",current.getValue().second);
     
-    while (current->getRightChild() != NULL) {
-        printf("%c\n",current->getValue().first);
-        current = current->getRightChild();
-    } */
+    while (current->getLeftChild() != NULL) {
+        printf("%i\n",current->getValue().second);
+        current = current->getLeftChild();
+    } */ 
  
     return 0;
 }
