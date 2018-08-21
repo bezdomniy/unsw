@@ -61,20 +61,50 @@ struct CompareValue
     }
 };
 
-/* void dfs(Node* current) {
-    std::stack<Node*, std::vector<Node*>> nodes();
+std::map<char, std::vector<bool>> encode(Node* root) {
+    std::queue<std::pair<Node *, std::vector<bool>>> nodeStack;
 
-    nodes.
-    nodes.push(current);
+    std::vector<bool> v = {};
+    nodeStack.push(std::pair<Node *, std::vector<bool>>(root,v));
 
-    while (!nodes.empty()) {
+    std::vector<bool> leftv, rightv;
+    std::pair<Node *, std::vector<bool>> current, left, right;
 
+    std::map<char, std::vector<bool>> out;
+
+    while (!nodeStack.empty()) {
+        current = nodeStack.front();
+        nodeStack.pop();
+
+        if (current.first->getLeftChild() != NULL) {
+            leftv = current.second;
+            leftv.push_back(0);
+            left = std::pair<Node *, std::vector<bool>>(current.first->getLeftChild(),leftv);
+
+            rightv = current.second;
+            rightv.push_back(1);
+            right = std::pair<Node *, std::vector<bool>>(current.first->getRightChild(),rightv);
+
+            nodeStack.push(left);
+            nodeStack.push(right);
+        }
+        else {
+            out[current.first->getValue().first] = current.second;
+            for (std::vector<bool>::const_iterator i = current.second.begin(); i != current.second.end(); ++i)
+                std::cout << *i << ' ';
+            std::cout << " | " << current.first->getValue().first << "\n";
+
+
+            
+        }
     }
 
-} */
+    return out;
+
+} 
 
 void print_tree(Node *t) {
-    std::deque< std::pair<Node *, int> > q;
+    std::deque<std::pair<Node *, int>> q;
 
     q.push_back(std::pair<Node *, int>(t, 0));
     int curlevel = -1;
@@ -136,7 +166,7 @@ int main(int argc, char const *argv[])
     }
 
     Node* current = forestPq.top();
-    print_tree(current);
+    encode(current);
  
     return 0;
 }
