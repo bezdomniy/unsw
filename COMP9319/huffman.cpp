@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <vector>
 #include <queue>
-#include <stack>
+#include <fstream>
+#include <iterator>
+
 
 #define BUFFERLENGTH 1
 
@@ -53,6 +55,8 @@ Node *Node::getRightChild() const {
     return rightChild;
 }
 
+typedef std::pair<Node *, std::vector<bool>> CodePair;
+
 struct CompareValue
 {
     bool operator()(const Node* node1, const Node* node2) const
@@ -62,13 +66,13 @@ struct CompareValue
 };
 
 std::map<char, std::vector<bool>> encode(Node* root) {
-    std::queue<std::pair<Node *, std::vector<bool>>> nodeStack;
+    std::queue<CodePair> nodeStack;
 
     std::vector<bool> v = {};
-    nodeStack.push(std::pair<Node *, std::vector<bool>>(root,v));
+    nodeStack.push(CodePair(root,v));
 
     std::vector<bool> leftv, rightv;
-    std::pair<Node *, std::vector<bool>> current, left, right;
+    CodePair current, left, right;
 
     std::map<char, std::vector<bool>> out;
 
@@ -79,23 +83,17 @@ std::map<char, std::vector<bool>> encode(Node* root) {
         if (current.first->getLeftChild() != NULL) {
             leftv = current.second;
             leftv.push_back(0);
-            left = std::pair<Node *, std::vector<bool>>(current.first->getLeftChild(),leftv);
+            left = CodePair(current.first->getLeftChild(),leftv);
 
             rightv = current.second;
             rightv.push_back(1);
-            right = std::pair<Node *, std::vector<bool>>(current.first->getRightChild(),rightv);
+            right = CodePair(current.first->getRightChild(),rightv);
 
             nodeStack.push(left);
             nodeStack.push(right);
         }
         else {
             out[current.first->getValue().first] = current.second;
-            for (std::vector<bool>::const_iterator i = current.second.begin(); i != current.second.end(); ++i)
-                std::cout << *i << ' ';
-            std::cout << " | " << current.first->getValue().first << "\n";
-
-
-            
         }
     }
 
@@ -122,6 +120,46 @@ void print_tree(Node *t) {
         if (parent->getLeftChild())
             q.push_back(std::pair<Node *, int>(parent->getRightChild(), level + 1));
     }
+}
+
+
+// reference: https://stackoverflow.com/questions/8461126/how-to-create-a-byte-out-of-8-bool-values-and-vice-versa
+std::vector<bool> from_Byte(unsigned char c)
+{
+    std::vector<bool> b;
+    for (int i=0; i < 8; ++i)
+        b.push_back((c & (1<<i)) != 0);
+
+/*     for (auto const &bv: b) {
+        std::cout << bv ;
+    }
+    std::cout << " | "; */
+    return b;
+}
+
+unsigned char to_Byte(std::vector<bool> b)
+{
+/*     for (auto const &bv: b) {
+        std::cout << bv;
+    }
+    std::cout << ", "; */
+
+    unsigned char c = 0;
+    int len = b.size();
+
+    for (int i=0; i < 8; ++i)
+        if (b[i])
+            c |= 1 << (i+8-len);
+
+
+/*     for (auto const &bv: from_Byte(c)) {
+        std::cout << bv ;
+    }
+    std::cout << " | "; */
+
+
+
+    return c;
 }
 
 int main(int argc, char const *argv[])
@@ -166,7 +204,57 @@ int main(int argc, char const *argv[])
     }
 
     Node* current = forestPq.top();
-    encode(current);
- 
+    std::map<char, std::vector<bool>> codes = encode(current);
+
+    for (auto const &code: codes) {
+        for (auto const &i: code.second)
+            std::cout << i;
+        std::cout << " | " << code.first << "\n";
+    }
+        
+    std::string path("/mnt/c/dev/unsw/COMP9319/out.huffman");
+/*     std::ofstream FILE(path, std::ofstream::binary);
+    for (auto const &code: codes) {
+        FILE.write(&code.first,sizeof(code.first));
+
+        char code_byte = to_Byte(code.second);
+        std::cout << "writing: " << code.first << ", ";
+        for (auto const &bv: from_Byte(code_byte)) {
+            std::cout << bv;
+        }
+        std::cout << "\n";
+        FILE.write(&code_byte,sizeof(code_byte));
+
+        //std::copy(code.second.begin(), code.second.end(), std::ostreambuf_iterator<char>(FILE));
+
+    } */
+
+    std::ifstream input( path, std::ifstream::binary );
+    input.unsetf(std::ios_base::skipws);
+
+    std::istream_iterator<char> begin(input), end;
+    std::vector<char> buf(begin,end);
+    std::cout << buf.size() << "\n";
+
+/*     std::copy(buf.begin(), 
+          buf.end(), 
+          std::ostream_iterator<unsigned char>(std::cout, ",")); */
+
+
+    for (auto const &i: buf) {
+        if (i >= 'a' && i <= 'e') {
+            std::cout << i;
+        }
+        else {
+            std::vector<bool> ch = from_Byte(i);
+             for (auto const &j: ch) {
+                std::cout << j << "\0";
+            } 
+        }
+        
+    }
+    
+    std::cout << "\n";
+            
     return 0;
 }
