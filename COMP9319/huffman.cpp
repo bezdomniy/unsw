@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <iostream>
 #include <map>
-#include <unordered_set>
 #include <algorithm>
 #include <vector>
 #include <queue>
+#include <stack>
 
 #define BUFFERLENGTH 1
 
@@ -15,14 +15,8 @@ class Node {
         Node(HuffmanPair value, Node *left, Node *right);
         Node(HuffmanPair value);
         Node();
-        //HuffmanPair getValue();
         Node *getLeftChild() const;
         Node *getRightChild() const;
-
-/*         bool operator< (const Node &other) const
-            {
-                return this->value.second < other.value.second;
-            } */
 
         bool operator== (const Node &other) const
             {
@@ -59,19 +53,6 @@ Node *Node::getRightChild() const {
     return rightChild;
 }
 
-struct nodeHash {
-    size_t operator() (const Node &node ) const {
-        return node.getValue().first;
-    }
-};
-
-/*
-struct nodeEqual {
-    bool operator() (const Node &node1, const Node &node2) const {
-        return node1.getValue().first == node2.getValue().first;
-    }
-};*/
-
 struct CompareValue
 {
     bool operator()(const Node* node1, const Node* node2) const
@@ -80,13 +61,38 @@ struct CompareValue
     }
 };
 
-/* Node getMin(std::unordered_set<Node, nodeHash> nodeSet) 
-{
-    Node min 
-      = *std::min_element(nodeSet.begin(), nodeSet.end(), CompareValue());
+/* void dfs(Node* current) {
+    std::stack<Node*, std::vector<Node*>> nodes();
 
-    return min;
+    nodes.
+    nodes.push(current);
+
+    while (!nodes.empty()) {
+
+    }
+
 } */
+
+void print_tree(Node *t) {
+    std::deque< std::pair<Node *, int> > q;
+
+    q.push_back(std::pair<Node *, int>(t, 0));
+    int curlevel = -1;
+    while (!q.empty()) {
+        Node *parent = q.front().first;
+        int level = q.front().second;
+        q.pop_front();
+        if (curlevel != level) {
+            curlevel = level;
+            std::cout << "Level " << curlevel << std::endl;
+        }
+        std::cout << parent->getValue().second << " " << parent->getValue().first << std::endl;
+        if (parent->getLeftChild())
+            q.push_back(std::pair<Node *, int>(parent->getLeftChild(), level + 1));
+        if (parent->getLeftChild())
+            q.push_back(std::pair<Node *, int>(parent->getRightChild(), level + 1));
+    }
+}
 
 int main(int argc, char const *argv[])
 {
@@ -116,11 +122,6 @@ int main(int argc, char const *argv[])
                 Node *newNode = new Node(newVal);
                 forestPq.push(newNode);
             }
-
-        /*for (const auto &p : forest) {
-            std::cout << "forest[" << p.getValue().first << "] = " << p.getValue().second << '\n';
-        } */
-
     }
 
     while (forestPq.size() > 1) {
@@ -129,33 +130,13 @@ int main(int argc, char const *argv[])
         Node* min2 = forestPq.top();
         forestPq.pop();
 
-        //printf("%i\n",min1.getValue().second);
-        //printf("%i\n",min2.getValue().second);
-
         HuffmanPair newVal(NULL, min1->getValue().second + min2->getValue().second);
-        Node *newNode = new Node(newVal,min1,min2);
+        Node *newNode = new Node(newVal,min2,min1);
         forestPq.push(newNode);
     }
 
     Node* current = forestPq.top();
-
-    printf("%i\n",current->getValue().second); 
-    //printf("%i\n",current->getRightChild()->getValue().second); 
-    printf("%i\n",current->getLeftChild()->getValue().second); 
-
-    //printf("%i\n",current->getLeftChild()->getRightChild()->getValue().second); 
-    //std::cout << (current->getLeftChild()->getLeftChild() != NULL) << "\n";
-    printf("%i\n",current->getLeftChild()->getLeftChild()->getValue().second);  
-    
-
-    /* Node* current = forestPq.top();
-
-    //printf("%c\n",current.getValue().second);
-    
-    while (current->getLeftChild() != NULL) {
-        printf("%i\n",current->getValue().second);
-        current = current->getLeftChild();
-    } */ 
+    print_tree(current);
  
     return 0;
 }
