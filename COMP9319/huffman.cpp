@@ -115,6 +115,8 @@ void print_tree(Node *t) {
             std::cout << "Level " << curlevel << std::endl;
         }
         std::cout << parent->getValue().second << " " << parent->getValue().first << std::endl;
+
+        //printf("%i %i\n", parent->getValue().second ,parent->getValue().first);
         if (parent->getLeftChild())
             q.push_back(std::pair<Node *, int>(parent->getLeftChild(), level + 1));
         if (parent->getLeftChild())
@@ -129,51 +131,28 @@ std::vector<bool> from_Byte(unsigned char c)
     std::vector<bool> b;
     for (int i=0; i < 8; ++i)
         b.push_back((c & (1<<i)) != 0);
-
-/*     for (auto const &bv: b) {
-        std::cout << bv ;
-    }
-    std::cout << " | "; */
     return b;
 }
 
 unsigned char to_Byte(std::vector<bool> b)
 {
-/*     for (auto const &bv: b) {
-        std::cout << bv;
-    }
-    std::cout << ", "; */
-
     unsigned char c = 0;
     int len = b.size();
+    std::cout << len << ", ";
 
     for (int i=0; i < 8; ++i)
         if (b[i])
             c |= 1 << (i+8-len);
-
-
-/*     for (auto const &bv: from_Byte(c)) {
-        std::cout << bv ;
-    }
-    std::cout << " | "; */
-
-
-
     return c;
 }
 
-int main(int argc, char const *argv[])
-{
-    FILE *filePointer = fopen("example1.txt", "r");
-    
+std::map<char, int> make_frequency_table(FILE *filePointer) {
     char buffer[BUFFERLENGTH+1];
     size_t charactersRead = 0;
     
     std::map<char, int> frequency_table;
-    std::priority_queue<Node*, std::vector<Node*>, CompareValue> forestPq;
 
-    if (filePointer != NULL) {
-        while (charactersRead = fread(buffer, sizeof(char), BUFFERLENGTH, filePointer) > 0) {
+    while (charactersRead = fread(buffer, sizeof(char), BUFFERLENGTH, filePointer) > 0) {
             char character = *buffer;
             std::map<char, int>::iterator charInSet = frequency_table.find(character);
 
@@ -183,14 +162,18 @@ int main(int argc, char const *argv[])
             frequency_table[character] ++;
            
         }
+    return frequency_table;
+}
 
-        for (std::map<char, int>::iterator frequency_iterator = frequency_table.begin();
-            frequency_iterator != frequency_table.end(); ++frequency_iterator) {
-                HuffmanPair newVal(*frequency_iterator);
-                Node *newNode = new Node(newVal);
-                forestPq.push(newNode);
-            }
-    }
+Node* make_tree(std::map<char, int> frequency_table) {
+    std::priority_queue<Node*, std::vector<Node*>, CompareValue> forestPq;
+
+    for (std::map<char, int>::iterator frequency_iterator = frequency_table.begin();
+        frequency_iterator != frequency_table.end(); ++frequency_iterator) {
+            HuffmanPair newVal(*frequency_iterator);
+            Node *newNode = new Node(newVal);
+            forestPq.push(newNode);
+        }
 
     while (forestPq.size() > 1) {
         Node* min1 = forestPq.top();
@@ -203,46 +186,53 @@ int main(int argc, char const *argv[])
         forestPq.push(newNode);
     }
 
-    Node* current = forestPq.top();
+    return forestPq.top();
+}
+
+int main(int argc, char const *argv[])
+{
+    FILE *filePointer = fopen("example1.txt", "r");
+    std::map<char, int> frequency_table;
+    
+    if (filePointer != NULL) 
+        frequency_table = make_frequency_table(filePointer);
+        
+    Node* current = make_tree(frequency_table);
     std::map<char, std::vector<bool>> codes = encode(current);
 
-    for (auto const &code: codes) {
+    print_tree(current);
+
+/*     for (auto const &code: codes) {
         for (auto const &i: code.second)
             std::cout << i;
         std::cout << " | " << code.first << "\n";
-    }
+    } */
         
-    std::string path("/mnt/c/dev/unsw/COMP9319/out.huffman");
-/*     std::ofstream FILE(path, std::ofstream::binary);
+    std::string path("/mnt/c/dev/unsw/COMP9319/output.huffman");
+    std::ofstream FILE(path, std::ofstream::binary);
     for (auto const &code: codes) {
         FILE.write(&code.first,sizeof(code.first));
 
         char code_byte = to_Byte(code.second);
-        std::cout << "writing: " << code.first << ", ";
-        for (auto const &bv: from_Byte(code_byte)) {
+        std::cout << "writing: " << int(code.first) << ", ";
+        for (auto const &bv: code.second) {
             std::cout << bv;
         }
-        std::cout << "\n";
+        std::cout << "\n"; 
         FILE.write(&code_byte,sizeof(code_byte));
-
-        //std::copy(code.second.begin(), code.second.end(), std::ostreambuf_iterator<char>(FILE));
-
-    } */
+    }
 
     std::ifstream input( path, std::ifstream::binary );
     input.unsetf(std::ios_base::skipws);
 
     std::istream_iterator<char> begin(input), end;
     std::vector<char> buf(begin,end);
-    std::cout << buf.size() << "\n";
-
-/*     std::copy(buf.begin(), 
-          buf.end(), 
-          std::ostream_iterator<unsigned char>(std::cout, ",")); */
+    //std::cout << buf.size() << "\n";
 
 
     for (auto const &i: buf) {
-        if (i >= 'a' && i <= 'e') {
+        // could be any char ... what do?
+        if ((i >= 'a' && i <= 'z') || (i >= 'A' && i <= 'Z')) {
             std::cout << i;
         }
         else {
@@ -251,10 +241,10 @@ int main(int argc, char const *argv[])
                 std::cout << j << "\0";
             } 
         }
-        
-    }
+        std::cout << "\n"; 
+    } 
     
-    std::cout << "\n";
+    
             
     return 0;
 }
