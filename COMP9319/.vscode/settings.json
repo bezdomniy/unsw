@@ -33,6 +33,8 @@
         "tuple": "cpp",
         "utility": "cpp",
         "unordered_set": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "cstddef": "cpp",
+        "cstring": "cpp"
     }
 }
