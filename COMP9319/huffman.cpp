@@ -147,23 +147,28 @@ unsigned char to_Byte(std::vector<bool> b)
     return c;
 }
 
-std::map<unsigned char, int> make_frequency_table(FILE *filePointer) {
-    unsigned char buffer[BUFFERLENGTH+1];
-    size_t charactersRead = 0;
-    
+std::map<unsigned char, int> make_frequency_table(const char * filePath) {
+
+    FILE *filePointer = fopen(filePath, "r");
     std::map<unsigned char, int> frequency_table;
 
-    while (charactersRead = fread(buffer, sizeof(unsigned char), BUFFERLENGTH, filePointer) > 0) {
-            unsigned char character = *buffer;
-            std::map<unsigned char, int>::iterator charInSet = frequency_table.find(character);
+    if (filePointer != NULL)  {
+        unsigned char buffer[BUFFERLENGTH+1];
+        size_t charactersRead = 0;
 
-            if (charInSet == frequency_table.end()) {
-                frequency_table.insert(std::pair<unsigned char, int>(character,0));
+        while (charactersRead = fread(buffer, sizeof(unsigned char), BUFFERLENGTH, filePointer) > 0) {
+                unsigned char character = *buffer;
+                std::map<unsigned char, int>::iterator charInSet = frequency_table.find(character);
+
+                if (charInSet == frequency_table.end()) {
+                    frequency_table.insert(std::pair<unsigned char, int>(character,0));
+                }
+                frequency_table[character] ++;
+            
             }
-            frequency_table[character] ++;
-           
-        }
-    return frequency_table;
+        return frequency_table;
+    }
+    std::fclose(filePointer);
 }
 
 Node* make_tree(std::map<unsigned char, int> frequency_table) {
@@ -197,29 +202,7 @@ std::vector<unsigned char> int_to_charvec(unsigned int k) {
      return arrayOfByte;
 }
 
-void write_table_to_file(std::map<unsigned char, int> frequency_table, std::string path) {
-    std::ofstream FILE(path, std::ofstream::binary);
-
-    int dataSize = 0;
-    char* padChar;
-    
-    for (auto &freq: frequency_table) {
-        if (dataSize == 0)
-            padChar = (char*)&freq.first;
-
-        FILE.write((char*)&freq.first,sizeof(freq.first));
-        FILE.write((char*)&freq.second,sizeof(freq.second));
-
-        dataSize += 5;
-    }
-
-    for (int i = 0; i < (1024-dataSize); i++) {
-        FILE.write("\x00",1);
-    }
-}
-
-//only printing ATM
-std::map<unsigned char, int> read_table_from_file( std::string path) {
+std::map<unsigned char, int> read_table_from_file(const char * path) {
     std::map<unsigned char, int> out;
 
     std::ifstream input( path, std::ifstream::binary );
@@ -259,30 +242,81 @@ std::map<unsigned char, int> read_table_from_file( std::string path) {
     return out;
 }
 
+void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_table, std::map<char, std::vector<bool>> codes, const char * outPath) {
+    FILE *inFilePointer = fopen(inPath, "r");
+    if (inFilePointer != NULL) {
+        std::ofstream FILE(outPath, std::ofstream::binary);
+
+        // writing frequency table
+        int dataSize = 0;
+        for (auto &freq: frequency_table) {
+            FILE.write((char*)&freq.first,sizeof(freq.first));
+            FILE.write((char*)&freq.second,sizeof(freq.second));
+
+            dataSize += 5;
+        }
+
+        for (int i = 0; i < (1024-dataSize); i++) {
+            FILE.write("\x00",1);
+        }
+
+        // writing data
+        unsigned char buffer[BUFFERLENGTH+1];
+        size_t charactersRead = 0;
+
+        std::vector<bool> bitBuffer;
+        char writeBytes;
+        
+        while (charactersRead = fread(buffer, sizeof(unsigned char), BUFFERLENGTH, inFilePointer) > 0) {
+            unsigned char character = *buffer;
+            std::vector<bool> code = codes[character];
+
+            bitBuffer.insert(bitBuffer.end(), code.begin(), code.end());
+
+            if (bitBuffer.size() > 8) {
+                std::vector<bool> outByte(bitBuffer.begin(), bitBuffer.begin()+8);
+                bitBuffer.erase(bitBuffer.begin(), bitBuffer.begin() + 8);
+
+                writeBytes = to_Byte(outByte);
+                FILE.write(&writeBytes,sizeof(writeBytes));
+            }
+        }
+        // read last bits if any remain
+        if (bitBuffer.size() > 0) {
+            writeBytes = to_Byte(bitBuffer);
+            FILE.write(&writeBytes,sizeof(writeBytes));
+        }
+    }
+    std::fclose(inFilePointer);
+}
+
 int main(int argc, char const *argv[])
 {
-    FILE *filePointer = fopen("example1.txt", "r");
+    const char * inPath = "./example1.txt";
+    const char * outPath = "./output.huffman";
+    
     std::map<unsigned char, int> frequency_table;
     
-    if (filePointer != NULL) 
-        frequency_table = make_frequency_table(filePointer);
+
+    frequency_table = make_frequency_table(inPath);
         
     Node* current = make_tree(frequency_table);
     std::map<char, std::vector<bool>> codes = encode(current);
 
     //print_tree(current);
 
-    std::string path("/mnt/c/dev/unsw/COMP9319/output.huffman");
+    
 
-    //write_table_to_file(frequency_table, path);
-    std::map<unsigned char, int> output_frequency_table = read_table_from_file(path);
+    write_to_file(inPath, frequency_table, codes, outPath);
+
+/*     std::map<unsigned char, int> output_frequency_table = read_table_from_file(outPath);
 
     for (auto const &x: output_frequency_table) {
         std::cout << x.first << " | " << x.second << "\n";
-    }
+    } */
 
 
-/*     std::vector<bool> test({0,0,0,0,1,1,1,1,0,1});
+/*     std::vector<bool> test({0,0,0,0,1});
 
     unsigned char test_b = to_Byte(test);
 
