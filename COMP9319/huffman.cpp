@@ -195,12 +195,23 @@ Node* make_tree(std::map<unsigned char, int> frequency_table) {
     return forestPq.top();
 }
 
-std::vector<unsigned char> int_to_charvec(unsigned int k) {
-     std::vector<unsigned char> arrayOfByte(sizeof(k));
-     for (int i = 0; i < sizeof(k); i++)
-         arrayOfByte[sizeof(k) - 1 - i] = (k >> (i * 8));
-     return arrayOfByte;
+
+// https://stackoverflow.com/a/14807477
+template<typename A, typename B>
+std::pair<B,A> flip_pair(const std::pair<A,B> &p)
+{
+    return std::pair<B,A>(p.second, p.first);
 }
+
+template<typename A, typename B>
+std::map<B,A> flip_map(const std::map<A,B> &src)
+{
+    std::map<B,A> dst;
+    std::transform(src.begin(), src.end(), std::inserter(dst, dst.begin()), 
+                   flip_pair<A,B>);
+    return dst;
+}
+//////////
 
 std::map<unsigned char, int> read_table_from_file(const char * path) {
     std::map<unsigned char, int> out;
@@ -242,6 +253,40 @@ std::map<unsigned char, int> read_table_from_file(const char * path) {
     return out;
 }
 
+std::string read_data_from_file(const char * path, std::map<char, std::vector<bool>> codeMap) {
+    std::string out;
+
+    std::map<std::vector<bool>, char> codes = flip_map(codeMap);
+
+    std::ifstream input(path, std::ifstream::binary );
+    input.unsetf(std::ios_base::skipws);
+
+    input.seekg(1024);
+
+    char byteBuffer;
+    std::vector<bool> nextBits;
+
+    std::vector<bool> bitBuffer;
+
+    while (input) {
+        input >> byteBuffer;
+        nextBits = from_Byte(byteBuffer);
+
+        for (bool c: nextBits) {
+            //out += c?'1':'0';
+            bitBuffer.insert(bitBuffer.end(), c);
+
+            if (codes[bitBuffer]) {
+                out += codes[bitBuffer];
+                bitBuffer.clear();
+            }
+        }
+    }
+    input.close();
+
+    return out;
+}
+
 void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_table, std::map<char, std::vector<bool>> codes, const char * outPath) {
     FILE *inFilePointer = fopen(inPath, "r");
     if (inFilePointer != NULL) {
@@ -259,6 +304,7 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
         for (int i = 0; i < (1024-dataSize); i++) {
             FILE.write("\x00",1);
         }
+        
 
         // writing data
         unsigned char buffer[BUFFERLENGTH+1];
@@ -292,7 +338,7 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
 
 int main(int argc, char const *argv[])
 {
-    const char * inPath = "./example1.txt";
+    const char * inPath = "./warandpeace.txt";
     const char * outPath = "./output.huffman";
     
     std::map<unsigned char, int> frequency_table;
@@ -305,9 +351,13 @@ int main(int argc, char const *argv[])
 
     //print_tree(current);
 
+    //write_to_file(inPath, frequency_table, codes, outPath);
+    std::string outdata = read_data_from_file(outPath, codes);
+    std::cout << outdata;
+
     
 
-    write_to_file(inPath, frequency_table, codes, outPath);
+    
 
 /*     std::map<unsigned char, int> output_frequency_table = read_table_from_file(outPath);
 
