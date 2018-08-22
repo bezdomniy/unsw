@@ -6,6 +6,7 @@
 #include <queue>
 #include <fstream>
 #include <iterator>
+#include <cstring>
 
 
 #define BUFFERLENGTH 1
@@ -138,7 +139,7 @@ unsigned char to_Byte(std::vector<bool> b)
 {
     unsigned char c = 0;
     int len = b.size();
-    std::cout << len << ", ";
+    //std::cout << len << ", ";
 
     for (int i=0; i < 8; ++i)
         if (b[i])
@@ -146,18 +147,18 @@ unsigned char to_Byte(std::vector<bool> b)
     return c;
 }
 
-std::map<char, int> make_frequency_table(FILE *filePointer) {
-    char buffer[BUFFERLENGTH+1];
+std::map<unsigned char, int> make_frequency_table(FILE *filePointer) {
+    unsigned char buffer[BUFFERLENGTH+1];
     size_t charactersRead = 0;
     
-    std::map<char, int> frequency_table;
+    std::map<unsigned char, int> frequency_table;
 
-    while (charactersRead = fread(buffer, sizeof(char), BUFFERLENGTH, filePointer) > 0) {
-            char character = *buffer;
-            std::map<char, int>::iterator charInSet = frequency_table.find(character);
+    while (charactersRead = fread(buffer, sizeof(unsigned char), BUFFERLENGTH, filePointer) > 0) {
+            unsigned char character = *buffer;
+            std::map<unsigned char, int>::iterator charInSet = frequency_table.find(character);
 
             if (charInSet == frequency_table.end()) {
-                frequency_table.insert(std::pair<char, int>(character,0));
+                frequency_table.insert(std::pair<unsigned char, int>(character,0));
             }
             frequency_table[character] ++;
            
@@ -165,10 +166,10 @@ std::map<char, int> make_frequency_table(FILE *filePointer) {
     return frequency_table;
 }
 
-Node* make_tree(std::map<char, int> frequency_table) {
+Node* make_tree(std::map<unsigned char, int> frequency_table) {
     std::priority_queue<Node*, std::vector<Node*>, CompareValue> forestPq;
 
-    for (std::map<char, int>::iterator frequency_iterator = frequency_table.begin();
+    for (std::map<unsigned char, int>::iterator frequency_iterator = frequency_table.begin();
         frequency_iterator != frequency_table.end(); ++frequency_iterator) {
             HuffmanPair newVal(*frequency_iterator);
             Node *newNode = new Node(newVal);
@@ -189,10 +190,79 @@ Node* make_tree(std::map<char, int> frequency_table) {
     return forestPq.top();
 }
 
+std::vector<unsigned char> int_to_charvec(unsigned int k) {
+     std::vector<unsigned char> arrayOfByte(sizeof(k));
+     for (int i = 0; i < sizeof(k); i++)
+         arrayOfByte[sizeof(k) - 1 - i] = (k >> (i * 8));
+     return arrayOfByte;
+}
+
+void write_table_to_file(std::map<unsigned char, int> frequency_table, std::string path) {
+    std::ofstream FILE(path, std::ofstream::binary);
+
+    int dataSize = 0;
+    char* padChar;
+    
+    for (auto &freq: frequency_table) {
+        if (dataSize == 0)
+            padChar = (char*)&freq.first;
+
+        FILE.write((char*)&freq.first,sizeof(freq.first));
+        FILE.write((char*)&freq.second,sizeof(freq.second));
+
+        dataSize += 5;
+    }
+
+    for (int i = 0; i < (1024-dataSize); i++) {
+        FILE.write("\x00",1);
+    }
+}
+
+//only printing ATM
+std::map<unsigned char, int> read_table_from_file( std::string path) {
+    std::map<unsigned char, int> out;
+
+    std::ifstream input( path, std::ifstream::binary );
+    input.unsetf(std::ios_base::skipws);
+    std::vector<unsigned char> buf(1024);
+    input.read((char*)&buf[0],1024);
+
+    bool newChar = true;
+    unsigned char* current_char = NULL;
+
+    int bytePos = 0;
+    unsigned char byteBuffer[4];
+
+    for (auto &i: buf) {
+        if (newChar) {
+            //std::cout << i;
+            current_char = &i;
+            out[newChar] = 0;
+
+            newChar = false;
+        } 
+        else {
+            byteBuffer[bytePos] = i;
+            bytePos++;
+
+            if (bytePos == 4) {
+                int number = (int)(byteBuffer[3] << 24 | byteBuffer[2] << 16 | byteBuffer[1] << 8 | byteBuffer[0]);
+                bytePos = 0;
+
+                out[*current_char] = number;
+                //std::cout << number << "|\n";
+                newChar = true;
+            }
+        }
+    }  
+
+    return out;
+}
+
 int main(int argc, char const *argv[])
 {
     FILE *filePointer = fopen("example1.txt", "r");
-    std::map<char, int> frequency_table;
+    std::map<unsigned char, int> frequency_table;
     
     if (filePointer != NULL) 
         frequency_table = make_frequency_table(filePointer);
@@ -200,50 +270,51 @@ int main(int argc, char const *argv[])
     Node* current = make_tree(frequency_table);
     std::map<char, std::vector<bool>> codes = encode(current);
 
-    print_tree(current);
+    //print_tree(current);
 
-/*     for (auto const &code: codes) {
-        for (auto const &i: code.second)
-            std::cout << i;
-        std::cout << " | " << code.first << "\n";
-    } */
-        
     std::string path("/mnt/c/dev/unsw/COMP9319/output.huffman");
-    std::ofstream FILE(path, std::ofstream::binary);
-    for (auto const &code: codes) {
-        FILE.write(&code.first,sizeof(code.first));
 
-        char code_byte = to_Byte(code.second);
-        std::cout << "writing: " << int(code.first) << ", ";
-        for (auto const &bv: code.second) {
-            std::cout << bv;
-        }
-        std::cout << "\n"; 
-        FILE.write(&code_byte,sizeof(code_byte));
+    //write_table_to_file(frequency_table, path);
+    std::map<unsigned char, int> output_frequency_table = read_table_from_file(path);
+
+    for (auto const &x: output_frequency_table) {
+        std::cout << x.first << " | " << x.second << "\n";
     }
 
-    std::ifstream input( path, std::ifstream::binary );
-    input.unsetf(std::ios_base::skipws);
 
-    std::istream_iterator<char> begin(input), end;
-    std::vector<char> buf(begin,end);
-    //std::cout << buf.size() << "\n";
+/*     std::vector<bool> test({0,0,0,0,1,1,1,1,0,1});
 
+    unsigned char test_b = to_Byte(test);
 
-    for (auto const &i: buf) {
-        // could be any char ... what do?
-        if ((i >= 'a' && i <= 'z') || (i >= 'A' && i <= 'Z')) {
-            std::cout << i;
-        }
-        else {
-            std::vector<bool> ch = from_Byte(i);
-             for (auto const &j: ch) {
-                std::cout << j << "\0";
-            } 
-        }
-        std::cout << "\n"; 
-    } 
-    
+    std::vector<bool> test_2 = from_Byte(test_b);
+
+    std::cout << test_b << "\n";
+    for (auto const &i: test) {
+        std::cout << i;
+    }
+    std::cout << "\n";
+    for (auto const &i: test_2) {
+        std::cout << i;
+    } */
+
+/*     unsigned int y = 65000;
+    std::cout << y << " | " << sizeof(y) << "\n";
+    std::vector<unsigned char> te = int_to_charvec(y);
+
+    //char te = y;
+    std::cout << "\n|";
+    for (auto const &i: te) {
+        std::cout << i;
+    }
+    std::cout << "|\n";
+
+    int out = 0;
+    for (auto const &i: te) {
+        from_Byte(i);
+        out += (int)i;
+        std::cout << "|"<< i;
+    }
+    std::cout << out; */
     
             
     return 0;
