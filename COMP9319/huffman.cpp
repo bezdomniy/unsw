@@ -65,7 +65,7 @@ struct CompareValue
     }
 };
 
-std::map<char, std::vector<bool>> encode(Node* root) {
+std::map<unsigned char, std::vector<bool>> encode(Node* root) {
     std::queue<CodePair> nodeStack;
 
     std::vector<bool> v;
@@ -74,7 +74,7 @@ std::map<char, std::vector<bool>> encode(Node* root) {
     std::vector<bool> leftv, rightv;
     CodePair current, left, right;
 
-    std::map<char, std::vector<bool>> out;
+    std::map<unsigned char, std::vector<bool>> out;
 
     while (!nodeStack.empty()) {
         current = nodeStack.front();
@@ -147,7 +147,7 @@ unsigned char to_Byte(std::vector<bool> b)
 
 std::map<unsigned char, int> make_frequency_table(const char * filePath) {
 
-    FILE *filePointer = fopen(filePath, "r");
+    FILE *filePointer = fopen(filePath, "rb");
     std::map<unsigned char, int> frequency_table;
 
     if (filePointer != NULL)  {
@@ -174,9 +174,11 @@ Node* make_tree(std::map<unsigned char, int> frequency_table) {
 
     for (std::map<unsigned char, int>::iterator frequency_iterator = frequency_table.begin();
         frequency_iterator != frequency_table.end(); ++frequency_iterator) {
-            HuffmanPair newVal(*frequency_iterator);
-            Node *newNode = new Node(newVal);
-            forestPq.push(newNode);
+            if (frequency_iterator->second != 0) {
+                HuffmanPair newVal(*frequency_iterator);
+                Node *newNode = new Node(newVal);
+                forestPq.push(newNode);
+            }
         }
 
     while (forestPq.size() > 1) {
@@ -221,12 +223,15 @@ std::map<unsigned char, int> read_table_from_file(const char * path) {
 
     bool newChar = true;
     unsigned char* current_char = NULL;
-
     int bytePos = 0;
     unsigned char byteBuffer[4];
 
-    for (auto &i: buf) {
+    for (unsigned char &i: buf) {
         if (newChar) {
+            if (out.find(i) != out.end()) {
+                break;
+            }
+            //printf("\n0x%x", i);
             current_char = &i;
             out[i] = 0;
 
@@ -241,10 +246,11 @@ std::map<unsigned char, int> read_table_from_file(const char * path) {
                 bytePos = 0;
 
                 if (number == 0) {
-                    out.erase(*current_char);
-                    
+                    if (out[*current_char] == 0)
+                        out.erase(*current_char);
                     break;
                 }
+                //printf(" number: %i", number);
                 out[*current_char] = number;
                 //std::cout << number << "|\n";
                 newChar = true;
@@ -255,21 +261,33 @@ std::map<unsigned char, int> read_table_from_file(const char * path) {
     return out;
 }
 
-std::string read_data_from_file(const char * path, std::map<char, std::vector<bool>> codeMap) {
+void print_bvec(std::map<std::vector<bool>, unsigned char> map) {
+    for (auto const &c: map) {
+        
+        for (bool b: c.first) {
+            std::cout << b ;
+        }
+        printf(" | 0x%x\n", c.second);
+    } 
+}
+
+std::string read_data_from_file(const char * path, std::map<unsigned char, std::vector<bool>> codeMap) {
     std::string out;
 
-    std::map<std::vector<bool>, char> codes = flip_map(codeMap);
+    std::map<std::vector<bool>, unsigned char> codes = flip_map(codeMap);
+
+    //print_bvec(codes);
+    // ## maybe use a pointer to speed it up??
 
     std::ifstream input(path, std::ifstream::binary );
     input.unsetf(std::ios_base::skipws);
-
     input.seekg(1024);
 
-    char byteBuffer;
+    unsigned char byteBuffer;
     std::vector<bool> nextBits;
-
     std::vector<bool> bitBuffer;
 
+    unsigned char writeByte;
     while (input) {
         input >> byteBuffer;
         nextBits = from_Byte(byteBuffer);
@@ -278,7 +296,7 @@ std::string read_data_from_file(const char * path, std::map<char, std::vector<bo
             //out += c?'1':'0';
             bitBuffer.insert(bitBuffer.end(), c);
 
-            if (codes[bitBuffer]) {
+            if (codes.find(bitBuffer) != codes.end()) {
                 out += codes[bitBuffer];
                 bitBuffer.clear();
             }
@@ -289,10 +307,11 @@ std::string read_data_from_file(const char * path, std::map<char, std::vector<bo
     return out;
 }
 
-void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_table, std::map<char, std::vector<bool>> codes, const char * outPath) {
-    FILE *inFilePointer = fopen(inPath, "r");
+void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_table, std::map<unsigned char, std::vector<bool>> codes, const char * outPath) {
+    FILE *inFilePointer = fopen(inPath, "rb");
     if (inFilePointer != NULL) {
         std::ofstream FILE(outPath, std::ofstream::binary);
+        FILE.unsetf(std::ios_base::skipws);
 
         // writing frequency table
         int dataSize = 0;
@@ -321,7 +340,7 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
 
             bitBuffer.insert(bitBuffer.end(), code.begin(), code.end());
 
-            if (bitBuffer.size() > 8) {
+            while (bitBuffer.size() > 8) {
                 std::vector<bool> outByte(bitBuffer.begin(), bitBuffer.begin()+8);
                 bitBuffer.erase(bitBuffer.begin(), bitBuffer.begin() + 8);
 
@@ -331,6 +350,12 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
         }
         // read last bits if any remain
         if (bitBuffer.size() > 0) {
+            // ############################################# Fix issue with last byte
+/*             for (bool bit:bitBuffer) {
+                    std::cout << bit;
+                }
+                std::cout << "\n"; */
+
             writeBytes = to_Byte(bitBuffer);
             FILE.write(&writeBytes,sizeof(writeBytes));
         }
@@ -340,68 +365,46 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
 
 int main(int argc, char const *argv[])
 {
+/*     const char * inPath = "./warandpeace.txt";
+    const char * outPath = "./output.huffman"; */
+
     const char * inPath = "./image.bmp";
     const char * outPath = "./image.huffman";
     
-/*      
-    std::map<unsigned char, int> frequency_table = make_frequency_table(inPath);
+     
+/*     std::map<unsigned char, int> frequency_table = make_frequency_table(inPath);
     Node* current = make_tree(frequency_table);
-    std::map<char, std::vector<bool>> codes = encode(current);
-    write_to_file(inPath, frequency_table, codes, outPath); */
+    std::map<unsigned char, std::vector<bool>> codes = encode(current);
+    write_to_file(inPath, frequency_table, codes, outPath);   */
+
+/* /*     for (auto const &f: frequency_table) {
+        printf("0x%x | %i\n", f.first, f.second);
+    } */
+/*     for (auto const &c: codes) {
+        printf("0x%x | ", c.first);
+        for (bool b: c.second) {
+            std::cout << b;
+        }
+        std::cout << "\n";
+    } */
+
+    
 
     std::map<unsigned char, int> frequency_table_in = read_table_from_file(outPath);
-    Node* current = make_tree(frequency_table_in);
-    std::map<char, std::vector<bool>> codes = encode(current);
-    std::string outdata = read_data_from_file(outPath, codes);
+/*     for (auto const &f: frequency_table_in) {
+        printf("0x%x | %i\n", f.first, f.second);
+    } */
 
+    Node* root = make_tree(frequency_table_in);
+    std::map<unsigned char, std::vector<bool>> outCodes = encode(root);
+    std::string outdata = read_data_from_file(outPath, outCodes);
+
+    //std::ofstream out("./warandpeace.out");
     std::ofstream out("./imageout.bmp");
     out << outdata;
     out.close();
 
-    
 
-    
-
-/*     std::map<unsigned char, int> output_frequency_table = read_table_from_file(outPath);
-
-    for (auto const &x: output_frequency_table) {
-        std::cout << x.first << " | " << x.second << "\n";
-    } */
-
-
-/*     std::vector<bool> test({0,0,0,0,1});
-
-    unsigned char test_b = to_Byte(test);
-
-    std::vector<bool> test_2 = from_Byte(test_b);
-
-    std::cout << test_b << "\n";
-    for (auto const &i: test) {
-        std::cout << i;
-    }
-    std::cout << "\n";
-    for (auto const &i: test_2) {
-        std::cout << i;
-    } */
-
-/*     unsigned int y = 65000;
-    std::cout << y << " | " << sizeof(y) << "\n";
-    std::vector<unsigned char> te = int_to_charvec(y);
-
-    //char te = y;
-    std::cout << "\n|";
-    for (auto const &i: te) {
-        std::cout << i;
-    }
-    std::cout << "|\n";
-
-    int out = 0;
-    for (auto const &i: te) {
-        from_Byte(i);
-        out += (int)i;
-        std::cout << "|"<< i;
-    }
-    std::cout << out; */
     
             
     return 0;
