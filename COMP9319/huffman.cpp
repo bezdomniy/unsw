@@ -1,12 +1,12 @@
-#include <stdio.h>
+//#include <stdio.h>
 #include <iostream>
 #include <map>
 #include <algorithm>
 #include <vector>
 #include <queue>
 #include <fstream>
-#include <iterator>
-#include <cstring>
+//#include <iterator>
+//#include <cstring>
 
 #define BUFFERLENGTH 1
 
@@ -146,7 +146,6 @@ unsigned char to_Byte(std::vector<bool> b)
 }
 
 std::map<unsigned char, int> make_frequency_table(const char * filePath) {
-
     FILE *filePointer = fopen(filePath, "rb");
     std::map<unsigned char, int> frequency_table;
 
@@ -292,6 +291,8 @@ std::string read_data_from_file(const char * path, std::map<unsigned char, std::
         input >> byteBuffer;
         nextBits = from_Byte(byteBuffer);
 
+        //printf("0x%x\n", byteBuffer);
+
         for (bool c: nextBits) {
             //out += c?'1':'0';
             bitBuffer.insert(bitBuffer.end(), c);
@@ -365,22 +366,27 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
 
 int main(int argc, char const *argv[])
 {
-/*     const char * inPath = "./warandpeace.txt";
-    const char * outPath = "./output.huffman"; */
+    const char * inPath = "./warandpeace.txt";
+    const char * outPath = "./output.huffman";
 
-    const char * inPath = "./image.bmp";
-    const char * outPath = "./image.huffman";
+/*     const char * inPath = "./image.bmp";
+    const char * outPath = "./image.huffman"; */
     
-     
+    
+    
 /*     std::map<unsigned char, int> frequency_table = make_frequency_table(inPath);
+    std::cout << "1\n"; //this one takes too long
     Node* current = make_tree(frequency_table);
+    std::cout << "2\n";
     std::map<unsigned char, std::vector<bool>> codes = encode(current);
-    write_to_file(inPath, frequency_table, codes, outPath);   */
+    std::cout << "3\n";
+    write_to_file(inPath, frequency_table, codes, outPath);  
+    std::cout << "4\n";  */
 
-/* /*     for (auto const &f: frequency_table) {
+/*     for (auto const &f: frequency_table) {
         printf("0x%x | %i\n", f.first, f.second);
-    } */
-/*     for (auto const &c: codes) {
+    } 
+    for (auto const &c: codes) {
         printf("0x%x | ", c.first);
         for (bool b: c.second) {
             std::cout << b;
@@ -391,18 +397,19 @@ int main(int argc, char const *argv[])
     
 
     std::map<unsigned char, int> frequency_table_in = read_table_from_file(outPath);
-/*     for (auto const &f: frequency_table_in) {
-        printf("0x%x | %i\n", f.first, f.second);
-    } */
-
+    std::cout << "1\n";
     Node* root = make_tree(frequency_table_in);
+    std::cout << "2\n";
     std::map<unsigned char, std::vector<bool>> outCodes = encode(root);
+    std::cout << "3\n";
     std::string outdata = read_data_from_file(outPath, outCodes);
+    std::cout << "4\n"; //this one takes too long
 
-    //std::ofstream out("./warandpeace.out");
-    std::ofstream out("./imageout.bmp");
+    std::ofstream out("./warandpeace.out");
+    //std::ofstream out("./imageout.bmp");
     out << outdata;
     out.close();
+    std::cout << "5\n";
 
 
     
