@@ -8,7 +8,6 @@
 #include <iterator>
 #include <cstring>
 
-
 #define BUFFERLENGTH 1
 
 typedef std::pair<char, int> HuffmanPair;
@@ -69,7 +68,7 @@ struct CompareValue
 std::map<char, std::vector<bool>> encode(Node* root) {
     std::queue<CodePair> nodeStack;
 
-    std::vector<bool> v = {};
+    std::vector<bool> v;
     nodeStack.push(CodePair(root,v));
 
     std::vector<bool> leftv, rightv;
@@ -139,7 +138,6 @@ unsigned char to_Byte(std::vector<bool> b)
 {
     unsigned char c = 0;
     int len = b.size();
-    //std::cout << len << ", ";
 
     for (int i=0; i < 8; ++i)
         if (b[i])
@@ -229,9 +227,8 @@ std::map<unsigned char, int> read_table_from_file(const char * path) {
 
     for (auto &i: buf) {
         if (newChar) {
-            //std::cout << i;
             current_char = &i;
-            out[newChar] = 0;
+            out[i] = 0;
 
             newChar = false;
         } 
@@ -243,6 +240,11 @@ std::map<unsigned char, int> read_table_from_file(const char * path) {
                 int number = (int)(byteBuffer[3] << 24 | byteBuffer[2] << 16 | byteBuffer[1] << 8 | byteBuffer[0]);
                 bytePos = 0;
 
+                if (number == 0) {
+                    out.erase(*current_char);
+                    
+                    break;
+                }
                 out[*current_char] = number;
                 //std::cout << number << "|\n";
                 newChar = true;
@@ -338,22 +340,23 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
 
 int main(int argc, char const *argv[])
 {
-    const char * inPath = "./warandpeace.txt";
-    const char * outPath = "./output.huffman";
+    const char * inPath = "./image.bmp";
+    const char * outPath = "./image.huffman";
     
-    std::map<unsigned char, int> frequency_table;
-    
-
-    frequency_table = make_frequency_table(inPath);
-        
+/*      
+    std::map<unsigned char, int> frequency_table = make_frequency_table(inPath);
     Node* current = make_tree(frequency_table);
     std::map<char, std::vector<bool>> codes = encode(current);
+    write_to_file(inPath, frequency_table, codes, outPath); */
 
-    //print_tree(current);
-
-    //write_to_file(inPath, frequency_table, codes, outPath);
+    std::map<unsigned char, int> frequency_table_in = read_table_from_file(outPath);
+    Node* current = make_tree(frequency_table_in);
+    std::map<char, std::vector<bool>> codes = encode(current);
     std::string outdata = read_data_from_file(outPath, codes);
-    std::cout << outdata;
+
+    std::ofstream out("./imageout.bmp");
+    out << outdata;
+    out.close();
 
     
 
