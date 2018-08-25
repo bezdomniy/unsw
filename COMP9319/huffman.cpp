@@ -12,7 +12,7 @@
 
 #define BUFFERLENGTH 1
 
-typedef std::pair<char, int> HuffmanPair;
+typedef std::pair<unsigned char, int> HuffmanPair;
 
 class Node {
     public:
@@ -63,11 +63,19 @@ struct CompareValue
 {
     bool operator()(const Node* node1, const Node* node2) const
     {
-        bool out;
+
         if (node1->getValue().second != node2->getValue().second)
             return node1->getValue().second > node2->getValue().second;
-        else 
+        else {
+/*             if (node1->getValue().first != 0x00) {
+                std::cout << node1->getValue().second << ", " << node2->getValue().second << " ";
+                printf("0x%x | ",node1->getValue().first);
+                printf("0x%x\n",node2->getValue().first); 
+            }  */
+
             return node1->getValue().first < node2->getValue().first;
+        } 
+            
     }
 };
 
@@ -120,7 +128,11 @@ void print_tree(Node *t) {
             curlevel = level;
             std::cout << "Level " << curlevel << std::endl;
         }
-        std::cout << parent->getValue().second << " " << parent->getValue().first << std::endl;
+        std::cout << parent->getValue().second << " ";
+
+        printf("0x%x",parent->getValue().first);
+        
+        std::cout << std::endl;
 
         //printf("%i %i\n", parent->getValue().second ,parent->getValue().first);
         if (parent->getLeftChild())
@@ -135,12 +147,8 @@ void print_tree(Node *t) {
 std::deque<bool> from_Byte(unsigned char c)
 {
     std::deque<bool> b;
-    for (int i=0; i < 8; ++i) {
-        //std::cout << ((c & (1<<i)) != 0);
-        b.push_back((c & (1<<i)) != 0);
-    }
-
-        
+    for (int i=0; i < 8; ++i) 
+        b.push_back((c & (1<<i)) != 0);        
     return b;
 }
 
@@ -148,11 +156,9 @@ unsigned char to_Byte(std::queue<bool>& b)
 {
     unsigned char c = 0;
     for (int i=0; i < 8; ++i) {
-        if (b.front()) {
+        if (b.front()) 
             c |= 1 << i;
-        }
         b.pop();
-        
     }
     return c;
 }
@@ -199,13 +205,20 @@ Node* make_tree(std::unordered_map<unsigned char, int> frequency_table) {
                 HuffmanPair newVal(*frequency_iterator);
                 Node *newNode = new Node(newVal);
                 forestPq.push(newNode);
+                printf("0x%x | ",newNode->getValue().first);
+                printf("%i\n",newNode->getValue().second);
             }
         }
 
     while (forestPq.size() > 1) {
         Node* min1 = forestPq.top();
+
+        //printf("0x%x | ",min1->getValue().first);
+        //printf("%i\n",min1->getValue().second);
         forestPq.pop();
         Node* min2 = forestPq.top();
+        //printf("0x%x | ",min2->getValue().first);
+        //printf("%i\n",min2->getValue().second);
         forestPq.pop();
 
         HuffmanPair newVal(NULL, min1->getValue().second + min2->getValue().second);
@@ -215,24 +228,6 @@ Node* make_tree(std::unordered_map<unsigned char, int> frequency_table) {
 
     return forestPq.top();
 }
-
-
-// https://stackoverflow.com/a/14807477
-template<typename A, typename B>
-std::pair<B,A> flip_pair(const std::pair<A,B> &p)
-{
-    return std::pair<B,A>(p.second, p.first);
-}
-
-template<typename A, typename B>
-std::unordered_map<B,A> flip_map(const std::unordered_map<A,B> &src)
-{
-    std::unordered_map<B,A> dst;
-    std::transform(src.begin(), src.end(), std::inserter(dst, dst.begin()), 
-                   flip_pair<A,B>);
-    return dst;
-}
-//////////
 
 std::unordered_map<unsigned char, int> read_table_from_file(const char * path) {
     std::unordered_map<unsigned char, int> out;
@@ -292,25 +287,15 @@ void print_bvec(std::unordered_map<std::vector<bool>, unsigned char> unordered_m
     } 
 }
 
-//std::string read_data_from_file(const char * path, std::unordered_map<unsigned char, std::vector<bool>> codeMap) {
 std::string read_data_from_file(const char * path, Node* root) {
     std::string out;
-
-    //std::unordered_map<std::vector<bool>, unsigned char> codes = flip_map(codeMap);
-
-    //print_bvec(codes);
-    // ## maybe use a pointer to speed it up??
 
     std::ifstream input(path, std::ifstream::binary );
     input.unsetf(std::ios_base::skipws);
     input.seekg(1024);
 
     unsigned char byteBuffer;
-    std::vector<bool> nextBits;
     std::deque<bool> bitBuffer;
-
-    unsigned char writeByte;
-
     Node* current = root;
 
     while (input) {
@@ -363,7 +348,7 @@ void write_to_file(const char * inPath, std::unordered_map<unsigned char, int> f
         size_t charactersRead = 0;
 
         std::queue<bool> bitBuffer;
-        char writeBytes;
+        unsigned char writeBytes;
         std::vector<bool> code;
         
         while (charactersRead = fread(buffer, sizeof(unsigned char), BUFFERLENGTH, inFilePointer) > 0) {
@@ -375,15 +360,14 @@ void write_to_file(const char * inPath, std::unordered_map<unsigned char, int> f
             
             while (bitBuffer.size() > 8) {
                 writeBytes = to_Byte(bitBuffer); //this is slow
-                FILE.write(&writeBytes,sizeof(writeBytes));
+                FILE.write((char*)&writeBytes,sizeof(writeBytes));
             }
-
         }
         // read last bits if any remain
         if (bitBuffer.size() > 0) {
             // ############################################# Fix issue with last byte
             writeBytes = to_Byte(bitBuffer);
-            FILE.write(&writeBytes,sizeof(writeBytes));
+            FILE.write((char*)&writeBytes,sizeof(writeBytes));
         }
     }
     std::fclose(inFilePointer);
@@ -391,11 +375,11 @@ void write_to_file(const char * inPath, std::unordered_map<unsigned char, int> f
 
 int main(int argc, char const *argv[])
 {
-    const char * inPath = "./warandpeace2.txt";
-    const char * outPath = "./output.huffman";
+/*     const char * inPath = "./warandpeace2.txt";
+    const char * outPath = "./output.huffman"; */
 
-/*     const char * inPath = "./image.bmp";
-    const char * outPath = "./image.huffman"; */
+    const char * inPath = "./image.bmp";
+    const char * outPath = "./image.huffman";
     
     
     clock_t begin = clock();
@@ -413,38 +397,32 @@ int main(int argc, char const *argv[])
     write_to_file(inPath, frequency_table, codes, outPath);  
     end = clock();
     elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    std::cout << "4: " << elapsed_secs << "\n"; //this one takes too long 
+    std::cout << "4: " << elapsed_secs << "\n"; //this one takes too long
 
 /*     for (auto const &f: frequency_table) {
         printf("0x%x | %i\n", f.first, f.second);
-    } 
-    for (auto const &c: codes) {
-        printf("0x%x | ", c.first);
-        for (bool b: c.second) {
-            std::cout << b;
-        }
-        std::cout << "\n";
-    } */
-
+    }   */
     
 /*     std::unordered_map<unsigned char, int> frequency_table_in = read_table_from_file(outPath);
-    std::cout << "1\n";
     Node* root = make_tree(frequency_table_in);
     //print_tree(root);
-    std::cout << "2\n";
     //std::unordered_map<unsigned char, std::vector<bool>> outCodes = encode(root);
     //std::cout << "3\n"; 
     clock_t begin = clock();
     std::string outdata = read_data_from_file(outPath, root);
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    std::cout << "4: " << elapsed_secs << "\n"; //this one takes too long
+    std::cout << "1: " << elapsed_secs << "\n"; //this one takes too long
 
-    std::ofstream out("./warandpeace2.out");
-    //std::ofstream out("./imageout.bmp");
+    //for (auto const &f: frequency_table_in) {
+    //    printf("0x%x | %i\n", f.first, f.second);
+    //} 
+
+    //std::ofstream out("./warandpeace2.out");
+    std::ofstream out("./imageout.bmp");
     out << outdata;
     out.close();
-    std::cout << "5\n"; */
+    std::cout << "2\n"; */
 
 
     
