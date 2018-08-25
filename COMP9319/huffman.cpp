@@ -7,6 +7,7 @@
 #include <fstream>
 //#include <iterator>
 //#include <cstring>
+//#include <list>
 #include <ctime>
 
 #define BUFFERLENGTH 1
@@ -135,14 +136,16 @@ std::vector<bool> from_Byte(unsigned char c)
     return b;
 }
 
-unsigned char to_Byte(std::vector<bool> b)
+unsigned char to_Byte(std::queue<bool>& b)
 {
     unsigned char c = 0;
-    int len = b.size();
-
-    for (int i=0; i < 8; ++i)
-        if (b[i])
-            c |= 1 << (i+8-len);
+    for (int i=0; i < 8; ++i) {
+        if (b.front()) {
+            c |= 1 << i;
+        }
+        b.pop();
+        
+    }
     return c;
 }
 
@@ -347,45 +350,31 @@ void write_to_file(const char * inPath, std::unordered_map<unsigned char, int> f
             FILE.write("\x00",1);
         }
         
-
         // writing data
         unsigned char buffer[BUFFERLENGTH+1];
         size_t charactersRead = 0;
 
         std::queue<bool> bitBuffer;
         char writeBytes;
-        unsigned char character;
         std::vector<bool> code;
-
-        std::vector<bool> outBits;
         
         while (charactersRead = fread(buffer, sizeof(unsigned char), BUFFERLENGTH, inFilePointer) > 0) {
-            character = *buffer;
-            code = codes.at(character);
+            code = codes.at(*buffer);
 
             for (const bool bit: code) {
                 bitBuffer.push(bit);
             }
-
+            
             while (bitBuffer.size() > 8) {
-                for (int i = 0; i < 8; ++i) {
-                    outBits.push_back(bitBuffer.front());
-                    bitBuffer.pop();
-                }
-                writeBytes = to_Byte(outBits); //this is slow
+                writeBytes = to_Byte(bitBuffer); //this is slow
                 FILE.write(&writeBytes,sizeof(writeBytes));
-                outBits.clear();
             }
 
         }
         // read last bits if any remain
         if (bitBuffer.size() > 0) {
             // ############################################# Fix issue with last byte
-            for (int i = 0; i < bitBuffer.size(); ++i) {
-                outBits.push_back(bitBuffer.front());
-                bitBuffer.pop();
-            }
-            writeBytes = to_Byte(outBits);
+            writeBytes = to_Byte(bitBuffer);
             FILE.write(&writeBytes,sizeof(writeBytes));
         }
     }
