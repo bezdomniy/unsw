@@ -79,7 +79,7 @@ bool is_empty(std::ifstream& pFile)
     return pFile.peek() == std::ifstream::traits_type::eof();
 }
 
-std::unordered_map<unsigned char, std::vector<bool>> encode(Node* root) {
+std::unordered_map<unsigned char, std::vector<bool>> make_code_map(Node* root) {
     std::queue<CodePair> nodeStack;
     std::unordered_map<unsigned char, std::vector<bool>> out;
 
@@ -331,6 +331,59 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
     return out;
 }
 
+int search_encoded_file(const char * path, Node* root, int validBitsInLastByte, const char * searchTerm) {
+    int position = 0;
+
+    bool singleNodeTree = false;
+    if (root->getLeftChild() == NULL)
+        singleNodeTree = true;
+
+    std::ifstream input(path, std::ifstream::binary );
+    input.unsetf(std::ios_base::skipws);
+    
+    input.seekg(1024);
+
+    unsigned char byteBuffer;
+    std::deque<bool> bitBuffer;
+    Node* current = root;
+
+    input >> byteBuffer;
+
+    while (input) {
+        if (input.peek() == EOF)
+            bitBuffer = from_Byte(byteBuffer, validBitsInLastByte);
+        else
+            bitBuffer = from_Byte(byteBuffer);
+        input >> byteBuffer;
+
+        while (!bitBuffer.empty()) {
+            if ((current->getLeftChild() == NULL)) {
+                //out += current->getValue().first;
+                current = root;
+
+                position++;
+
+                if (singleNodeTree)
+                    bitBuffer.pop_front();
+            }
+            else if (bitBuffer.front()) {
+                current = current->getRightChild();
+                bitBuffer.pop_front();
+            }
+                    
+            else {
+                current = current->getLeftChild();
+                bitBuffer.pop_front();
+            }
+        }
+
+    }
+    
+    input.close();
+
+    return position;
+}
+
 void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_table, std::unordered_map<unsigned char, std::vector<bool>> codes, const char * outPath) {
     std::ofstream outFile(outPath, std::ofstream::binary);
     outFile.unsetf(std::ios_base::skipws);
@@ -398,51 +451,51 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
 
 int main(int argc, char const *argv[])
 {
-    const char * inPath; // = "./example1.txt";
-    const char * outPath; // = "./output.huffman";
+    const char * originalPath; // = "./example1.txt";
+    const char * encodedPath; // = "./output.huffman";
     const char * decodedPath; // = "./example1.out";
     const char * searchTerm; // = "apple";
     
     std::string option = argv[1];
 
     if (option == "-e") {
-        inPath = argv[2];
-        outPath = argv[3];
+        originalPath = argv[2];
+        encodedPath = argv[3];
 
-        std::ifstream inFile(inPath, std::ifstream::binary );
+        std::ifstream inFile(originalPath, std::ifstream::binary );
         if (is_empty(inFile)) {
-            FILE *fp = fopen(outPath, "w");
+            FILE *fp = fopen(encodedPath, "w");
             fclose(fp);
         }
         else {
             clock_t begin = clock();
-            std::map<unsigned char, int> frequency_table = make_frequency_table(inPath);
+            std::map<unsigned char, int> frequency_table = make_frequency_table(originalPath);
             clock_t end = clock();
             double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
             std::cout << "1: " << elapsed_secs << "\n"; 
 
             Node* current = make_tree(frequency_table);
-            std::unordered_map<unsigned char, std::vector<bool>> codes = encode(current);
+            std::unordered_map<unsigned char, std::vector<bool>> codes = make_code_map(current);
             begin = clock();
-            write_to_file(inPath, frequency_table, codes, outPath);  
+            write_to_file(originalPath, frequency_table, codes, encodedPath);  
             end = clock();
             elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
             std::cout << "2: " << elapsed_secs << "\n"; //this one takes too long  
         }
     }
     else if (option == "-d") {
-        outPath = argv[2];
+        encodedPath = argv[2];
         decodedPath = argv[3];
 
-        std::ifstream inFile(outPath, std::ifstream::binary );
+        std::ifstream inFile(encodedPath, std::ifstream::binary );
         if (is_empty(inFile)) {
             FILE *fp = fopen(decodedPath, "w");
             fclose(fp);
         }
         else {
-            std::pair<std::map<unsigned char, int>, int> frequency_table_in = read_table_from_file(outPath);
+            std::pair<std::map<unsigned char, int>, int> frequency_table_in = read_table_from_file(encodedPath);
             Node* root = make_tree(frequency_table_in.first);
-            std::string outdata = read_data_from_file(outPath, root, frequency_table_in.second);
+            std::string outdata = read_data_from_file(encodedPath, root, frequency_table_in.second);
             std::ofstream out(decodedPath);
             out << outdata;
             out.close();
@@ -450,7 +503,11 @@ int main(int argc, char const *argv[])
     }
     else if (option == "-s") {
         searchTerm = argv[2];
-        inPath = argv[3];
+        encodedPath = argv[3];
+
+        std::pair<std::map<unsigned char, int>, int> frequency_table_in = read_table_from_file(encodedPath);
+        Node* root = make_tree(frequency_table_in.first);
+
     }
 
 
