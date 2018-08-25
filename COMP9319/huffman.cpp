@@ -1,12 +1,13 @@
 //#include <stdio.h>
 #include <iostream>
-#include <map>
+#include <unordered_map>
 #include <algorithm>
 #include <vector>
 #include <queue>
 #include <fstream>
 //#include <iterator>
 //#include <cstring>
+#include <ctime>
 
 #define BUFFERLENGTH 1
 
@@ -65,7 +66,7 @@ struct CompareValue
     }
 };
 
-std::map<unsigned char, std::vector<bool>> encode(Node* root) {
+std::unordered_map<unsigned char, std::vector<bool>> encode(Node* root) {
     std::queue<CodePair> nodeStack;
 
     std::vector<bool> v;
@@ -74,7 +75,7 @@ std::map<unsigned char, std::vector<bool>> encode(Node* root) {
     std::vector<bool> leftv, rightv;
     CodePair current, left, right;
 
-    std::map<unsigned char, std::vector<bool>> out;
+    std::unordered_map<unsigned char, std::vector<bool>> out;
 
     while (!nodeStack.empty()) {
         current = nodeStack.front();
@@ -145,33 +146,43 @@ unsigned char to_Byte(std::vector<bool> b)
     return c;
 }
 
-std::map<unsigned char, int> make_frequency_table(const char * filePath) {
+std::unordered_map<unsigned char, int> make_frequency_table(const char * filePath) {
     FILE *filePointer = fopen(filePath, "rb");
-    std::map<unsigned char, int> frequency_table;
+    std::unordered_map<unsigned char, int> frequency_table;
 
     if (filePointer != NULL)  {
         unsigned char buffer[BUFFERLENGTH+1];
         size_t charactersRead = 0;
 
+        std::ifstream input( filePath, std::ifstream::binary );
+        input.unsetf(std::ios_base::skipws);
+
+        //unsigned char character ;
         while (charactersRead = fread(buffer, sizeof(unsigned char), BUFFERLENGTH, filePointer) > 0) {
+        //while (input) {
                 unsigned char character = *buffer;
-                std::map<unsigned char, int>::iterator charInSet = frequency_table.find(character);
+                //input >> character;
+            //for (unsigned char character: buffer) {
+                std::unordered_map<unsigned char, int>::iterator charInSet = frequency_table.find(character);
 
                 if (charInSet == frequency_table.end()) {
                     frequency_table.insert(std::pair<unsigned char, int>(character,0));
                 }
                 frequency_table[character] ++;
+            //}
+         
+
             
-            }
+        }
         return frequency_table;
     }
     std::fclose(filePointer);
 }
 
-Node* make_tree(std::map<unsigned char, int> frequency_table) {
+Node* make_tree(std::unordered_map<unsigned char, int> frequency_table) {
     std::priority_queue<Node*, std::vector<Node*>, CompareValue> forestPq;
 
-    for (std::map<unsigned char, int>::iterator frequency_iterator = frequency_table.begin();
+    for (std::unordered_map<unsigned char, int>::iterator frequency_iterator = frequency_table.begin();
         frequency_iterator != frequency_table.end(); ++frequency_iterator) {
             if (frequency_iterator->second != 0) {
                 HuffmanPair newVal(*frequency_iterator);
@@ -203,17 +214,17 @@ std::pair<B,A> flip_pair(const std::pair<A,B> &p)
 }
 
 template<typename A, typename B>
-std::map<B,A> flip_map(const std::map<A,B> &src)
+std::unordered_map<B,A> flip_map(const std::unordered_map<A,B> &src)
 {
-    std::map<B,A> dst;
+    std::unordered_map<B,A> dst;
     std::transform(src.begin(), src.end(), std::inserter(dst, dst.begin()), 
                    flip_pair<A,B>);
     return dst;
 }
 //////////
 
-std::map<unsigned char, int> read_table_from_file(const char * path) {
-    std::map<unsigned char, int> out;
+std::unordered_map<unsigned char, int> read_table_from_file(const char * path) {
+    std::unordered_map<unsigned char, int> out;
 
     std::ifstream input( path, std::ifstream::binary );
     input.unsetf(std::ios_base::skipws);
@@ -260,8 +271,8 @@ std::map<unsigned char, int> read_table_from_file(const char * path) {
     return out;
 }
 
-void print_bvec(std::map<std::vector<bool>, unsigned char> map) {
-    for (auto const &c: map) {
+void print_bvec(std::unordered_map<std::vector<bool>, unsigned char> unordered_map) {
+    for (auto const &c: unordered_map) {
         
         for (bool b: c.first) {
             std::cout << b ;
@@ -270,10 +281,10 @@ void print_bvec(std::map<std::vector<bool>, unsigned char> map) {
     } 
 }
 
-std::string read_data_from_file(const char * path, std::map<unsigned char, std::vector<bool>> codeMap) {
+std::string read_data_from_file(const char * path, std::unordered_map<unsigned char, std::vector<bool>> codeMap) {
     std::string out;
 
-    std::map<std::vector<bool>, unsigned char> codes = flip_map(codeMap);
+    std::unordered_map<std::vector<bool>, unsigned char> codes = flip_map(codeMap);
 
     //print_bvec(codes);
     // ## maybe use a pointer to speed it up??
@@ -291,14 +302,23 @@ std::string read_data_from_file(const char * path, std::map<unsigned char, std::
         input >> byteBuffer;
         nextBits = from_Byte(byteBuffer);
 
+        //nextBits = std::vector<bool>({0,0,0,0,0,0,0,0});
+
         //printf("0x%x\n", byteBuffer);
 
+    
         for (bool c: nextBits) {
             //out += c?'1':'0';
             bitBuffer.insert(bitBuffer.end(), c);
 
-            if (codes.find(bitBuffer) != codes.end()) {
-                out += codes[bitBuffer];
+            //unsigned char byte = (*codes.find(bitBuffer)).second;
+            std::unordered_map<std::vector<bool>, unsigned char>::iterator it = codes.find(bitBuffer);
+            //if (codes.find(bitBuffer) != codes.end()) {
+            
+            if (it != codes.end()) {
+                //out += codes[bitBuffer];
+                //out += codes.at(bitBuffer);
+                out += it->second;
                 bitBuffer.clear();
             }
         }
@@ -308,7 +328,7 @@ std::string read_data_from_file(const char * path, std::map<unsigned char, std::
     return out;
 }
 
-void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_table, std::map<unsigned char, std::vector<bool>> codes, const char * outPath) {
+void write_to_file(const char * inPath, std::unordered_map<unsigned char, int> frequency_table, std::unordered_map<unsigned char, std::vector<bool>> codes, const char * outPath) {
     FILE *inFilePointer = fopen(inPath, "rb");
     if (inFilePointer != NULL) {
         std::ofstream FILE(outPath, std::ofstream::binary);
@@ -332,32 +352,40 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
         unsigned char buffer[BUFFERLENGTH+1];
         size_t charactersRead = 0;
 
-        std::vector<bool> bitBuffer;
+        std::queue<bool> bitBuffer;
         char writeBytes;
+        unsigned char character;
+        std::vector<bool> code;
+
+        std::vector<bool> outBits;
         
         while (charactersRead = fread(buffer, sizeof(unsigned char), BUFFERLENGTH, inFilePointer) > 0) {
-            unsigned char character = *buffer;
-            std::vector<bool> code = codes[character];
+            character = *buffer;
+            code = codes.at(character);
 
-            bitBuffer.insert(bitBuffer.end(), code.begin(), code.end());
+            for (const bool bit: code) {
+                bitBuffer.push(bit);
+            }
 
             while (bitBuffer.size() > 8) {
-                std::vector<bool> outByte(bitBuffer.begin(), bitBuffer.begin()+8);
-                bitBuffer.erase(bitBuffer.begin(), bitBuffer.begin() + 8);
-
-                writeBytes = to_Byte(outByte);
+                for (int i = 0; i < 8; ++i) {
+                    outBits.push_back(bitBuffer.front());
+                    bitBuffer.pop();
+                }
+                writeBytes = to_Byte(outBits); //this is slow
                 FILE.write(&writeBytes,sizeof(writeBytes));
+                outBits.clear();
             }
+
         }
         // read last bits if any remain
         if (bitBuffer.size() > 0) {
             // ############################################# Fix issue with last byte
-/*             for (bool bit:bitBuffer) {
-                    std::cout << bit;
-                }
-                std::cout << "\n"; */
-
-            writeBytes = to_Byte(bitBuffer);
+            for (int i = 0; i < bitBuffer.size(); ++i) {
+                outBits.push_back(bitBuffer.front());
+                bitBuffer.pop();
+            }
+            writeBytes = to_Byte(outBits);
             FILE.write(&writeBytes,sizeof(writeBytes));
         }
     }
@@ -373,15 +401,21 @@ int main(int argc, char const *argv[])
     const char * outPath = "./image.huffman"; */
     
     
-    
-/*     std::map<unsigned char, int> frequency_table = make_frequency_table(inPath);
-    std::cout << "1\n"; //this one takes too long
+    clock_t begin = clock();
+    std::unordered_map<unsigned char, int> frequency_table = make_frequency_table(inPath);
+    clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    std::cout << "1: " << elapsed_secs << "\n"; 
+
     Node* current = make_tree(frequency_table);
     std::cout << "2\n";
-    std::map<unsigned char, std::vector<bool>> codes = encode(current);
+    std::unordered_map<unsigned char, std::vector<bool>> codes = encode(current);
     std::cout << "3\n";
+    begin = clock();
     write_to_file(inPath, frequency_table, codes, outPath);  
-    std::cout << "4\n";  */
+    end = clock();
+    elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    std::cout << "4: " << elapsed_secs << "\n"; //this one takes too long 
 
 /*     for (auto const &f: frequency_table) {
         printf("0x%x | %i\n", f.first, f.second);
@@ -396,20 +430,23 @@ int main(int argc, char const *argv[])
 
     
 
-    std::map<unsigned char, int> frequency_table_in = read_table_from_file(outPath);
+/*     std::unordered_map<unsigned char, int> frequency_table_in = read_table_from_file(outPath);
     std::cout << "1\n";
     Node* root = make_tree(frequency_table_in);
     std::cout << "2\n";
-    std::map<unsigned char, std::vector<bool>> outCodes = encode(root);
+    std::unordered_map<unsigned char, std::vector<bool>> outCodes = encode(root);
     std::cout << "3\n";
+    clock_t begin = clock();
     std::string outdata = read_data_from_file(outPath, outCodes);
-    std::cout << "4\n"; //this one takes too long
+    clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    std::cout << "4: " << elapsed_secs << "\n"; //this one takes too long
 
     std::ofstream out("./warandpeace.out");
     //std::ofstream out("./imageout.bmp");
     out << outdata;
     out.close();
-    std::cout << "5\n";
+    std::cout << "5\n"; */
 
 
     
