@@ -63,7 +63,11 @@ struct CompareValue
 {
     bool operator()(const Node* node1, const Node* node2) const
     {
-        return node1->getValue().second > node2->getValue().second;
+        bool out;
+        if (node1->getValue().second != node2->getValue().second)
+            return node1->getValue().second > node2->getValue().second;
+        else 
+            return node1->getValue().first < node2->getValue().first;
     }
 };
 
@@ -128,11 +132,15 @@ void print_tree(Node *t) {
 
 
 // reference: https://stackoverflow.com/questions/8461126/how-to-create-a-byte-out-of-8-bool-values-and-vice-versa
-std::vector<bool> from_Byte(unsigned char c)
+std::deque<bool> from_Byte(unsigned char c)
 {
-    std::vector<bool> b;
-    for (int i=0; i < 8; ++i)
+    std::deque<bool> b;
+    for (int i=0; i < 8; ++i) {
+        //std::cout << ((c & (1<<i)) != 0);
         b.push_back((c & (1<<i)) != 0);
+    }
+
+        
     return b;
 }
 
@@ -284,10 +292,11 @@ void print_bvec(std::unordered_map<std::vector<bool>, unsigned char> unordered_m
     } 
 }
 
-std::string read_data_from_file(const char * path, std::unordered_map<unsigned char, std::vector<bool>> codeMap) {
+//std::string read_data_from_file(const char * path, std::unordered_map<unsigned char, std::vector<bool>> codeMap) {
+std::string read_data_from_file(const char * path, Node* root) {
     std::string out;
 
-    std::unordered_map<std::vector<bool>, unsigned char> codes = flip_map(codeMap);
+    //std::unordered_map<std::vector<bool>, unsigned char> codes = flip_map(codeMap);
 
     //print_bvec(codes);
     // ## maybe use a pointer to speed it up??
@@ -298,34 +307,33 @@ std::string read_data_from_file(const char * path, std::unordered_map<unsigned c
 
     unsigned char byteBuffer;
     std::vector<bool> nextBits;
-    std::vector<bool> bitBuffer;
+    std::deque<bool> bitBuffer;
 
     unsigned char writeByte;
+
+    Node* current = root;
+
     while (input) {
         input >> byteBuffer;
-        nextBits = from_Byte(byteBuffer);
+        bitBuffer = from_Byte(byteBuffer);
 
-        //nextBits = std::vector<bool>({0,0,0,0,0,0,0,0});
-
-        //printf("0x%x\n", byteBuffer);
-
-    
-        for (bool c: nextBits) {
-            //out += c?'1':'0';
-            bitBuffer.insert(bitBuffer.end(), c);
-
-            //unsigned char byte = (*codes.find(bitBuffer)).second;
-            std::unordered_map<std::vector<bool>, unsigned char>::iterator it = codes.find(bitBuffer);
-            //if (codes.find(bitBuffer) != codes.end()) {
-            
-            if (it != codes.end()) {
-                //out += codes[bitBuffer];
-                //out += codes.at(bitBuffer);
-                out += it->second;
-                bitBuffer.clear();
+        while (!bitBuffer.empty()) {
+            if ((current->getLeftChild() == NULL)) {
+                out += current->getValue().first;
+                current = root;
+            }
+            else if (bitBuffer.front()) {
+                current = current->getRightChild();
+                bitBuffer.pop_front();
+            }
+                
+            else {
+                current = current->getLeftChild();
+                bitBuffer.pop_front();
             }
         }
     }
+    
     input.close();
 
     return out;
@@ -383,7 +391,7 @@ void write_to_file(const char * inPath, std::unordered_map<unsigned char, int> f
 
 int main(int argc, char const *argv[])
 {
-    const char * inPath = "./warandpeace.txt";
+    const char * inPath = "./warandpeace2.txt";
     const char * outPath = "./output.huffman";
 
 /*     const char * inPath = "./image.bmp";
@@ -397,6 +405,7 @@ int main(int argc, char const *argv[])
     std::cout << "1: " << elapsed_secs << "\n"; 
 
     Node* current = make_tree(frequency_table);
+    //print_tree(current);
     std::cout << "2\n";
     std::unordered_map<unsigned char, std::vector<bool>> codes = encode(current);
     std::cout << "3\n";
@@ -418,20 +427,20 @@ int main(int argc, char const *argv[])
     } */
 
     
-
 /*     std::unordered_map<unsigned char, int> frequency_table_in = read_table_from_file(outPath);
     std::cout << "1\n";
     Node* root = make_tree(frequency_table_in);
+    //print_tree(root);
     std::cout << "2\n";
-    std::unordered_map<unsigned char, std::vector<bool>> outCodes = encode(root);
-    std::cout << "3\n";
+    //std::unordered_map<unsigned char, std::vector<bool>> outCodes = encode(root);
+    //std::cout << "3\n"; 
     clock_t begin = clock();
-    std::string outdata = read_data_from_file(outPath, outCodes);
+    std::string outdata = read_data_from_file(outPath, root);
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
     std::cout << "4: " << elapsed_secs << "\n"; //this one takes too long
 
-    std::ofstream out("./warandpeace.out");
+    std::ofstream out("./warandpeace2.out");
     //std::ofstream out("./imageout.bmp");
     out << outdata;
     out.close();
