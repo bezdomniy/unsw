@@ -1,4 +1,3 @@
-//#include <stdio.h>
 #include <iostream>
 #include <unordered_map>
 #include <map>
@@ -94,11 +93,8 @@ std::unordered_map<unsigned char, std::vector<bool>> encode(Node* root) {
         out[root->getValue().first] = v;
         return out;
     }
-        
-    //std::cout << v.back() << "\n";
-    nodeStack.push(CodePair(root,v));
 
-    
+    nodeStack.push(CodePair(root,v));
 
     while (!nodeStack.empty()) {
         current = nodeStack.front();
@@ -195,22 +191,15 @@ std::map<unsigned char, int> make_frequency_table(const char * filePath) {
         std::ifstream input( filePath, std::ifstream::binary );
         input.unsetf(std::ios_base::skipws);
 
-        //unsigned char character ;
         while (charactersRead = fread(buffer, sizeof(unsigned char), BUFFERLENGTH, filePointer) > 0) {
-        //while (input) {
-                unsigned char character = *buffer;
-                //input >> character;
-            //for (unsigned char character: buffer) {
-                std::map<unsigned char, int>::iterator charInSet = frequency_table.find(character);
+            unsigned char character = *buffer;
 
-                if (charInSet == frequency_table.end()) {
-                    frequency_table.insert(std::pair<unsigned char, int>(character,0));
-                }
-                frequency_table[character] ++;
-            //}
-         
+            std::map<unsigned char, int>::iterator charInSet = frequency_table.find(character);
 
-            
+            if (charInSet == frequency_table.end()) {
+                frequency_table.insert(std::pair<unsigned char, int>(character,0));
+            }
+            frequency_table[character] ++;
         }
         return frequency_table;
     }
@@ -241,9 +230,6 @@ Node* make_tree(std::map<unsigned char, int> frequency_table) {
                 forestPq.push(newNode);
         }
     }
-
-    
-
     return forestPq.top();
 }
 
@@ -285,9 +271,7 @@ std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * p
                         out.erase(*current_char);
                     break;
                 }
-                //printf(" number: %i", number);
                 out[*current_char] = number;
-                //std::cout << number << "|\n";
                 newChar = true;
             }
         }
@@ -315,23 +299,12 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
 
     input >> byteBuffer;
 
-/*     if (singleNodeTree) {
-        out += current->getValue().first;
-        input >> byteBuffer;
-    } */
-    
     while (input) {
         if (input.peek() == EOF)
             bitBuffer = from_Byte(byteBuffer, validBitsInLastByte);
         else
             bitBuffer = from_Byte(byteBuffer);
         input >> byteBuffer;
-
-
-        for (auto i: bitBuffer) {
-            std::cout <<i << " | " << validBitsInLastByte;
-        }
-        std::cout <<"\n";
 
         while (!bitBuffer.empty()) {
             if ((current->getLeftChild() == NULL)) {
@@ -397,8 +370,6 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
         code = codes.at(byteBuffer);
 
         for (const bool bit: code) {
-            printf("b: %i\n",bit);
-
             bitBuffer.push(bit);
         }
             
@@ -425,19 +396,19 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
 }
 
 
-
 int main(int argc, char const *argv[])
 {
-    const char * inPath = "./example1.txt";
-    const char * outPath = "./output.huffman";
-    const char * decodedPath = "./example1.out";
-
-/*     const char * inPath = "./image.bmp";
-    const char * outPath = "./image.huffman"; */
+    const char * inPath; // = "./example1.txt";
+    const char * outPath; // = "./output.huffman";
+    const char * decodedPath; // = "./example1.out";
+    const char * searchTerm; // = "apple";
     
-    bool encode_or_decode = false;
+    std::string option = argv[1];
 
-    if (encode_or_decode) {
+    if (option == "-e") {
+        inPath = argv[2];
+        outPath = argv[3];
+
         std::ifstream inFile(inPath, std::ifstream::binary );
         if (is_empty(inFile)) {
             FILE *fp = fopen(outPath, "w");
@@ -451,53 +422,37 @@ int main(int argc, char const *argv[])
             std::cout << "1: " << elapsed_secs << "\n"; 
 
             Node* current = make_tree(frequency_table);
-            //print_tree(current);
-            std::cout << "2\n";
             std::unordered_map<unsigned char, std::vector<bool>> codes = encode(current);
-
-
-            std::cout << "3\n";
             begin = clock();
             write_to_file(inPath, frequency_table, codes, outPath);  
             end = clock();
             elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-            std::cout << "4: " << elapsed_secs << "\n"; //this one takes too long  
+            std::cout << "2: " << elapsed_secs << "\n"; //this one takes too long  
         }
     }
-    else {
-        
+    else if (option == "-d") {
+        outPath = argv[2];
+        decodedPath = argv[3];
+
         std::ifstream inFile(outPath, std::ifstream::binary );
         if (is_empty(inFile)) {
             FILE *fp = fopen(decodedPath, "w");
             fclose(fp);
         }
         else {
-            
             std::pair<std::map<unsigned char, int>, int> frequency_table_in = read_table_from_file(outPath);
-            
             Node* root = make_tree(frequency_table_in.first);
-            //print_tree(root);
-            //std::unordered_map<unsigned char, std::vector<bool>> outCodes = encode(root);
-            //std::cout << "3\n"; 
-            clock_t begin = clock();
-                
             std::string outdata = read_data_from_file(outPath, root, frequency_table_in.second);
-            clock_t end = clock();
-            double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-            std::cout << "1: " << elapsed_secs << "\n"; //this one takes too long
-
-            //for (auto const &f: frequency_table_in.first) {
-            //    printf("0x%x | %i\n", f.first, f.second);
-            //} 
-
-            std::ofstream out("./example1.out");
-            //std::ofstream out("./imageout.bmp");
+            std::ofstream out(decodedPath);
             out << outdata;
             out.close();
         }
-
     }
-    
+    else if (option == "-s") {
+        searchTerm = argv[2];
+        inPath = argv[3];
+    }
+
 
     
 
