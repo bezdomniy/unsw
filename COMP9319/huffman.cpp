@@ -82,14 +82,23 @@ bool is_empty(std::ifstream& pFile)
 
 std::unordered_map<unsigned char, std::vector<bool>> encode(Node* root) {
     std::queue<CodePair> nodeStack;
+    std::unordered_map<unsigned char, std::vector<bool>> out;
 
-    std::vector<bool> v;
-    nodeStack.push(CodePair(root,v));
 
     std::vector<bool> leftv, rightv;
     CodePair current, left, right;
 
-    std::unordered_map<unsigned char, std::vector<bool>> out;
+    std::vector<bool> v;
+    if (root->getLeftChild() == NULL) {
+        v.push_back(0);
+        out[root->getValue().first] = v;
+        return out;
+    }
+        
+    //std::cout << v.back() << "\n";
+    nodeStack.push(CodePair(root,v));
+
+    
 
     while (!nodeStack.empty()) {
         current = nodeStack.front();
@@ -220,16 +229,20 @@ Node* make_tree(std::map<unsigned char, int> frequency_table) {
             }
         }
 
-    while (forestPq.size() > 1) {
-        Node* min1 = forestPq.top();
-        forestPq.pop();
-        Node* min2 = forestPq.top();
-        forestPq.pop();
+    if (forestPq.size() != 1) {
+        while (forestPq.size() > 1) {
+                Node* min1 = forestPq.top();
+                forestPq.pop();
+                Node* min2 = forestPq.top();
+                forestPq.pop();
 
-        HuffmanPair newVal(NULL, min1->getValue().second + min2->getValue().second);
-        Node *newNode = new Node(newVal,min2,min1);
-        forestPq.push(newNode);
+                HuffmanPair newVal(NULL, min1->getValue().second + min2->getValue().second);
+                Node *newNode = new Node(newVal,min2,min1);
+                forestPq.push(newNode);
+        }
     }
+
+    
 
     return forestPq.top();
 }
@@ -287,8 +300,13 @@ std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * p
 std::string read_data_from_file(const char * path, Node* root, int validBitsInLastByte) {
     std::string out;
 
+    bool singleNodeTree = false;
+    if (root->getLeftChild() == NULL)
+        singleNodeTree = true;
+
     std::ifstream input(path, std::ifstream::binary );
     input.unsetf(std::ios_base::skipws);
+    
     input.seekg(1024);
 
     unsigned char byteBuffer;
@@ -297,6 +315,11 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
 
     input >> byteBuffer;
 
+/*     if (singleNodeTree) {
+        out += current->getValue().first;
+        input >> byteBuffer;
+    } */
+    
     while (input) {
         if (input.peek() == EOF)
             bitBuffer = from_Byte(byteBuffer, validBitsInLastByte);
@@ -304,21 +327,30 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
             bitBuffer = from_Byte(byteBuffer);
         input >> byteBuffer;
 
+
+        for (auto i: bitBuffer) {
+            std::cout <<i << " | " << validBitsInLastByte;
+        }
+        std::cout <<"\n";
+
         while (!bitBuffer.empty()) {
             if ((current->getLeftChild() == NULL)) {
                 out += current->getValue().first;
                 current = root;
+                if (singleNodeTree)
+                    bitBuffer.pop_front();
             }
             else if (bitBuffer.front()) {
                 current = current->getRightChild();
                 bitBuffer.pop_front();
             }
-                
+                    
             else {
                 current = current->getLeftChild();
                 bitBuffer.pop_front();
             }
         }
+
     }
     
     input.close();
@@ -329,6 +361,10 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
 void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_table, std::unordered_map<unsigned char, std::vector<bool>> codes, const char * outPath) {
     std::ofstream outFile(outPath, std::ofstream::binary);
     outFile.unsetf(std::ios_base::skipws);
+
+    bool singleNodeTree = false;
+    if (codes.size() == 1)
+        singleNodeTree = true;
 
     // writing frequency table
     int dataSize = 0;
@@ -343,7 +379,7 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
         outFile.write("\x00",1);
     }
 
-        
+    
     // writing data
     unsigned char byteBuffer;
     std::queue<bool> bitBuffer;
@@ -352,12 +388,17 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     
     std::ifstream inFile(inPath, std::ifstream::binary );
     inFile.unsetf(std::ios_base::skipws);
-        
+
+    if (singleNodeTree)
+        inFile >> byteBuffer;
+    
     while (inFile) {
         inFile >> byteBuffer;
         code = codes.at(byteBuffer);
 
         for (const bool bit: code) {
+            printf("b: %i\n",bit);
+
             bitBuffer.push(bit);
         }
             
@@ -367,10 +408,10 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
         }
     }
     // read last bits if any remain
-    //unsigned short remainder = bitBuffer.size();
+
     unsigned short validBitsInLastByte = bitBuffer.size();
+    //std::cout << validBitsInLastByte;
     if (validBitsInLastByte > 0) {
-        // ############################################# Fix issue with last byte
         writeBytes = to_Byte(bitBuffer);
         outFile.write((char*)&writeBytes,sizeof(writeBytes));
     }
@@ -413,6 +454,8 @@ int main(int argc, char const *argv[])
             //print_tree(current);
             std::cout << "2\n";
             std::unordered_map<unsigned char, std::vector<bool>> codes = encode(current);
+
+
             std::cout << "3\n";
             begin = clock();
             write_to_file(inPath, frequency_table, codes, outPath);  
@@ -422,24 +465,28 @@ int main(int argc, char const *argv[])
         }
     }
     else {
+        
         std::ifstream inFile(outPath, std::ifstream::binary );
         if (is_empty(inFile)) {
             FILE *fp = fopen(decodedPath, "w");
             fclose(fp);
         }
         else {
+            
             std::pair<std::map<unsigned char, int>, int> frequency_table_in = read_table_from_file(outPath);
+            
             Node* root = make_tree(frequency_table_in.first);
             //print_tree(root);
             //std::unordered_map<unsigned char, std::vector<bool>> outCodes = encode(root);
             //std::cout << "3\n"; 
             clock_t begin = clock();
+                
             std::string outdata = read_data_from_file(outPath, root, frequency_table_in.second);
             clock_t end = clock();
             double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
             std::cout << "1: " << elapsed_secs << "\n"; //this one takes too long
 
-            //for (auto const &f: frequency_table_in) {
+            //for (auto const &f: frequency_table_in.first) {
             //    printf("0x%x | %i\n", f.first, f.second);
             //} 
 
@@ -447,7 +494,6 @@ int main(int argc, char const *argv[])
             //std::ofstream out("./imageout.bmp");
             out << outdata;
             out.close();
-            std::cout << "2\n";
         }
 
     }
