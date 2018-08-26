@@ -6,10 +6,7 @@
 #include <queue>
 #include <fstream>
 #include <string.h>
-//#include <iterator>
-//#include <cstring>
-//#include <list>
-#include <ctime>
+//#include <ctime>
 
 #define FREQUENCY_BYTES 3
 
@@ -150,7 +147,6 @@ void print_tree(Node *t) {
         
         std::cout << std::endl;
 
-        //printf("%i %i\n", parent->getValue().second ,parent->getValue().first);
         if (parent->getLeftChild())
             q.push_back(std::pair<Node *, int>(parent->getLeftChild(), level + 1));
         if (parent->getLeftChild())
@@ -173,11 +169,6 @@ std::deque<bool> from_Byte(unsigned char c, int validBitsInLastByte = 0)
         for (int i=0; i < 8; ++i) 
             b.push_back((c & (1<<i)) != 0);  
     }
-
-/*     for (int i=0; i < 8; ++i)
-        std::cout << ((c & (1<<i)) != 0);
-    std::cout << "\n"; */
-      
     return b;
 }
 
@@ -201,17 +192,6 @@ unsigned char to_Byte(std::queue<bool>& b, int validBitsInLastByte = 8)
 
     return c;
 }
-
-/* unsigned char int_to_Byte(int& b)
-{
-    unsigned char c = 0;
-    for (int i=0; i < 8; ++i) {
-        if (b.front()) 
-            c |= 1 << i;
-        b.pop();
-    }
-    return c;
-} */
 
 std::map<unsigned char, int> make_frequency_table(const char * filePath) {
     FILE *filePointer = fopen(filePath, "rb");
@@ -269,7 +249,6 @@ Node* make_tree(std::map<unsigned char, int> frequency_table) {
 std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * path) {
     std::map<unsigned char, int> out;
     
-
     std::ifstream input( path, std::ifstream::binary );
     input.unsetf(std::ios_base::skipws);
     std::vector<unsigned char> buf(1024);
@@ -289,7 +268,6 @@ std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * p
             if (out.find(i) != out.end()) {
                 break;
             }
-            //printf("\n0x%x", i);
             current_char = &i;
             out[i] = 0;
 
@@ -324,17 +302,11 @@ std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * p
                     default:
                         number = (unsigned int)(byteBuffer[2] << 16 | byteBuffer[1] << 8 | byteBuffer[0]);
                 }
-
-
                 bytePos = 0;
-
-
                 newChar = false;
             }
         }
     }
-    //validBitsInLastByte =  (int)buf.back();
-    //validBitsInLastByte =  (int)buf[0];
 
     return std::pair<std::map<unsigned char, int>, int>(out,validBitsInLastByte);
 }
@@ -389,7 +361,6 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
                 }
             }
         }
-
     }
     
     input.close();
@@ -420,7 +391,6 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     for (int i = 0; i < (1024-dataSize); i++) {
         outFile.write("\x00",1);
     }
-
     
     // writing data
     unsigned char byteBuffer;
@@ -442,15 +412,10 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
         for (const bool bit: code) {
             bitBuffer.push(bit);
         }
-            
-        //std::cout << bitBuffer.size();
+
         while (bitBuffer.size() >= 8) {
-            //std::cout << "\n in: "<< bitBuffer.size() << "\n";
             writeBytes = to_Byte(bitBuffer); //this is slow
-            
-            //printf("%x\n",writeBytes);
             outFile.write((char*)&writeBytes,sizeof(writeBytes));
-            //std::queue<bool>().swap(bitBuffer);
         }
         if (inFile.peek() == EOF)
             break;
@@ -458,7 +423,6 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     // read last bits if any remain
 
     unsigned short validBitsInLastByte = bitBuffer.size();
-    //std::cout << validBitsInLastByte;
     if (validBitsInLastByte > 0) {
         writeBytes = to_Byte(bitBuffer, validBitsInLastByte);
         
@@ -520,7 +484,6 @@ int search_encoded_file(const char * path, Node* root, int validBitsInLastByte, 
                         searchBuffer.pop_back();
                     }
 
-                    //std::cout << searchBuffer.size() << " | " << searchTermDeque.size() << "\n";
                     if (searchBuffer == searchTermDeque) {
                         numberOfMatches++;
                     }
@@ -542,7 +505,6 @@ int search_encoded_file(const char * path, Node* root, int validBitsInLastByte, 
                         searchBuffer.pop_back();
                     }
 
-                    //std::cout << searchBuffer.size() << " | " << searchTermDeque.size() << "\n";
                     if (searchBuffer == searchTermDeque) {
                         numberOfMatches++;
                     }
@@ -585,9 +547,7 @@ int main(int argc, char const *argv[])
 //            clock_t end = clock();
 //            double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 //            std::cout << "1: " << elapsed_secs << "\n"; 
-
             Node* current = make_tree(frequency_table);
-            //print_tree(current);
             std::unordered_map<unsigned char, std::vector<bool>> codes = make_code_map(current);
 //            begin = clock();
             write_to_file(originalPath, frequency_table, codes, encodedPath);  
@@ -625,15 +585,7 @@ int main(int argc, char const *argv[])
         Node* root = make_tree(frequency_table_in.first);
         int matches = search_encoded_file(encodedPath, root, validBitsInLastByte, searchTerm);
 
-        //std::cout << matches;
+        std::cout << matches;
     }
-
-
-    
-
-
-
-    
-            
     return 0;
 }
