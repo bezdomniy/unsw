@@ -6,7 +6,7 @@
 #include <queue>
 #include <fstream>
 #include <string.h>
-//#include <ctime>
+#include <ctime>
 
 #define FREQUENCY_BYTES 3
 
@@ -311,14 +311,15 @@ std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * p
     return std::pair<std::map<unsigned char, int>, int>(out,validBitsInLastByte);
 }
 
-std::string read_data_from_file(const char * path, Node* root, int validBitsInLastByte) {
-    std::string out;
+void read_data_from_file(const char * inPath,const char * outPath, Node* root, int validBitsInLastByte) {
+
+    std::ofstream out(outPath, std::ofstream::binary);
 
     bool singleNodeTree = false;
     if (root->getLeftChild() == NULL)
         singleNodeTree = true;
 
-    std::ifstream input(path, std::ifstream::binary );
+    std::ifstream input(inPath, std::ifstream::binary );
     input.unsetf(std::ios_base::skipws);
     
     input.seekg(1024);
@@ -342,7 +343,7 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
                 bitBuffer.pop_front();
                 
                 if ((current->getLeftChild() == NULL)) {
-                    out += current->getValue().first;
+                    out << current->getValue().first;
                     current = root;
                     if (singleNodeTree)
                         bitBuffer.pop_front();
@@ -354,7 +355,7 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
                 bitBuffer.pop_front();
 
                 if ((current->getLeftChild() == NULL)) {
-                    out += current->getValue().first;
+                    out << current->getValue().first;
                     current = root;
                     if (singleNodeTree)
                         bitBuffer.pop_front();
@@ -362,10 +363,9 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
             }
         }
     }
-    
+    out.close();
     input.close();
 
-    return out;
 }
 
 void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_table, std::unordered_map<unsigned char, std::vector<bool>> codes, const char * outPath) {
@@ -569,12 +569,15 @@ int main(int argc, char const *argv[])
             std::pair<std::map<unsigned char, int>, int> frequency_table_in = read_table_from_file(encodedPath);
             Node* root = make_tree(frequency_table_in.first);
             //print_tree(root);
-            std::string outdata = read_data_from_file(encodedPath, root, frequency_table_in.second);
-            std::ofstream out(decodedPath);
+            clock_t begin = clock();
+            read_data_from_file(encodedPath, decodedPath, root, frequency_table_in.second);
+            clock_t end = clock();
+            double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+            std::cout << "1: " << elapsed_secs << "\n"; //this one takes too long 
+/*             std::ofstream out(decodedPath);
             out << outdata;
-            out.close();
+            out.close(); */
         }
-        //inFile.close();
     }
     else if (option == "-s") {
         searchTerm = argv[2];
@@ -585,7 +588,7 @@ int main(int argc, char const *argv[])
         Node* root = make_tree(frequency_table_in.first);
         int matches = search_encoded_file(encodedPath, root, validBitsInLastByte, searchTerm);
 
-        std::cout << matches;
+        std::cout << matches << "\n";
     }
     return 0;
 }
