@@ -395,7 +395,7 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     // writing data
     unsigned char byteBuffer;
     std::queue<bool> bitBuffer;
-     char writeBytes;
+    unsigned char writeBytes;
     std::vector<bool> code;
     
     std::ifstream inFile(inPath, std::ifstream::binary );
@@ -415,7 +415,7 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
 
         while (bitBuffer.size() >= 8) {
             writeBytes = to_Byte(bitBuffer); //this is slow
-            outFile.write(&writeBytes,sizeof(writeBytes));
+            outFile.write((char*)&writeBytes,sizeof(writeBytes));
         }
         if (inFile.peek() == EOF)
             break;
@@ -426,7 +426,7 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     if (validBitsInLastByte > 0) {
         writeBytes = to_Byte(bitBuffer, validBitsInLastByte);
         
-        outFile.write(&writeBytes,sizeof(writeBytes));
+        outFile.write((char*)&writeBytes,sizeof(writeBytes));
     }
 
     // write last byte as validBitsInLastByte
