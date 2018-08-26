@@ -5,6 +5,7 @@
 #include <vector>
 #include <queue>
 #include <fstream>
+#include <string.h>
 //#include <iterator>
 //#include <cstring>
 //#include <list>
@@ -396,12 +397,6 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
     return out;
 }
 
-int search_encoded_file(const char * path, Node* root, int validBitsInLastByte, const char * searchTerm) {
-    int position = 0;
-
-    return position;
-}
-
 void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_table, std::unordered_map<unsigned char, std::vector<bool>> codes, const char * outPath) {
     std::ofstream outFile(outPath, std::ofstream::binary);
     outFile.unsetf(std::ios_base::skipws);
@@ -479,6 +474,92 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     outFile.close();
 }
 
+int search_encoded_file(const char * path, Node* root, int validBitsInLastByte, const char * searchTerm) {
+    int numberOfMatches = 0;
+
+    bool singleNodeTree = false;
+
+    // if single node tree, if the length of the searchTerm <= length of file, then return 0 (or lnegth of string - check specks)
+    if (root->getLeftChild() == NULL)
+        singleNodeTree = true;
+
+    std::ifstream input(path, std::ifstream::binary );
+    input.unsetf(std::ios_base::skipws);
+    
+    input.seekg(1024);
+
+    std::deque<char> searchBuffer;
+
+    std::deque<char> searchTermDeque;
+
+    for (int i = 0; i < strlen(searchTerm); i++)
+        searchTermDeque.push_front(searchTerm[i]);
+
+    unsigned char byteBuffer;
+    std::deque<bool> bitBuffer;
+    Node* current = root;
+    
+    input >> byteBuffer;
+
+    while (input) {
+        if (input.peek() == EOF)
+            bitBuffer = from_Byte(byteBuffer, validBitsInLastByte);
+        else
+            bitBuffer = from_Byte(byteBuffer);
+        input >> byteBuffer;
+
+        while (!bitBuffer.empty()) {
+            if (bitBuffer.front()) {
+                current = current->getRightChild();
+                bitBuffer.pop_front();
+                
+                if ((current->getLeftChild() == NULL)) {
+                    searchBuffer.push_front(current->getValue().first);
+
+                    if (searchBuffer.size() > searchTermDeque.size()) {
+                        searchBuffer.pop_back();
+                    }
+
+                    //std::cout << searchBuffer.size() << " | " << searchTermDeque.size() << "\n";
+                    if (searchBuffer == searchTermDeque) {
+                        numberOfMatches++;
+                    }
+
+                    current = root;
+                    if (singleNodeTree)
+                        bitBuffer.pop_front();
+                }
+            }
+                    
+            else {
+                current = current->getLeftChild();
+                bitBuffer.pop_front();
+
+                if ((current->getLeftChild() == NULL)) {
+                    searchBuffer.push_front(current->getValue().first);
+
+                    if (searchBuffer.size() > searchTermDeque.size()) {
+                        searchBuffer.pop_back();
+                    }
+
+                    //std::cout << searchBuffer.size() << " | " << searchTermDeque.size() << "\n";
+                    if (searchBuffer == searchTermDeque) {
+                        numberOfMatches++;
+                    }
+
+                    current = root;
+                    if (singleNodeTree)
+                        bitBuffer.pop_front();
+                }
+            }
+        }
+
+    }
+    
+    input.close();
+    return numberOfMatches;
+}
+
 
 int main(int argc, char const *argv[])
 {
@@ -533,14 +614,18 @@ int main(int argc, char const *argv[])
             out << outdata;
             out.close();
         }
+        //inFile.close();
     }
     else if (option == "-s") {
         searchTerm = argv[2];
         encodedPath = argv[3];
 
         std::pair<std::map<unsigned char, int>, int> frequency_table_in = read_table_from_file(encodedPath);
+        int validBitsInLastByte = frequency_table_in.second;
         Node* root = make_tree(frequency_table_in.first);
+        int matches = search_encoded_file(encodedPath, root, validBitsInLastByte, searchTerm);
 
+        //std::cout << matches;
     }
 
 
