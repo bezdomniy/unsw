@@ -10,7 +10,7 @@
 //#include <list>
 #include <ctime>
 
-#define BUFFERLENGTH 1
+#define FREQUENCY_BYTES 3
 
 typedef std::pair<unsigned char, int> HuffmanPair;
 
@@ -73,7 +73,16 @@ struct CompareValue
     }
 };
 
-//https://stackoverflow.com/a/2390938
+// https://stackoverflow.com/a/2453456
+template <typename T1, typename T2>
+struct less_second {
+    typedef std::pair<T1, T2> type;
+    bool operator ()(type const& a, type const& b) const {
+        return a.second < b.second;
+    }
+};
+
+// https://stackoverflow.com/a/2390938
 bool is_empty(std::ifstream& pFile)
 {
     return pFile.peek() == std::ifstream::traits_type::eof();
@@ -180,18 +189,29 @@ unsigned char to_Byte(std::queue<bool>& b)
     return c;
 }
 
+/* unsigned char int_to_Byte(int& b)
+{
+    unsigned char c = 0;
+    for (int i=0; i < 8; ++i) {
+        if (b.front()) 
+            c |= 1 << i;
+        b.pop();
+    }
+    return c;
+} */
+
 std::map<unsigned char, int> make_frequency_table(const char * filePath) {
     FILE *filePointer = fopen(filePath, "rb");
     std::map<unsigned char, int> frequency_table;
 
     if (filePointer != NULL)  {
-        unsigned char buffer[BUFFERLENGTH+1];
+        unsigned char buffer[1+1];
         size_t charactersRead = 0;
 
         std::ifstream input( filePath, std::ifstream::binary );
         input.unsetf(std::ios_base::skipws);
 
-        while (charactersRead = fread(buffer, sizeof(unsigned char), BUFFERLENGTH, filePointer) > 0) {
+        while (charactersRead = fread(buffer, sizeof(unsigned char), 1, filePointer) > 0) {
             unsigned char character = *buffer;
 
             std::map<unsigned char, int>::iterator charInSet = frequency_table.find(character);
@@ -235,7 +255,7 @@ Node* make_tree(std::map<unsigned char, int> frequency_table) {
 
 std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * path) {
     std::map<unsigned char, int> out;
-    int validBitsInLastByte = 0;
+    
 
     std::ifstream input( path, std::ifstream::binary );
     input.unsetf(std::ios_base::skipws);
@@ -245,10 +265,14 @@ std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * p
     bool newChar = true;
     unsigned char* current_char = NULL;
     int bytePos = 0;
-    unsigned char byteBuffer[4];
+    unsigned char byteBuffer[FREQUENCY_BYTES];
+
+    bool firstByte = true;
+    int validBitsInLastByte = (int)buf[FREQUENCY_BYTES-1];
 
     for (unsigned char &i: buf) {
-        if (newChar) {
+        unsigned int number;
+        if (!newChar) {
             if (out.find(i) != out.end()) {
                 break;
             }
@@ -256,27 +280,48 @@ std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * p
             current_char = &i;
             out[i] = 0;
 
-            newChar = false;
+            newChar = true;
+
+            if (number == 0) {
+                if (out[*current_char] == 0)
+                    out.erase(*current_char);
+                    break;
+                }
+            out[*current_char] = number;
         } 
         else {
             byteBuffer[bytePos] = i;
             bytePos++;
 
-            if (bytePos == 4) {
-                int number = (int)(byteBuffer[3] << 24 | byteBuffer[2] << 16 | byteBuffer[1] << 8 | byteBuffer[0]);
+            if (bytePos == FREQUENCY_BYTES) {
+                if (firstByte) {
+                    firstByte = false;
+                    byteBuffer[FREQUENCY_BYTES-1] = 0x0;
+                }
+
+                switch (FREQUENCY_BYTES) {
+                    case 4:
+                        number = (unsigned int)(byteBuffer[3] << 24 | byteBuffer[2] << 16 | byteBuffer[1] << 8 | byteBuffer[0]);
+                    case 3:
+                        number = (unsigned int)(byteBuffer[2] << 16 | byteBuffer[1] << 8 | byteBuffer[0]);
+                    case 2:
+                        number = (unsigned int)(byteBuffer[1] << 8 | byteBuffer[0]);
+                    case 1:
+                        number = (unsigned int)(byteBuffer[0]);
+                    default:
+                        number = (unsigned int)(byteBuffer[2] << 16 | byteBuffer[1] << 8 | byteBuffer[0]);
+                }
+
+
                 bytePos = 0;
 
-                if (number == 0) {
-                    if (out[*current_char] == 0)
-                        out.erase(*current_char);
-                    break;
-                }
-                out[*current_char] = number;
-                newChar = true;
+
+                newChar = false;
             }
         }
     }
-    validBitsInLastByte =  (int)buf.back();
+    //validBitsInLastByte =  (int)buf.back();
+    //validBitsInLastByte =  (int)buf[0];
 
     return std::pair<std::map<unsigned char, int>, int>(out,validBitsInLastByte);
 }
@@ -392,13 +437,16 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     if (codes.size() == 1)
         singleNodeTree = true;
 
+    std::vector<std::pair<unsigned char, int> > frequency_table_sorted_by_value(frequency_table.begin(), frequency_table.end());
+    std::sort(frequency_table_sorted_by_value.begin(), frequency_table_sorted_by_value.end(), less_second<unsigned char, int>());
+
     // writing frequency table
     int dataSize = 0;
-    for (auto &freq: frequency_table) {
+    for (const std::pair<unsigned char, int> &freq: frequency_table_sorted_by_value) {
+        outFile.write((char*)&freq.second,FREQUENCY_BYTES);
         outFile.write((char*)&freq.first,sizeof(freq.first));
-        outFile.write((char*)&freq.second,sizeof(freq.second));
-
-        dataSize += 5;
+        
+        dataSize += FREQUENCY_BYTES+1;
     }
     // pad the rest of the bits
     for (int i = 0; i < (1024-dataSize); i++) {
@@ -441,8 +489,9 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     }
 
     // write last byte as validBitsInLastByte
-    outFile.seekp(1023);
-    outFile.write((char*)&validBitsInLastByte,sizeof(char));
+    //outFile.seekp(1023);
+    outFile.seekp(FREQUENCY_BYTES-1);
+    outFile.write((char*)&validBitsInLastByte,1);
     
     inFile.close();
     outFile.close();
@@ -468,19 +517,20 @@ int main(int argc, char const *argv[])
             fclose(fp);
         }
         else {
-            clock_t begin = clock();
+//            clock_t begin = clock();
             std::map<unsigned char, int> frequency_table = make_frequency_table(originalPath);
-            clock_t end = clock();
-            double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-            std::cout << "1: " << elapsed_secs << "\n"; 
+//            clock_t end = clock();
+//            double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+//            std::cout << "1: " << elapsed_secs << "\n"; 
 
             Node* current = make_tree(frequency_table);
+            //print_tree(current);
             std::unordered_map<unsigned char, std::vector<bool>> codes = make_code_map(current);
-            begin = clock();
+//            begin = clock();
             write_to_file(originalPath, frequency_table, codes, encodedPath);  
-            end = clock();
-            elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-            std::cout << "2: " << elapsed_secs << "\n"; //this one takes too long  
+//            end = clock();
+//            elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+//            std::cout << "2: " << elapsed_secs << "\n"; //this one takes too long  
         }
     }
     else if (option == "-d") {
@@ -495,6 +545,7 @@ int main(int argc, char const *argv[])
         else {
             std::pair<std::map<unsigned char, int>, int> frequency_table_in = read_table_from_file(encodedPath);
             Node* root = make_tree(frequency_table_in.first);
+            //print_tree(root);
             std::string outdata = read_data_from_file(encodedPath, root, frequency_table_in.second);
             std::ofstream out(decodedPath);
             out << outdata;
