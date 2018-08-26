@@ -6,7 +6,7 @@
 #include <queue>
 #include <fstream>
 #include <string.h>
-#include <ctime>
+//#include <ctime>
 
 #define FREQUENCY_BYTES 3
 
@@ -201,18 +201,18 @@ std::map<unsigned char, int> make_frequency_table(const char * filePath) {
         unsigned char buffer[1+1];
         size_t charactersRead = 0;
 
-        std::ifstream input( filePath, std::ifstream::binary );
-        input.unsetf(std::ios_base::skipws);
-
         while (charactersRead = fread(buffer, sizeof(unsigned char), 1, filePointer) > 0) {
             unsigned char character = *buffer;
 
             std::map<unsigned char, int>::iterator charInSet = frequency_table.find(character);
 
             if (charInSet == frequency_table.end()) {
-                frequency_table.insert(std::pair<unsigned char, int>(character,0));
+                frequency_table.insert(std::pair<unsigned char, int>(character,1));
             }
-            frequency_table[character] ++;
+            else {
+                charInSet->second += 1;
+            }
+            
         }
         return frequency_table;
     }
@@ -395,7 +395,7 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     // writing data
     unsigned char byteBuffer;
     std::queue<bool> bitBuffer;
-    unsigned char writeBytes;
+     char writeBytes;
     std::vector<bool> code;
     
     std::ifstream inFile(inPath, std::ifstream::binary );
@@ -415,7 +415,7 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
 
         while (bitBuffer.size() >= 8) {
             writeBytes = to_Byte(bitBuffer); //this is slow
-            outFile.write((char*)&writeBytes,sizeof(writeBytes));
+            outFile.write(&writeBytes,sizeof(writeBytes));
         }
         if (inFile.peek() == EOF)
             break;
@@ -426,11 +426,10 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     if (validBitsInLastByte > 0) {
         writeBytes = to_Byte(bitBuffer, validBitsInLastByte);
         
-        outFile.write((char*)&writeBytes,sizeof(writeBytes));
+        outFile.write(&writeBytes,sizeof(writeBytes));
     }
 
     // write last byte as validBitsInLastByte
-    //outFile.seekp(1023);
     outFile.seekp(FREQUENCY_BYTES-1);
     outFile.write((char*)&validBitsInLastByte,1);
     
@@ -542,18 +541,18 @@ int main(int argc, char const *argv[])
             fclose(fp);
         }
         else {
-//            clock_t begin = clock();
+            //clock_t begin = clock();
             std::map<unsigned char, int> frequency_table = make_frequency_table(originalPath);
-//            clock_t end = clock();
-//            double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-//            std::cout << "1: " << elapsed_secs << "\n"; 
+            //clock_t end = clock();
+            //double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+            //std::cout << "1: " << elapsed_secs << "\n"; 
             Node* current = make_tree(frequency_table);
             std::unordered_map<unsigned char, std::vector<bool>> codes = make_code_map(current);
-//            begin = clock();
+            //begin = clock();
             write_to_file(originalPath, frequency_table, codes, encodedPath);  
-//            end = clock();
-//            elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-//            std::cout << "2: " << elapsed_secs << "\n"; //this one takes too long  
+            //end = clock();
+            //elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+            //std::cout << "2: " << elapsed_secs << "\n"; //this one takes too long  
         }
     }
     else if (option == "-d") {
@@ -568,15 +567,7 @@ int main(int argc, char const *argv[])
         else {
             std::pair<std::map<unsigned char, int>, int> frequency_table_in = read_table_from_file(encodedPath);
             Node* root = make_tree(frequency_table_in.first);
-            //print_tree(root);
-            clock_t begin = clock();
             read_data_from_file(encodedPath, decodedPath, root, frequency_table_in.second);
-            clock_t end = clock();
-            double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-            std::cout << "1: " << elapsed_secs << "\n"; //this one takes too long 
-/*             std::ofstream out(decodedPath);
-            out << outdata;
-            out.close(); */
         }
     }
     else if (option == "-s") {
