@@ -163,8 +163,10 @@ std::deque<bool> from_Byte(unsigned char c, int validBitsInLastByte = 0)
 {
     std::deque<bool> b;
     if (validBitsInLastByte > 0) {
-        for (int i=0; i < validBitsInLastByte; ++i) 
-            b.push_back((c & (1<<i)) != 0);  
+        for (int i=0; i < 8; ++i) 
+            b.push_front((c & (1<<i)) != 0);  
+        for (int i = 0; i < (8 - validBitsInLastByte); i++)
+            b.pop_back();
     }
     else {
         for (int i=0; i < 8; ++i) 
@@ -178,14 +180,24 @@ std::deque<bool> from_Byte(unsigned char c, int validBitsInLastByte = 0)
     return b;
 }
 
-unsigned char to_Byte(std::queue<bool>& b)
+unsigned char to_Byte(std::queue<bool>& b, int validBitsInLastByte = 8)
 {
     unsigned char c = 0;
-    for (int i=0; i < 8; ++i) {
-        if (b.front()) 
-            c |= 1 << i;
-        b.pop();
+    if (validBitsInLastByte == 8) {
+        for (int i=0; i < validBitsInLastByte; ++i) {
+            if (b.front()) 
+                c |= 1 << i;
+            b.pop();
+        }
     }
+    else {
+        for (int i=7; i >= 0; --i) {
+            if (b.front()) 
+                c |= 1 << i;
+            b.pop();
+        }
+    }
+
     return c;
 }
 
@@ -352,20 +364,28 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
         input >> byteBuffer;
 
         while (!bitBuffer.empty()) {
-            if ((current->getLeftChild() == NULL)) {
-                out += current->getValue().first;
-                current = root;
-                if (singleNodeTree)
-                    bitBuffer.pop_front();
-            }
-            else if (bitBuffer.front()) {
+            if (bitBuffer.front()) {
                 current = current->getRightChild();
                 bitBuffer.pop_front();
+                
+                if ((current->getLeftChild() == NULL)) {
+                    out += current->getValue().first;
+                    current = root;
+                    if (singleNodeTree)
+                        bitBuffer.pop_front();
+                }
             }
                     
             else {
                 current = current->getLeftChild();
                 bitBuffer.pop_front();
+
+                if ((current->getLeftChild() == NULL)) {
+                    out += current->getValue().first;
+                    current = root;
+                    if (singleNodeTree)
+                        bitBuffer.pop_front();
+                }
             }
         }
 
@@ -378,53 +398,6 @@ std::string read_data_from_file(const char * path, Node* root, int validBitsInLa
 
 int search_encoded_file(const char * path, Node* root, int validBitsInLastByte, const char * searchTerm) {
     int position = 0;
-
-    bool singleNodeTree = false;
-    if (root->getLeftChild() == NULL)
-        singleNodeTree = true;
-
-    std::ifstream input(path, std::ifstream::binary );
-    input.unsetf(std::ios_base::skipws);
-    
-    input.seekg(1024);
-
-    unsigned char byteBuffer;
-    std::deque<bool> bitBuffer;
-    Node* current = root;
-
-    input >> byteBuffer;
-
-    while (input) {
-        if (input.peek() == EOF)
-            bitBuffer = from_Byte(byteBuffer, validBitsInLastByte);
-        else
-            bitBuffer = from_Byte(byteBuffer);
-        input >> byteBuffer;
-
-        while (!bitBuffer.empty()) {
-            if ((current->getLeftChild() == NULL)) {
-                //out += current->getValue().first;
-                current = root;
-
-                position++;
-
-                if (singleNodeTree)
-                    bitBuffer.pop_front();
-            }
-            else if (bitBuffer.front()) {
-                current = current->getRightChild();
-                bitBuffer.pop_front();
-            }
-                    
-            else {
-                current = current->getLeftChild();
-                bitBuffer.pop_front();
-            }
-        }
-
-    }
-    
-    input.close();
 
     return position;
 }
@@ -467,6 +440,7 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
         inFile >> byteBuffer;
     
     while (inFile) {
+        
         inFile >> byteBuffer;
         code = codes.at(byteBuffer);
 
@@ -474,17 +448,25 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
             bitBuffer.push(bit);
         }
             
-        while (bitBuffer.size() > 8) {
+        //std::cout << bitBuffer.size();
+        while (bitBuffer.size() >= 8) {
+            //std::cout << "\n in: "<< bitBuffer.size() << "\n";
             writeBytes = to_Byte(bitBuffer); //this is slow
+            
+            //printf("%x\n",writeBytes);
             outFile.write((char*)&writeBytes,sizeof(writeBytes));
+            //std::queue<bool>().swap(bitBuffer);
         }
+        if (inFile.peek() == EOF)
+            break;
     }
     // read last bits if any remain
 
     unsigned short validBitsInLastByte = bitBuffer.size();
     //std::cout << validBitsInLastByte;
     if (validBitsInLastByte > 0) {
-        writeBytes = to_Byte(bitBuffer);
+        writeBytes = to_Byte(bitBuffer, validBitsInLastByte);
+        
         outFile.write((char*)&writeBytes,sizeof(writeBytes));
     }
 
