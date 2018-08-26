@@ -35,6 +35,11 @@
         "unordered_set": "cpp",
         "map": "cpp",
         "cstddef": "cpp",
-        "cstring": "cpp"
+        "cstring": "cpp",
+        "bitset": "cpp",
+        "ctime": "cpp",
+        "algorithm": "cpp",
+        "list": "cpp",
+        "stack": "cpp"
     }
 }

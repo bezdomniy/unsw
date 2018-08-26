@@ -6,7 +6,6 @@
 #include <queue>
 #include <fstream>
 #include <string.h>
-//#include <ctime>
 
 #define FREQUENCY_BYTES 3
 
@@ -128,34 +127,9 @@ std::unordered_map<unsigned char, std::vector<bool>> make_code_map(Node* root) {
 
 } 
 
-void print_tree(Node *t) {
-    std::deque<std::pair<Node *, int>> q;
-
-    q.push_back(std::pair<Node *, int>(t, 0));
-    int curlevel = -1;
-    while (!q.empty()) {
-        Node *parent = q.front().first;
-        int level = q.front().second;
-        q.pop_front();
-        if (curlevel != level) {
-            curlevel = level;
-            std::cout << "Level " << curlevel << std::endl;
-        }
-        std::cout << parent->getValue().second << " ";
-
-        printf("0x%x",parent->getValue().first);
-        
-        std::cout << std::endl;
-
-        if (parent->getLeftChild())
-            q.push_back(std::pair<Node *, int>(parent->getLeftChild(), level + 1));
-        if (parent->getLeftChild())
-            q.push_back(std::pair<Node *, int>(parent->getRightChild(), level + 1));
-    }
-}
-
-
 // reference: https://stackoverflow.com/questions/8461126/how-to-create-a-byte-out-of-8-bool-values-and-vice-versa
+// Not the most elegant, but these 2 functions convert a byte to a binary queue and visa-versa. It's messy because
+// I was just experimenting with a quick way to differentiate between full bytes, and last byte.. could be cleaner
 std::deque<bool> from_Byte(unsigned char c, int validBitsInLastByte = 0)
 {
     std::deque<bool> b;
@@ -193,6 +167,7 @@ unsigned char to_Byte(std::queue<bool>& b, int validBitsInLastByte = 8)
     return c;
 }
 
+// Loops through input file and builds a frequency table
 std::map<unsigned char, int> make_frequency_table(const char * filePath) {
     FILE *filePointer = fopen(filePath, "rb");
     std::map<unsigned char, int> frequency_table;
@@ -219,6 +194,7 @@ std::map<unsigned char, int> make_frequency_table(const char * filePath) {
     std::fclose(filePointer);
 }
 
+// Builds a huffman tree, see read be for tree specs
 Node* make_tree(std::map<unsigned char, int> frequency_table) {
     std::priority_queue<Node*, std::vector<Node*>, CompareValue> forestPq;
 
@@ -246,6 +222,8 @@ Node* make_tree(std::map<unsigned char, int> frequency_table) {
     return forestPq.top();
 }
 
+// Reads in the header and returns a pair with the frequency table, and an int representing
+// the number of bits in the last byte.
 std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * path) {
     std::map<unsigned char, int> out;
     
@@ -311,8 +289,9 @@ std::pair<std::map<unsigned char, int>, int> read_table_from_file(const char * p
     return std::pair<std::map<unsigned char, int>, int>(out,validBitsInLastByte);
 }
 
+// Reads the data (after from the 1024th byte) from the encoded file, decodes it, and writes it to the
+// output file
 void read_data_from_file(const char * inPath,const char * outPath, Node* root, int validBitsInLastByte) {
-
     std::ofstream out(outPath, std::ofstream::binary);
 
     bool singleNodeTree = false;
@@ -321,7 +300,6 @@ void read_data_from_file(const char * inPath,const char * outPath, Node* root, i
 
     std::ifstream input(inPath, std::ifstream::binary );
     input.unsetf(std::ios_base::skipws);
-    
     input.seekg(1024);
 
     unsigned char byteBuffer;
@@ -337,29 +315,22 @@ void read_data_from_file(const char * inPath,const char * outPath, Node* root, i
             bitBuffer = from_Byte(byteBuffer);
         input >> byteBuffer;
 
+        // Traverse the tree using directions in the bitBuffer 
         while (!bitBuffer.empty()) {
             if (bitBuffer.front()) {
                 current = current->getRightChild();
                 bitBuffer.pop_front();
-                
-                if ((current->getLeftChild() == NULL)) {
-                    out << current->getValue().first;
-                    current = root;
-                    if (singleNodeTree)
-                        bitBuffer.pop_front();
-                }
-            }
-                    
+            }  
             else {
                 current = current->getLeftChild();
                 bitBuffer.pop_front();
-
-                if ((current->getLeftChild() == NULL)) {
-                    out << current->getValue().first;
-                    current = root;
-                    if (singleNodeTree)
-                        bitBuffer.pop_front();
-                }
+            }
+            // If you get to leave node, output it!
+            if ((current->getLeftChild() == NULL)) {
+                out << current->getValue().first;
+                current = root;
+                if (singleNodeTree)
+                    bitBuffer.pop_front();
             }
         }
     }
@@ -368,6 +339,7 @@ void read_data_from_file(const char * inPath,const char * outPath, Node* root, i
 
 }
 
+// Writes the header and data to the output file, then read in original file, and output data to encoded file
 void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_table, std::unordered_map<unsigned char, std::vector<bool>> codes, const char * outPath) {
     std::ofstream outFile(outPath, std::ofstream::binary);
     outFile.unsetf(std::ios_base::skipws);
@@ -405,7 +377,6 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
         inFile >> byteBuffer;
     
     while (inFile) {
-        
         inFile >> byteBuffer;
         code = codes.at(byteBuffer);
 
@@ -420,12 +391,11 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
         if (inFile.peek() == EOF)
             break;
     }
-    // read last bits if any remain
 
+    // read last bits if any remain
     unsigned short validBitsInLastByte = bitBuffer.size();
     if (validBitsInLastByte > 0) {
         writeBytes = to_Byte(bitBuffer, validBitsInLastByte);
-        
         outFile.write((char*)&writeBytes,sizeof(writeBytes));
     }
 
@@ -437,12 +407,12 @@ void write_to_file(const char * inPath, std::map<unsigned char, int> frequency_t
     outFile.close();
 }
 
+// Uses pretty much the same method as read_data_from_file to use a sliding window to count the occurences
+// of the search term. See readme for more details
 int search_encoded_file(const char * path, Node* root, int validBitsInLastByte, const char * searchTerm) {
     int numberOfMatches = 0;
-
     bool singleNodeTree = false;
 
-    // if single node tree, if the length of the searchTerm <= length of file, then return 0 (or lnegth of string - check specks)
     if (root->getLeftChild() == NULL)
         singleNodeTree = true;
 
@@ -450,11 +420,10 @@ int search_encoded_file(const char * path, Node* root, int validBitsInLastByte, 
     input.unsetf(std::ios_base::skipws);
     
     input.seekg(1024);
-
     std::deque<char> searchBuffer;
-
     std::deque<char> searchTermDeque;
 
+    // Create a deque from search term for easy comparison
     for (int i = 0; i < strlen(searchTerm); i++)
         searchTermDeque.push_front(searchTerm[i]);
 
@@ -475,43 +444,27 @@ int search_encoded_file(const char * path, Node* root, int validBitsInLastByte, 
             if (bitBuffer.front()) {
                 current = current->getRightChild();
                 bitBuffer.pop_front();
-                
-                if ((current->getLeftChild() == NULL)) {
-                    searchBuffer.push_front(current->getValue().first);
-
-                    if (searchBuffer.size() > searchTermDeque.size()) {
-                        searchBuffer.pop_back();
-                    }
-
-                    if (searchBuffer == searchTermDeque) {
-                        numberOfMatches++;
-                    }
-
-                    current = root;
-                    if (singleNodeTree)
-                        bitBuffer.pop_front();
-                }
             }
-                    
             else {
                 current = current->getLeftChild();
                 bitBuffer.pop_front();
+            }
+            // If at leave node, add to buffer and check if there is a match
+            if ((current->getLeftChild() == NULL)) {
+                searchBuffer.push_front(current->getValue().first);
 
-                if ((current->getLeftChild() == NULL)) {
-                    searchBuffer.push_front(current->getValue().first);
-
-                    if (searchBuffer.size() > searchTermDeque.size()) {
-                        searchBuffer.pop_back();
-                    }
-
-                    if (searchBuffer == searchTermDeque) {
-                        numberOfMatches++;
-                    }
-
-                    current = root;
-                    if (singleNodeTree)
-                        bitBuffer.pop_front();
+                // If buffer is full (size of search term) pop the back
+                if (searchBuffer.size() > searchTermDeque.size()) {
+                    searchBuffer.pop_back();
                 }
+                // If the deques match, increment counter
+                if (searchBuffer == searchTermDeque) {
+                    numberOfMatches++;
+                }
+
+                current = root;
+                if (singleNodeTree)
+                    bitBuffer.pop_front();
             }
         }
 
@@ -541,18 +494,10 @@ int main(int argc, char const *argv[])
             fclose(fp);
         }
         else {
-            //clock_t begin = clock();
             std::map<unsigned char, int> frequency_table = make_frequency_table(originalPath);
-            //clock_t end = clock();
-            //double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-            //std::cout << "1: " << elapsed_secs << "\n"; 
             Node* current = make_tree(frequency_table);
             std::unordered_map<unsigned char, std::vector<bool>> codes = make_code_map(current);
-            //begin = clock();
             write_to_file(originalPath, frequency_table, codes, encodedPath);  
-            //end = clock();
-            //elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-            //std::cout << "2: " << elapsed_secs << "\n"; //this one takes too long  
         }
     }
     else if (option == "-d") {

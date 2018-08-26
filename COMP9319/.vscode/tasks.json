@@ -17,6 +17,17 @@
             "label": "run",
             "type": "shell",
             "command": "./huffman",
+            "args": [
+                //"-e","./res.docx","./res.huffman"
+                //"-d","./res.huffman","./res.out"
+                //"-e","./image.bmp","./image.huffman"
+                //"-d","./image.huffman","./imageout.bmp"
+                //"-e","./warandpeace.txt","./warandpeace.huffman"
+                //"-d","./warandpeace.huffman","./warandpeace.out"
+                //"-e","./example1.txt","./example1.huffman"
+                //"-d","./example1.huffman","./example1.out"
+                "-s", "Densov", "./warandpeace.huffman"
+            ],
             "group": {
                 "kind": "test",
                 "isDefault": true
