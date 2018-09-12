@@ -3,6 +3,8 @@
 #include <cstring>
 #include <algorithm>
 #include <stdlib.h>
+
+#include <forward_list>
 using namespace std;
 
 int getFileSize(string fileName) {
@@ -10,65 +12,84 @@ int getFileSize(string fileName) {
     return input.tellg();
 }
 
-
-#define BUFFERLENGTH 50000000
+#define BUFFERLENGTH 100
 int currentEnd = BUFFERLENGTH;
 char buffer[BUFFERLENGTH];
 vector<unsigned int> rotationIndices(BUFFERLENGTH);
 
-int suffixCompare(const unsigned int *i1, const unsigned int *i2) {
+// int suffixCompare(const unsigned int *i1, const unsigned int *i2) {
+//     unsigned int endL1 = (unsigned int) (currentEnd - *i1 );
+//     unsigned int endL2 = (unsigned int) (currentEnd - *i2 );
+
+//     int res = memcmp(buffer + *i1,buffer + *i2, endL1 < endL2 ? endL1 : endL2);
+//     if ( res == 0 )
+//         return (endL1 - endL2);
+//     else
+//         return res ;
+
+// };
+
+bool suffixCompare(const unsigned int *i1, const unsigned int *i2) {
     unsigned int endL1 = (unsigned int) (currentEnd - *i1 );
     unsigned int endL2 = (unsigned int) (currentEnd - *i2 );
 
     int res = memcmp(buffer + *i1,buffer + *i2, endL1 < endL2 ? endL1 : endL2);
-    if ( res == 0 )
-        return endL1 - endL2;
-    else
-        return res;
-
-};
-
-int circularCompare(const unsigned int *i1, const unsigned int *i2) {
-    unsigned int endL1 = (unsigned int) (currentEnd - *i1 );
-    unsigned int endL2 = (unsigned int) (currentEnd - *i2 );
-
-    if (endL1 < endL2) {
-        int bothWrappedAround = memcmp(buffer + endL1, buffer + endL2, currentEnd - endL2);
-        //cout << buffer + endL1 << " | " << buffer + endL2 << " : len: " << BUFFERLENGTH - endL2 << " res: " << bothWrappedAround  << "\n";
-        if (bothWrappedAround == 0) {
-            int oneWrapAround = memcmp(buffer + endL1 + currentEnd - endL2, buffer, currentEnd - endL1);
-            //cout << "deeper1: " << buffer + endL1 + BUFFERLENGTH - endL2 << " | " << buffer << " : len: " << BUFFERLENGTH - endL1 << " res: " << oneWrapAround  << "\n";
-            if (oneWrapAround == 0)
-                return memcmp(buffer + *i1,buffer + *i2, endL1);
-            return oneWrapAround;
-        }
-        return bothWrappedAround;
+    cout << "1st:" << buffer + *i1 << "|2nd:" << buffer + *i2 << "|";
+    if ( res == 0 ) {
+        printf(" - res: %i\n",(endL1 - endL2) > 0);
+        return (endL1 - endL2) > 0;
     }
+        
     else {
-        int bothWrappedAround = memcmp(buffer + endL1, buffer + endL2, currentEnd - endL1);
-        //cout << buffer + endL1 << " | " << buffer + endL2 << " : len: " << BUFFERLENGTH - endL1 << " res: " << bothWrappedAround  << "\n";
-        if (bothWrappedAround == 0) {
-            int oneWrapAround = memcmp(buffer, buffer + endL2 + currentEnd - endL1, currentEnd - endL2);
-            //cout << "deeper2: " << buffer + endL2 + BUFFERLENGTH - endL1 << " | " << buffer << " : len: " << BUFFERLENGTH - endL2 << " res: " << oneWrapAround  << "\n";
-            if (oneWrapAround == 0)
-                return memcmp(buffer + *i1,buffer + *i2, endL2);
-            return oneWrapAround;
-        }
-        return bothWrappedAround;
-    }   
+        printf(" - res: %i\n",res < 0);
+        return res < 0 ;
+    }
+
+        
+
 };
+
+void bucketSortSuffixArray(unsigned int *startOfArrayPtr) {
+    vector<forward_list<unsigned int*>> buckets(126);
+
+    for (unsigned int *inputPtr = startOfArrayPtr; *inputPtr; ++inputPtr) {
+        (*inputPtr)--;
+        forward_list<unsigned int*>::iterator it = buckets[int(buffer[*inputPtr])].before_begin();
+        cout << "inserting: \"" << (buffer[*inputPtr]) << "\"\n";
+        buckets[int(buffer[*inputPtr])].insert_after(it, inputPtr);
+    }
+
+    //int i = 0;
+    //unsigned int * next;
+    for (auto bucket: buckets) {
+        bucket.sort(suffixCompare);
+        //qsort(&bucket[0], currentEnd, sizeof(unsigned int),
+       //         (int(*)(const void *, const void *))suffixCompare);
+        for (const auto element: bucket) {
+            //next = (startOfArrayPtr + i);
+            //*next = *element;
+            //i++;
+            cout << "changing: " << *startOfArrayPtr << " to: " << *element << "\n";
+            *startOfArrayPtr = *element;
+            
+            startOfArrayPtr++;
+        }
+    }
+}
+
+
 
 
 main(int argc, char const *argv[])
 {
-    string fileName = "./warandpeace3.txt";
+    string fileName = "./example1.txt";
     //long fileLength = getFileSize(fileName);
 
     ifstream input(fileName);
     input.unsetf(ios_base::skipws);
 
     ofstream output;
-    output.open("./warandpeace3.bwt");
+    output.open("./example1.bwt");
 
     //char inputString[fileLength];
     //unsigned int rotationIndices[fileLength];
@@ -79,35 +100,33 @@ main(int argc, char const *argv[])
         unsigned int pos = 0;
         while (input.peek() != EOF && pos < BUFFERLENGTH) {
             input >> buffer[pos];
-            //rotationIndices.at(pos) = pos;
-            rotationIndices[pos] = pos;
+
+            //can't iterate through 0 pointer so starting pos at 1
+            rotationIndices[pos] = pos +1;
             pos++;
         }
 
         if (pos == BUFFERLENGTH) {
-            qsort(&rotationIndices[0], BUFFERLENGTH, sizeof(unsigned int),
-                (int(*)(const void *, const void *))suffixCompare);
+            //qsort(&rotationIndices[0], BUFFERLENGTH, sizeof(unsigned int),
+            //    (int(*)(const void *, const void *))suffixCompare);
+
+            bucketSortSuffixArray(&rotationIndices[0]);
         }
         else {
             currentEnd = pos;
             rotationIndices.resize(pos);
-            qsort(&rotationIndices[0], pos, sizeof(unsigned int),
-                (int(*)(const void *, const void *))suffixCompare);
+            bucketSortSuffixArray(&rotationIndices[0]);
+            //qsort(&rotationIndices[0], pos, sizeof(unsigned int),
+            //    (int(*)(const void *, const void *))suffixCompare);
         }
 
 
-        // subtract 1 from suffix index to get bwt
         for (int i = 0; i < currentEnd; i++) {
+            // subtract 1 from suffix index to get bwt
             if (rotationIndices[i] > 0)
-                rotationIndices[i]--;
+                cout << buffer[rotationIndices[i]-1];
             else
-                rotationIndices[i] = pos-1;
-        }
-
-
-        for (int i = 0; i < currentEnd; i++) {
-            //cout << buffer[currentEnd-rotationIndices[i]-1];
-            output << buffer[rotationIndices[i]];
+                cout << buffer[pos-1];
         }
 
         cout << count * BUFFERLENGTH << "\n";
