@@ -33,6 +33,13 @@
         "tuple": "cpp",
         "utility": "cpp",
         "unordered_set": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "cstddef": "cpp",
+        "cstring": "cpp",
+        "bitset": "cpp",
+        "ctime": "cpp",
+        "algorithm": "cpp",
+        "list": "cpp",
+        "stack": "cpp"
     }
 }
