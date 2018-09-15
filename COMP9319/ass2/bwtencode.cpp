@@ -34,6 +34,7 @@ bool suffixCompare(const unsigned int i1, const unsigned int i2) {
     unsigned int endL2 = (unsigned int) (currentEnd - i2 );
 
     int res = memcmp(buffer + i1,buffer + i2, endL1 < endL2 ? endL1 : endL2);
+        
     //cout << "1st:" << buffer + *i1 << "|2nd:" << buffer + *i2 << "|";
     if ( res == 0 ) {
         //printf(" - res: %i\n",(endL1 - endL2) > 0);
@@ -46,50 +47,72 @@ bool suffixCompare(const unsigned int i1, const unsigned int i2) {
     }
 };
 
-void bucketSortSuffixArray(unsigned int *startOfArrayPtr) {
+void bucketSortSuffixArray(unsigned int *startOfArrayPtr, unsigned int sortCharIndex=0) {
     vector<list<unsigned int>> buckets(126);
 
     list<unsigned int>::iterator it;
     for (unsigned int *inputPtr = startOfArrayPtr; *inputPtr; ++inputPtr) {
-        (*inputPtr)--;
-        it = buckets[int(buffer[*inputPtr])].begin();
-
-        //check the order here
-        while (suffixCompare(*it,*inputPtr)) {
-            if (it == buckets[int(buffer[*inputPtr])].end()) {
-                break;
-            }
-            it++; 
-        }
-        //cout << "inserting: " << *inputPtr << " into bucket: \"" << (buffer[*inputPtr]) << "\"\n";
-        buckets[int(buffer[*inputPtr])].insert(it, *inputPtr);
-        //cout << "inserted.\n";
+        //(*inputPtr)--;
+        cout << "sorting on: " << buffer[*inputPtr+sortCharIndex] << "\n";
+        it = buckets[int(buffer[*inputPtr+sortCharIndex])].end();
+        buckets[int(buffer[*inputPtr+sortCharIndex])].insert(it, *inputPtr);
     }
 
     for (auto bucket: buckets) {
-        // need to change this to compare at insertion
-        //bucket.sort(suffixCompare);
         for (const auto element: bucket) {
             //cout << "changing: " << *startOfArrayPtr << " to: " << element << "\n";
             *startOfArrayPtr = element;
             startOfArrayPtr++;
         }
     }
+    cout <<"end pass\n";
 }
 
 
+void ds3SuffixArray(unsigned int *startOfArrayPtr) {
+    int nMod3Suffixes0 = (currentEnd+2)/3;
+    int nMod3Suffixes1 = (currentEnd+1)/3;
+    int nMod3Suffixes2 = (currentEnd+0)/3;
+
+    unsigned int R[nMod3Suffixes1 + nMod3Suffixes2 + 2];
+    R[nMod3Suffixes1 + nMod3Suffixes2]=0;
+    R[nMod3Suffixes1 + nMod3Suffixes2 + 1]=0;
+
+    int sample;
+    for (int i = 0, j = 0; i < currentEnd; i++) {
+        sample = i % 3;
+        if (sample != 0)
+            R[j++] = i;
+    }
+
+    for (auto i: R)
+        cout << i <<" ";
+    cout<<"\n";
+    bucketSortSuffixArray(R,2);
+        for (auto i: R)
+        cout << i <<" ";
+    cout<<"\n";
+    bucketSortSuffixArray(R,1);
+        for (auto i: R)
+        cout << i <<" ";
+    cout<<"\n";
+    bucketSortSuffixArray(R,0);
+
+    for (auto i: R)
+        cout << i <<" ";
+}
 
 
 main(int argc, char const *argv[])
 {
-    string fileName = "./warandpeace3.txt";
+    string fileName = "./example1.txt";
     //long fileLength = getFileSize(fileName);
 
     ifstream input(fileName);
     input.unsetf(ios_base::skipws);
 
     ofstream output;
-    output.open("./warandpeace3.bwt");
+    output.open("./example1.bwt");
 
     //char inputString[fileLength];
     //unsigned int rotationIndices[fileLength];
@@ -102,17 +125,19 @@ main(int argc, char const *argv[])
             input >> buffer[pos];
 
             //can't iterate through 0 pointer so starting pos at 1
-            rotationIndices[pos] = pos +1;
+            rotationIndices[pos] = pos+1;
             pos++;
         }
 
         if (pos == BUFFERLENGTH) {
-            bucketSortSuffixArray(&rotationIndices[0]);
+            //bucketSortSuffixArray(&rotationIndices[0]);
         }
         else {
             currentEnd = pos;
             rotationIndices.resize(pos);
-            bucketSortSuffixArray(&rotationIndices[0]);
+
+            ds3SuffixArray(&rotationIndices[0]);
+            //bucketSortSuffixArray(&rotationIndices[0]);
         }
 
         // vector<int> test = {1,2,3};
@@ -124,9 +149,9 @@ main(int argc, char const *argv[])
         for (int i = 0; i < currentEnd; i++) {
             // subtract 1 from suffix index to get bwt
             if (rotationIndices[i] > 0)
-                output << buffer[rotationIndices[i]-1];
+                cout << buffer[rotationIndices[i]-1];
             else
-                output << buffer[pos-1];
+                cout << buffer[pos-1];
         }
 
         //cout << count * BUFFERLENGTH << "\n";
