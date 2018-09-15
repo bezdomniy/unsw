@@ -47,72 +47,152 @@ bool suffixCompare(const unsigned int i1, const unsigned int i2) {
     }
 };
 
-void bucketSortSuffixArray(unsigned int *startOfArrayPtr, unsigned int sortCharIndex=0) {
+void bucketSortPass(unsigned int *startOfArrayPtr, unsigned int sortCharIndex=0) {
     vector<list<unsigned int>> buckets(126);
-
     list<unsigned int>::iterator it;
+    
+    bool firstZeroElement = false;
+    if (*startOfArrayPtr ==0) {
+        (*startOfArrayPtr)++;
+        firstZeroElement = true;
+    }
+        
     for (unsigned int *inputPtr = startOfArrayPtr; *inputPtr; ++inputPtr) {
-        //(*inputPtr)--;
-        cout << "sorting on: " << buffer[*inputPtr+sortCharIndex] << "\n";
+        if (firstZeroElement) {
+            (*inputPtr)--;
+            firstZeroElement = false;
+        }
+            
         it = buckets[int(buffer[*inputPtr+sortCharIndex])].end();
         buckets[int(buffer[*inputPtr+sortCharIndex])].insert(it, *inputPtr);
     }
 
     for (auto bucket: buckets) {
         for (const auto element: bucket) {
-            //cout << "changing: " << *startOfArrayPtr << " to: " << element << "\n";
             *startOfArrayPtr = element;
             startOfArrayPtr++;
         }
     }
-    cout <<"end pass\n";
 }
 
 
 void ds3SuffixArray(unsigned int *startOfArrayPtr) {
-    int nMod3Suffixes0 = (currentEnd+2)/3;
-    int nMod3Suffixes1 = (currentEnd+1)/3;
-    int nMod3Suffixes2 = (currentEnd+0)/3;
+    unsigned int nMod3Suffixes0 = (currentEnd+2)/3;
+    unsigned int nMod3Suffixes1 = (currentEnd+1)/3;
+    unsigned int nMod3Suffixes2 = (currentEnd+0)/3;
 
-    unsigned int R[nMod3Suffixes1 + nMod3Suffixes2 + 2];
+    unsigned int* R = new unsigned int[nMod3Suffixes1 + nMod3Suffixes2 + 3];
     R[nMod3Suffixes1 + nMod3Suffixes2]=0;
     R[nMod3Suffixes1 + nMod3Suffixes2 + 1]=0;
 
+    unsigned int* R0 = new unsigned int[nMod3Suffixes0];
+
+
     int sample;
-    for (int i = 0, j = 0; i < currentEnd; i++) {
+    for (int i = 0, j = 0, k=0; i < currentEnd; i++) {
         sample = i % 3;
         if (sample != 0)
             R[j++] = i;
+        else
+            R0[k++] = i;
+    }
+    // for (auto i: R)
+    //       cout << i <<" ";
+    // cout << "\n";
+
+    bucketSortPass(R,2);
+    bucketSortPass(R,1);
+    bucketSortPass(R,0);
+
+    
+
+    unsigned int* rankR = new unsigned int[currentEnd+2];
+    for (int i = 0; i <= currentEnd; i++) rankR[i] = -1;
+    rankR[currentEnd] = 0;
+    rankR[currentEnd+1] = 0;
+
+    int j =1;
+    for (size_t i = 0; i < nMod3Suffixes1 + nMod3Suffixes2 + 3; i++) {
+        if (R[i] != 0)
+            rankR[R[i]] = j;
+        j++;
     }
 
-    for (auto i: R)
-        cout << i <<" ";
-    cout<<"\n";
-    bucketSortSuffixArray(R,2);
-        for (auto i: R)
-        cout << i <<" ";
-    cout<<"\n";
-    bucketSortSuffixArray(R,1);
-        for (auto i: R)
-        cout << i <<" ";
-    cout<<"\n";
-    bucketSortSuffixArray(R,0);
+    bucketSortPass(R0,0);
+    //int rankR0[currentEnd+3];
+    //for (int i = 0; i <= currentEnd; i++) rankR0[i] = -1;
+    //rankR0[currentEnd+1] = 0;
+    //rankR0[currentEnd+2] = 0;
 
-    for (auto i: R)
-        cout << i <<" ";
+    j =0;
+    //for (const auto i: R0) {
+    for (size_t i = 0; i < nMod3Suffixes0; i++) {
+        //if (i != 0)
+        rankR[R[i]] = j;
+        j++;
+    }
+
+
+    // for (auto i: R)
+    //       cout << i <<" ";
+    // cout << "\n";
+    // for (auto i: R0)
+    //       cout << i <<" ";
+    // cout << "\n";
+    // for (auto i: rankR)
+    //       cout << i <<" ";
+    // cout << "\n";
+    unsigned int* out = new unsigned int[currentEnd];
+    for (int i = 0, j = 0; i + j < currentEnd;) {
+        //cout << "comparing: " << buffer[R[i]] << " and " << buffer[R0[j]] << "\n";
+        if (buffer[R[i]] < buffer[R0[j]]) {
+            out[i+j] = R[i];
+            i++;
+        }
+            
+        else if (buffer[R[i]] > buffer[R0[j]]) {
+            out[i+j] = R0[j];
+            j++;
+        }
+            
+        else {
+            if (R[i] % 3 == 1) {
+                out[i+j] = rankR[R[i] +1] < rankR[R0[j] +1] ? R[i++] : R0[j++];
+            }
+            else {
+                if (buffer[R[i]+1] < buffer[R0[j]+1]) {
+                    out[i+j] = R[i];
+                    i++;
+                }
+                    
+                else if (buffer[R[i]+1] > buffer[R0[j]+1]) {
+                    out[i+j] = R0[j];
+                    j++;
+                }
+                else {
+                    out[i+j] = rankR[R[i] +2] < rankR[R0[j] +2] ? R[i++] : R0[j++];
+                }
+            }
+        }
+    }
+    delete [] R; delete [] R0; delete [] rankR;
+
+    // for (auto i: out)
+    //     cout << i <<" ";
+    delete [] out;
 }
 
 
 main(int argc, char const *argv[])
 {
-    string fileName = "./example1.txt";
+    string fileName = "./warandpeace15.txt";
     //long fileLength = getFileSize(fileName);
 
     ifstream input(fileName);
     input.unsetf(ios_base::skipws);
 
     ofstream output;
-    output.open("./example1.bwt");
+    output.open("./warandpeace15.bwt");
 
     //char inputString[fileLength];
     //unsigned int rotationIndices[fileLength];
@@ -133,7 +213,7 @@ main(int argc, char const *argv[])
             //bucketSortSuffixArray(&rotationIndices[0]);
         }
         else {
-            currentEnd = pos;
+            currentEnd = pos+1;
             rotationIndices.resize(pos);
 
             ds3SuffixArray(&rotationIndices[0]);
@@ -149,9 +229,9 @@ main(int argc, char const *argv[])
         for (int i = 0; i < currentEnd; i++) {
             // subtract 1 from suffix index to get bwt
             if (rotationIndices[i] > 0)
-                cout << buffer[rotationIndices[i]-1];
+                output << buffer[rotationIndices[i]-1];
             else
-                cout << buffer[pos-1];
+                output << buffer[pos-1];
         }
 
         //cout << count * BUFFERLENGTH << "\n";
@@ -160,7 +240,7 @@ main(int argc, char const *argv[])
     output.close();
 
 
-    cout << "\n";
+    //cout << "\n";
 
     return 0;
 
