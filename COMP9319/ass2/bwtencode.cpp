@@ -20,7 +20,7 @@ bool rankCompare(const unsigned int i1, const unsigned int i2) {
     return rankR[i1+1] < rankR[i2+1];
 }
 
-void bucketSortPass(unsigned int *startOfArrayPtr, unsigned int sortCharIndex=0) {
+void bucketSortPass(unsigned int *startOfArrayPtr, unsigned int sortCharIndex=0, bool withRank = false) {
     vector<list<unsigned int>> buckets(126);
     list<unsigned int>::iterator it;
     
@@ -43,7 +43,8 @@ void bucketSortPass(unsigned int *startOfArrayPtr, unsigned int sortCharIndex=0)
     }
 
     for (auto bucket: buckets) {
-        bucket.sort(rankCompare);
+        if (withRank)
+            bucket.sort(rankCompare);
         for (const auto element: bucket) {
             *startOfArrayPtr = element;
             startOfArrayPtr++;
@@ -97,7 +98,7 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr) {
         j++;
     }
     
-    bucketSortPass(R0,0);
+    bucketSortPass(R0,0,true);
 
     j =0;
     for (size_t i = 0; i < nMod3Suffixes0; i++) {
