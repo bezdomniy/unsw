@@ -80,6 +80,8 @@ void bucketSortPass(unsigned int *startOfArrayPtr, char *buffer, unsigned int so
             *startOfArrayPtr = buckets[i][j];
             startOfArrayPtr++;
         }
+        if (buckets[i] != 0)
+            delete [] buckets[i];
     }
     //cout << sizeof(buckets);
 }
