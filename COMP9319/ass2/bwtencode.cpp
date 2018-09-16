@@ -2,26 +2,56 @@
 #include <fstream>
 #include <algorithm>
 #include <list>
+
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+
 using namespace std;
 
-int getFileSize(string fileName) {
+unsigned int getFileSize(string fileName) {
     ifstream input(fileName, ifstream::binary | ifstream::ate);
     return input.tellg();
 }
 
-#define BUFFERLENGTH 50000000
-int currentEnd = BUFFERLENGTH;
-//char buffer[BUFFERLENGTH];
-vector<char> buffer(BUFFERLENGTH);
-vector<unsigned int> suffixArray(BUFFERLENGTH);
-unsigned int* rankR = new unsigned int[currentEnd+2];
+// #define BUFFERLENGTH 50000000
+// int currentEnd = BUFFERLENGTH;
+// //char buffer[BUFFERLENGTH];
+// vector<char> buffer(BUFFERLENGTH);
+// vector<unsigned int> suffixArray(BUFFERLENGTH);
+unsigned int* rankR; 
 
 bool rankCompare(const unsigned int i1, const unsigned int i2) {
     return rankR[i1+1] < rankR[i2+1];
 }
 
-void bucketSortPass(unsigned int *startOfArrayPtr, unsigned int sortCharIndex=0, bool withRank = false) {
-    vector<list<unsigned int>> buckets(126);
+#define VALIDCHARS 126
+void bucketSortPass(unsigned int *startOfArrayPtr, char *buffer, unsigned int sortCharIndex=0, bool withRank = false) {
+    unsigned int count[VALIDCHARS];
+    unsigned int lengths[VALIDCHARS];
+    
+    for (int i=0;i<VALIDCHARS;i++) {
+        count[i]=0;
+        lengths[i]=0;
+    }
+
+    for (char *inputPtr = buffer; *inputPtr; ++inputPtr) {
+        count[inputPtr[0+sortCharIndex]]++; 
+    }
+    //for (auto i: count) cout << i << " ";
+
+    unsigned int* buckets[126];
+
+    for (int i = 0; i < VALIDCHARS; i++) {
+        if (count[i] > 0) 
+            buckets[i] = new unsigned int[count[i]];
+        else
+            buckets[i] = 0;
+    }
+
+
+    //vector<list<unsigned int>> buckets(VALIDCHARS);
     list<unsigned int>::iterator it;
     
     bool firstZeroElement = false;
@@ -30,30 +60,32 @@ void bucketSortPass(unsigned int *startOfArrayPtr, unsigned int sortCharIndex=0,
         firstZeroElement = true;
     }
 
-    //cout << "pass" << sortCharIndex << "\n";
-        
     for (unsigned int *inputPtr = startOfArrayPtr; *inputPtr; ++inputPtr) {
         if (firstZeroElement) {
             (*inputPtr)--;
             firstZeroElement = false;
         }
-            
-        it = buckets[int(buffer[*inputPtr+sortCharIndex])].end();
-        buckets[int(buffer[*inputPtr+sortCharIndex])].insert(it, *inputPtr);
+
+        buckets[int(buffer[*inputPtr+sortCharIndex])][lengths[int(buffer[*inputPtr+sortCharIndex])]++] = *inputPtr;
+        //it = buckets[int(buffer[*inputPtr+sortCharIndex])].end();
+        //buckets[int(buffer[*inputPtr+sortCharIndex])].insert(it, *inputPtr);
     }
 
-    for (auto bucket: buckets) {
+    for (int i = 0; i < VALIDCHARS; i++) {
         if (withRank)
-            bucket.sort(rankCompare);
-        for (const auto element: bucket) {
-            *startOfArrayPtr = element;
+            sort(buckets[i], buckets[i]+lengths[i], rankCompare);
+            //buckets[i].sort(rankCompare);
+        //for (const auto element: buckets[i]) {
+        for (int j = 0; j < lengths[i]; j++) {
+            *startOfArrayPtr = buckets[i][j];
             startOfArrayPtr++;
         }
     }
+    //cout << sizeof(buckets);
 }
 
 
-void ds3SuffixArray(unsigned int *startOfArrayPtr) {
+void ds3SuffixArray(unsigned int *startOfArrayPtr, char *buffer, unsigned int currentEnd) {
     unsigned int nMod3Suffixes0 = (currentEnd+2)/3;
     unsigned int nMod3Suffixes1 = (currentEnd+1)/3;
     unsigned int nMod3Suffixes2 = (currentEnd+0)/3;
@@ -61,8 +93,8 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr) {
     const unsigned int rSize = nMod3Suffixes0 + nMod3Suffixes2 +3;
 
     unsigned int* R = new unsigned int[rSize];
-    R[nMod3Suffixes1 + nMod3Suffixes2]=0;
-    R[nMod3Suffixes1 + nMod3Suffixes2 + 1]=0;
+    R[rSize-3]=0;
+    R[rSize-2]=0;
 
     unsigned int* R0 = new unsigned int[nMod3Suffixes0];
 
@@ -82,14 +114,14 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr) {
     //     cout << R0[i] << " ";
     // cout << "\n";
 
-    bucketSortPass(R,2);
-    bucketSortPass(R,1);
-    bucketSortPass(R,0);
+    bucketSortPass(R,buffer,2);
+    bucketSortPass(R,buffer,1);
+    bucketSortPass(R,buffer,0);
 
     
-    for (int i = 0; i < currentEnd; i++) rankR[i] = -1;
-    rankR[currentEnd] = 0;
-    rankR[currentEnd+1] = 0;
+    //for (int i = 0; i < currentEnd; i++) rankR[i] = -1;
+    //rankR[currentEnd] = 0;
+    //rankR[currentEnd+1] = 0;
 
     int j =1;
     for (size_t i = 0; i < rSize; i++) {
@@ -98,7 +130,7 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr) {
         j++;
     }
     
-    bucketSortPass(R0,0,true);
+    bucketSortPass(R0,buffer,0,true);
 
     j =0;
     for (size_t i = 0; i < nMod3Suffixes0; i++) {
@@ -158,6 +190,14 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr) {
     delete [] R; delete [] R0; delete [] rankR;
 }
 
+template<typename T>
+T* makeMmap(char* fileName, unsigned int size) {
+    int fd = open(fileName, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+    unsigned int fileSize = size * sizeof(T);
+    lseek(fd, fileSize-1, SEEK_SET);
+    write(fd, "", 1);
+    return static_cast<T*>(mmap(0, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+}
 
 main(int argc, char const *argv[])
 {
@@ -169,56 +209,48 @@ main(int argc, char const *argv[])
     ofstream output;
     output.open("./warandpeace3.bwt");
 
-    //char inputString[fileLength];
-    //unsigned int suffixArray[fileLength];
+    unsigned int currentEnd = getFileSize(fileName);
+    char* buffer = new char[currentEnd];
 
-    //int count = 1;
+    //char tempSuffixArray[] = "./tempSuffixArray.bin";
+    //unsigned int* suffixArray = makeMmap<unsigned int>(tempSuffixArray,currentEnd); 
+    unsigned int* suffixArray = new unsigned int[currentEnd];
 
+    // for (int i = 0; i < currentEnd; i++) {
+    //     cout << suffixArray[i] << " ";
+    // }
+    //cout <<  " ";
+
+    //char buffer[currentEnd];
+    //unsigned int suffixArray[currentEnd];
+
+    rankR = new unsigned int[currentEnd+2];
+
+    unsigned int pos = 0;
     while (input.peek() != EOF) {
-        unsigned int pos = 0;
-        while (input.peek() != EOF && pos < BUFFERLENGTH) {
-            input >> buffer[pos];
-            suffixArray[pos] = pos;
-            pos++;
-        }
-
-        // if (pos == BUFFERLENGTH) {
-        //     //bucketSortSuffixArray(&suffixArray[0]);
-        // }
-        // else {
-            currentEnd = pos;
-
-            suffixArray.resize(currentEnd);
-            suffixArray.shrink_to_fit();
-
-            buffer.resize(currentEnd);
-            buffer.shrink_to_fit();
-
-            ds3SuffixArray(&suffixArray[0]);
-        //}
-
-        // vector<int> test = {1,2,3};
-        // vector<int>::iterator ite = test.begin();
-        // cout << *ite;
-        // ite++;
-        // cout << *ite;
-
-        for (int i = 0; i < currentEnd; i++) {
-            // subtract 1 from suffix index to get bwt
-            if (suffixArray[i] > 0)
-                output << buffer[suffixArray[i]-1];
-            else
-                output << buffer[pos-1];
-            //cout << suffixArray[i] <<" ";
-        }
-
-        //cout << count * BUFFERLENGTH << "\n";
-        //count++;
+        input >> buffer[pos];
+        suffixArray[pos] = pos;
+        pos++;
     }
+
+    input.close();
+
+    ds3SuffixArray(suffixArray, buffer, currentEnd);
+
+
+    for (int i = 0; i < currentEnd; i++) {
+        // subtract 1 from suffix index to get bwt
+        if (suffixArray[i] > 0)
+            output << buffer[suffixArray[i]-1];
+        else
+            output << buffer[pos-1];
+        //cout << suffixArray[i] <<" ";
+    }
+
+    delete [] suffixArray; 
+    delete [] buffer;
+
     output.close();
-
-
-    //cout << "\n";
 
     return 0;
 
