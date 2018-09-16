@@ -1,9 +1,6 @@
 #include <iostream>
 #include <fstream>
-#include <cstring>
 #include <algorithm>
-#include <stdlib.h>
-
 #include <list>
 using namespace std;
 
@@ -14,29 +11,10 @@ int getFileSize(string fileName) {
 
 #define BUFFERLENGTH 50000000
 int currentEnd = BUFFERLENGTH;
-char buffer[BUFFERLENGTH];
-vector<unsigned int> rotationIndices(BUFFERLENGTH);
+//char buffer[BUFFERLENGTH];
+vector<char> buffer(BUFFERLENGTH);
+vector<unsigned int> suffixArray(BUFFERLENGTH);
 unsigned int* rankR = new unsigned int[currentEnd+2];
-
-bool suffixCompare(const unsigned int i1, const unsigned int i2) {
-    unsigned int endL1 = (unsigned int) (currentEnd - i1 );
-    unsigned int endL2 = (unsigned int) (currentEnd - i2 );
-
-    int res = memcmp(buffer + i1,buffer + i2, endL1 < endL2 ? endL1 : endL2);
-        
-    //cout << "1st:" << buffer + *i1 << "|2nd:" << buffer + *i2 << "|";
-    if ( res == 0 ) {
-        //printf(" - res: %i\n",(endL1 - endL2) > 0);
-        return (endL1 - endL2) > 0;
-    }
-        
-    else {
-        //printf(" - res: %i\n",res < 0);
-        return res < 0 ;
-    }
-};
-
-
 
 bool rankCompare(const unsigned int i1, const unsigned int i2) {
     return rankR[i1+1] < rankR[i2+1];
@@ -59,8 +37,6 @@ void bucketSortPass(unsigned int *startOfArrayPtr, unsigned int sortCharIndex=0)
             (*inputPtr)--;
             firstZeroElement = false;
         }
-
-        
             
         it = buckets[int(buffer[*inputPtr+sortCharIndex])].end();
         buckets[int(buffer[*inputPtr+sortCharIndex])].insert(it, *inputPtr);
@@ -120,25 +96,14 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr) {
             rankR[R[i]] = j;
         j++;
     }
-
-    
     
     bucketSortPass(R0,0);
-    //int rankR0[currentEnd+3];
-    //for (int i = 0; i <= currentEnd; i++) rankR0[i] = -1;
-    //rankR0[currentEnd+1] = 0;
-    //rankR0[currentEnd+2] = 0;
 
     j =0;
-    //for (const auto i: R0) {
     for (size_t i = 0; i < nMod3Suffixes0; i++) {
         rankR[R0[i]] = j;
         j++;
     }
-
-    // for (size_t i = 0; i < currentEnd+2; i++) 
-    //     cout << rankR[i] << " ";
-    // cout << "\n";
 
     for (int i = 0, j = 0; i + j < currentEnd;) {
         //cout << "comparing " << buffer[R[i]] << " and " << buffer[R0[j]] << "\n";
@@ -195,40 +160,41 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr) {
 
 main(int argc, char const *argv[])
 {
-    string fileName = "./warandpeace.txt";
-    //long fileLength = getFileSize(fileName);
+    string fileName = "./warandpeace3.txt";
 
     ifstream input(fileName);
     input.unsetf(ios_base::skipws);
 
     ofstream output;
-    output.open("./warandpeace.bwt");
+    output.open("./warandpeace3.bwt");
 
     //char inputString[fileLength];
-    //unsigned int rotationIndices[fileLength];
+    //unsigned int suffixArray[fileLength];
 
-    int count = 1;
+    //int count = 1;
 
     while (input.peek() != EOF) {
         unsigned int pos = 0;
         while (input.peek() != EOF && pos < BUFFERLENGTH) {
             input >> buffer[pos];
-
-            //can't iterate through 0 pointer so starting pos at 1
-            rotationIndices[pos] = pos;
+            suffixArray[pos] = pos;
             pos++;
         }
 
-        if (pos == BUFFERLENGTH) {
-            //bucketSortSuffixArray(&rotationIndices[0]);
-        }
-        else {
+        // if (pos == BUFFERLENGTH) {
+        //     //bucketSortSuffixArray(&suffixArray[0]);
+        // }
+        // else {
             currentEnd = pos;
-            rotationIndices.resize(pos);
 
-            ds3SuffixArray(&rotationIndices[0]);
-            //bucketSortSuffixArray(&rotationIndices[0]);
-        }
+            suffixArray.resize(currentEnd);
+            suffixArray.shrink_to_fit();
+
+            buffer.resize(currentEnd);
+            buffer.shrink_to_fit();
+
+            ds3SuffixArray(&suffixArray[0]);
+        //}
 
         // vector<int> test = {1,2,3};
         // vector<int>::iterator ite = test.begin();
@@ -238,15 +204,15 @@ main(int argc, char const *argv[])
 
         for (int i = 0; i < currentEnd; i++) {
             // subtract 1 from suffix index to get bwt
-            if (rotationIndices[i] > 0)
-                output << buffer[rotationIndices[i]-1];
+            if (suffixArray[i] > 0)
+                output << buffer[suffixArray[i]-1];
             else
                 output << buffer[pos-1];
-            //cout << rotationIndices[i] <<" ";
+            //cout << suffixArray[i] <<" ";
         }
 
         //cout << count * BUFFERLENGTH << "\n";
-        count++;
+        //count++;
     }
     output.close();
 
