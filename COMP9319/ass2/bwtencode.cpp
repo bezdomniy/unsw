@@ -10,17 +10,21 @@
 
 using namespace std;
 
+unsigned int* rankR;
+
 unsigned int getFileSize(string fileName) {
     ifstream input(fileName, ifstream::binary | ifstream::ate);
     return input.tellg();
 }
 
-// #define BUFFERLENGTH 50000000
-// int currentEnd = BUFFERLENGTH;
-// //char buffer[BUFFERLENGTH];
-// vector<char> buffer(BUFFERLENGTH);
-// vector<unsigned int> suffixArray(BUFFERLENGTH);
-unsigned int* rankR; 
+template<typename T>
+T* makeMmap(char* fileName, unsigned int size) {
+    int fd = open(fileName, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+    unsigned int fileSize = size * sizeof(T);
+    lseek(fd, fileSize-1, SEEK_SET);
+    write(fd, "", 1);
+    return static_cast<T*>(mmap(0, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+}
 
 bool rankCompare(const unsigned int i1, const unsigned int i2) {
     return rankR[i1+1] < rankR[i2+1];
@@ -51,8 +55,7 @@ void bucketSortPass(unsigned int *startOfArrayPtr, char *buffer, unsigned int so
     }
 
 
-    //vector<list<unsigned int>> buckets(VALIDCHARS);
-    list<unsigned int>::iterator it;
+    //list<unsigned int>::iterator it;
     
     bool firstZeroElement = false;
     if (*startOfArrayPtr ==0) {
@@ -95,10 +98,12 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr, char *buffer, unsigned int cu
     const unsigned int rSize = nMod3Suffixes0 + nMod3Suffixes2 +3;
 
     unsigned int* R = new unsigned int[rSize];
+    for (int i = 0; i <= rSize; i++) R[i] = 0;
     R[rSize-3]=0;
     R[rSize-2]=0;
 
     unsigned int* R0 = new unsigned int[nMod3Suffixes0];
+    for (int i = 0; i <= nMod3Suffixes0; i++) R0[i] = 0;
 
 
     for (int i = 0, j = 0, k=0; i < currentEnd; i++) {
@@ -125,7 +130,10 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr, char *buffer, unsigned int cu
     //rankR[currentEnd] = 0;
     //rankR[currentEnd+1] = 0;
 
-    int j =1;
+    rankR = new unsigned int[currentEnd+2];
+    //for (int i = 0; i < currentEnd+2; i++) rankR[i] = 0;
+    
+    int j = 1;
     for (size_t i = 0; i < rSize; i++) {
         if (R[i] != 0)
             rankR[R[i]] = j;
@@ -134,7 +142,7 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr, char *buffer, unsigned int cu
     
     bucketSortPass(R0,buffer,0,true);
 
-    j =0;
+    j = 0;
     for (size_t i = 0; i < nMod3Suffixes0; i++) {
         rankR[R0[i]] = j;
         j++;
@@ -192,24 +200,17 @@ void ds3SuffixArray(unsigned int *startOfArrayPtr, char *buffer, unsigned int cu
     delete [] R; delete [] R0; delete [] rankR;
 }
 
-template<typename T>
-T* makeMmap(char* fileName, unsigned int size) {
-    int fd = open(fileName, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
-    unsigned int fileSize = size * sizeof(T);
-    lseek(fd, fileSize-1, SEEK_SET);
-    write(fd, "", 1);
-    return static_cast<T*>(mmap(0, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
-}
+
 
 main(int argc, char const *argv[])
 {
-    string fileName = "./warandpeace3.txt";
+    string fileName = "./example2.txt";
 
     ifstream input(fileName);
     input.unsetf(ios_base::skipws);
 
     ofstream output;
-    output.open("./warandpeace3.bwt");
+    output.open("./example2.bwt");
 
     unsigned int currentEnd = getFileSize(fileName);
     char* buffer = new char[currentEnd];
@@ -226,7 +227,7 @@ main(int argc, char const *argv[])
     //char buffer[currentEnd];
     //unsigned int suffixArray[currentEnd];
 
-    rankR = new unsigned int[currentEnd+2];
+    
 
     unsigned int pos = 0;
     while (input.peek() != EOF) {
@@ -243,9 +244,9 @@ main(int argc, char const *argv[])
     for (int i = 0; i < currentEnd; i++) {
         // subtract 1 from suffix index to get bwt
         if (suffixArray[i] > 0)
-            output << buffer[suffixArray[i]-1];
+            cout << buffer[suffixArray[i]-1];
         else
-            output << buffer[pos-1];
+            cout << buffer[pos-1];
         //cout << suffixArray[i] <<" ";
     }
 
