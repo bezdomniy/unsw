@@ -36,8 +36,33 @@ bool rankCompare(const unsigned int i1, const unsigned int i2) {
 #define VALIDCHARS 126
 
 template<typename T>
+static void radixPass(unsigned int* a, unsigned int* b, T* r, unsigned int n, unsigned int K)
+{ // count occurrences
+    cout << "sorting" << endl;
+    for (int i = 0; i < n; i++) cout << a[i] << " ";
+    cout << "array"<< endl;
+    for (int i = 0; i < n; i++) cout << r[i] << " ";
+    cout << "buffer"<< endl;
+int* c = new int[K + 1]; // counter array
+for (int i = 0; i <= K; i++) c[i] = 0; // reset counters
+for (int i = 0; i < n; i++) c[r[a[i]]]++; // count occurrences - this is probably why my one fails
+for (int i = 0, sum = 0; i <= K; i++) // exclusive prefix sums
+{ int t = c[i]; c[i] = sum; sum += t; }
+for (int i = 0; i < n; i++) b[c[r[a[i]]]++] = a[i]; // sort
+delete [] c;
+}
+
+template<typename T>
 void bucketSortPass(unsigned int *suffixArray, unsigned int *outArray, T *buffer, unsigned int sortCharIndex, unsigned int alphabetSize) {
     cout << "sorting" << endl;
+    for (int i = 0; i < 12; i++) cout << suffixArray[i] << " ";
+    cout << "array"<< endl;
+    for (int i = 0; i < 12; i++) cout << buffer[i] << " ";
+    cout << "buffer"<< endl;
+
+
+
+
     unsigned int count[alphabetSize];
     unsigned int lengths[alphabetSize];
     
@@ -66,10 +91,10 @@ void bucketSortPass(unsigned int *suffixArray, unsigned int *outArray, T *buffer
     }
     
     bool firstZeroElement = false;
-    // if (*suffixArray ==0) {
-    //     (*suffixArray)++;
-    //     firstZeroElement = true;
-    // }
+    if (*suffixArray ==0) {
+        (*suffixArray)++;
+        firstZeroElement = true;
+    }
     // for (unsigned int *inputPtr = suffixArray; *inputPtr; ++inputPtr) {
     //     if (firstZeroElement) {
     //         (*inputPtr)--;
@@ -86,9 +111,9 @@ void bucketSortPass(unsigned int *suffixArray, unsigned int *outArray, T *buffer
     //     lengths[i]=0;
     // }
 
-    if (*suffixArray ==0) {
-        firstZeroElement = true;
-    }
+    // if (*suffixArray ==0) {
+    //     firstZeroElement = true;
+    // }
     for (unsigned int *inputPtr = suffixArray; *inputPtr; ++inputPtr) {
         if (firstZeroElement) {
             (*inputPtr)--;
@@ -96,8 +121,6 @@ void bucketSortPass(unsigned int *suffixArray, unsigned int *outArray, T *buffer
         }
 
         buckets[buffer[*inputPtr+sortCharIndex]][lengths[buffer[*inputPtr+sortCharIndex]]++] = *inputPtr;
-        //it = buckets[int(buffer[*inputPtr+sortCharIndex])].end();
-        //buckets[int(buffer[*inputPtr+sortCharIndex])].insert(it, *inputPtr);
     }
 
     for (int i = 0; i < alphabetSize; i++) {
@@ -144,49 +167,64 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
     unsigned int* R = new unsigned int[rSize];
 
     for (int i = 0; i <= rSize; i++) R[i] = 0;
-    R[rSize-3]=0;
-    R[rSize-2]=0;
-    R[rSize-1]=0;
+    // R[rSize-3]=0;
+    // R[rSize-2]=0;
+    // R[rSize-1]=0;
 
     for (int i = 0; i <= rSize; i++) SA[i] = 0;
-    SA[rSize-3]=0;
-    SA[rSize-2]=0;
-    SA[rSize-1]=0;
+    // SA[rSize-3]=0;
+    // SA[rSize-2]=0;
+    // SA[rSize-1]=0;
 
     unsigned int* R0 = new unsigned int[nMod3Suffixes0];
     for (int i = 0; i <= nMod3Suffixes0; i++) R0[i] = 0;
 
     //cout << currentEnd <<"\n";
     for (int i = 0, j = 0, k=0; i < currentEnd; i++) {
-        if (i % 3 != 0)
-            R[j++] = i;
-        else
+        if (i % 3 != 0) {
+            //R[j++] = i;
+            if (i % 3 == 1) { 
+                R[i/3] = i; 
+            } // write to R1
+            else { 
+                R[i/3 + nMod3Suffixes0] = i; 
+            }
+        } else
             R0[k++] = i;
     }
 
-    // for (int i = 0; i < currentEnd; i++) cout << suffixArray[i] << " ";
-    // cout << "b12 index"<< endl;
-    // for (int i = 0; i < currentEnd; i++) cout << buffer[i] << " ";
-    // cout << "buffer"<< endl;
+
+    for (int i = 0; i < currentEnd; i++) cout << suffixArray[i] << " ";
+    cout << "output array"<< endl;
+    for (int i = 0; i < currentEnd; i++) cout << buffer[i] << " ";
+    cout << "buffer to sort"<< endl;
     //     for (int i = 0; i < currentEnd; i++) cout << R[i] << " ";
     // cout << "B12"<< endl;
 
-    bucketSortPass<T>(R,SA,buffer,2,alphabetSize);
-    bucketSortPass<T>(SA,R,buffer,1,alphabetSize);
-    bucketSortPass<T>(R,SA,buffer,0,alphabetSize);
+    for (int i = 0; i < rSize; i++) cout << R[i] << " ";
+        cout << "b12"<< endl;
 
-    //for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
-    //cout << " sorted" << endl;
+    radixPass<T>(R,SA,buffer+2,rSize-3,alphabetSize);
+    radixPass<T>(SA,R,buffer+1,rSize-3,alphabetSize);
+    radixPass<T>(R,SA,buffer,rSize-3,alphabetSize);
+
+    // bucketSortPass<T>(R,SA,buffer,2,alphabetSize);
+    // bucketSortPass<T>(SA,R,buffer,1,alphabetSize);
+    // bucketSortPass<T>(R,SA,buffer,0,alphabetSize);
+
+    for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
+    cout << " b12 sorted" << endl;
 
     unsigned int rank = renameToRank<T>(SA, R, buffer, rSize-3, nMod3Suffixes0);
     
     
-    // for (int i = 0; i < rSize; i++) cout << R[i] << " ";
-    // cout << " ranked" << endl;
-    cout << rank<< " " <<rSize-3 << endl;
+    for (int i = 0; i < rSize; i++) cout << R[i] << " ";
+    cout << " b12 ranked" << endl;
+    //cout << rank<< " " <<rSize-3 << endl;
 //    cout << rSize << "\n";
     if (rank < rSize-3) {
         cout << "entering recursion"<< endl;
+        //ds3SuffixArray<unsigned int>(SA, R, rSize-3, rank+1);
         ds3SuffixArray<unsigned int>(SA, R, rSize-3, rank+1);
         cout << "exiting recursion"<< endl;
         
@@ -203,11 +241,10 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
         //for (int i = 0; i < rSize-3; i++) R[SA[i]] = i +1;
 
         // *********** figure out better way! - this seems better
+  
         for (int i = 0; i < rSize-3; i++) SA[i] = R[SA[i]];
-        //for (int i = 0; i < rSize-3; i++) R[i] = 0; // maybe dont need this one after youve done it
+        //renameToRank<T>(SA, R, buffer, rSize-3, nMod3Suffixes0);
         for (int i = 0; i < rSize-3; i++) R[SA[i]] = i+1;
-
-        //delete [] temp;
 
         // for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
         //     cout << " suffix after recurse"<< endl;
@@ -215,11 +252,13 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
         //     cout << " rank after recurse"<< endl;
     } 
     //else // generate the suffix array of R directly
+        //for (int i = 0; i < rSize-3; i++) R[SA[i]] = i+1;
     //    for (int i = 0; i < rSize-3; i++) SA[R[i] - 1] = i;
 
     // for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
     //     cout << " suffix array" << endl;
-    
+    // for (int i = 0; i < rSize; i++) cout << R[i] << " ";
+    //     cout << " b12 ranked" << endl;
 
     // rankR = new unsigned int[currentEnd+3];
     // for (int i = 0; i < currentEnd; i++) rankR[i] = -1;
@@ -243,13 +282,17 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
     //    if (SA[i] < nMod3Suffixes0) R0[j++] = 3*SA[i];
     //for (int i = 0; i < nMod3Suffixes0; i++) cout << R0[i] << " ";
     //cout << " R0s before sort"<< endl;
-    bucketSortPass<T>(R0,R0,buffer,0, alphabetSize);
-    // ************ need to get the 2nd stage sort working
-    //bucketSortPass<unsigned int>(R0,R0,R,0, rank);
-    //bucketSortPass(R0,R0,R,0);
+    unsigned int* SA0 = new unsigned int[nMod3Suffixes0];
+    // bucketSortPass<T>(R0,R0,buffer,0, alphabetSize);
+    // bucketSortPass<unsigned int>(R0,R0,R,0, rank);
 
+    radixPass<unsigned int>(R0,SA0,R,nMod3Suffixes0,rank);
+    for (int i = 0; i < nMod3Suffixes0; i++) cout << SA0[i] << " ";
+    cout << " b0 sorted" << endl;
+    radixPass<T>(SA0,R0,buffer,nMod3Suffixes0,alphabetSize);
 
-
+    for (int i = 0; i < nMod3Suffixes0; i++) cout << R0[i] << " ";
+    cout << " b0 sorted" << endl;
     //for (int i = 0; i < nMod3Suffixes0; i++) cout << R0[i] << " ";
     //cout << " R0s"<< endl;
     //bucketSortPass(R0,R0,buffer,0,true);
@@ -335,13 +378,13 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
 
 main(int argc, char const *argv[])
 {
-    string fileName = "./warandpeace.txt";
+    string fileName = "./example2.txt";
 
     ifstream input(fileName);
     input.unsetf(ios_base::skipws);
 
     ofstream output;
-    output.open("./warandpeace.bwt");
+    output.open("./example2.bwt");
 
     unsigned int currentEnd = getFileSize(fileName);
     uint8_t* buffer = new uint8_t[currentEnd+3];
@@ -379,9 +422,9 @@ main(int argc, char const *argv[])
     for (int i = 0; i < currentEnd; i++) {
         // subtract 1 from suffix index to get bwt
         if (suffixArray[i] > 0)
-            output << buffer[suffixArray[i]-1];
+            cout << buffer[suffixArray[i]-1];
         else
-            output << buffer[pos-1];
+            cout << buffer[pos-1];
         //cout << suffixArray[i] <<" ";
     }
     cout << endl;
