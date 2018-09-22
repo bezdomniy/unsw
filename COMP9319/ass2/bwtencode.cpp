@@ -151,11 +151,11 @@ unsigned int renameToRank(unsigned int *a, unsigned int *b, T *buffer, int sizeA
         }
         if (a[i] % 3 == 1) { 
             b[a[i]/3] = rank; 
-            //cout << "writing" << rank << " to pos " << a[i]/3 <<endl;
+            cout << "writing" << rank << " to pos " << a[i]/3 <<endl;
         } // write to R1
         else { 
             b[a[i]/3 + size0] = rank; 
-            //cout << "writing" << rank << " to pos " << a[i]/3 + size0 <<endl;
+            cout << "writing" << rank << " to pos " << a[i]/3 + size0 <<endl;
         } // write to R2
     }
     cout << endl;
@@ -167,9 +167,11 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
     unsigned int nMod3Suffixes0 = (currentEnd+2)/3;
     unsigned int nMod3Suffixes1 = (currentEnd+1)/3;
     unsigned int nMod3Suffixes2 = (currentEnd+0)/3;
-    //cout<<currentEnd<<endl;
+    // cout<<currentEnd<<endl;
+    // cout<<nMod3Suffixes0<<endl;
+    // cout<<nMod3Suffixes1<<endl;
 
-    const unsigned int rSize = nMod3Suffixes0 + nMod3Suffixes2 ;
+    const unsigned int rSize = nMod3Suffixes1 + nMod3Suffixes2;
 
     unsigned int* SA = new unsigned int[rSize+3];
     unsigned int* R = new unsigned int[rSize+3];
@@ -198,7 +200,7 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
                 R[i/3] = i; 
             } // write to R1
             else { 
-                R[i/3 + nMod3Suffixes0] = i; 
+                R[i/3 + nMod3Suffixes1] = i; 
             }
         } else
             SA0[k++] = i;
@@ -212,7 +214,7 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
     //     for (int i = 0; i < currentEnd; i++) cout << R[i] << " ";
     // cout << "B12"<< endl;
 
-    for (int i = 0; i < rSize+2; i++) cout << R[i] << " ";
+    for (int i = 0; i < rSize; i++) cout << R[i] << " ";
         cout << "b12"<< endl;
 
     radixPass<T>(R,SA,buffer+2,rSize,alphabetSize);
@@ -228,7 +230,7 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
     for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
     cout << " b12 sorted" << endl;
 
-    unsigned int rank = renameToRank<T>(SA, R, buffer, rSize, nMod3Suffixes0);
+    unsigned int rank = renameToRank<T>(SA, R, buffer, rSize, nMod3Suffixes1);
     
     
     for (int i = 0; i < rSize; i++) cout << R[i] << " ";
@@ -238,11 +240,11 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
     if (rank < rSize) {
         cout << "entering recursion"<< endl;
         //ds3SuffixArray<unsigned int>(SA, R, rSize-3, rank+1);
-        ds3SuffixArray<unsigned int>(SA, R, rSize, rank+1);
+        ds3SuffixArray<unsigned int>(SA, R, rSize, rank);
         cout << "exiting recursion"<< endl;
         
         //unsigned int * temp = new unsigned int[currentEnd];
-        for (int i = 0, j = 0, k = ((currentEnd-3)/2); i < currentEnd; i++) {
+        for (int i = 0, j = 0, k = nMod3Suffixes1; i < currentEnd; i++) {
             if (i % 3 == 1) {
                 R[j++] = i;
             }
@@ -251,6 +253,8 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
             }
         }
         // *********** figure out better way! - this seems better
+        for (int i = 0; i < rSize; i++) cout << R[i] << " ";
+            cout << " R12 out" << endl;
   
         for (int i = 0; i < rSize; i++) SA[i] = R[SA[i]];
         for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
@@ -260,7 +264,7 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
                 R[SA[i]/3] = i+1; 
             } // write to R1
             else { 
-                R[SA[i]/3 + nMod3Suffixes0] = i+1; 
+                R[SA[i]/3 + nMod3Suffixes1] = i+1; 
             }
         }
 
