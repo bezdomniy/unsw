@@ -151,11 +151,14 @@ unsigned int renameToRank(unsigned int *a, unsigned int *b, T *buffer, int sizeA
         }
         if (a[i] % 3 == 1) { 
             b[a[i]/3] = rank; 
+            //cout << "writing" << rank << " to pos " << a[i]/3 <<endl;
         } // write to R1
         else { 
             b[a[i]/3 + size0] = rank; 
+            //cout << "writing" << rank << " to pos " << a[i]/3 + size0 <<endl;
         } // write to R2
     }
+    cout << endl;
     return rank;
 }
 
@@ -164,6 +167,7 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
     unsigned int nMod3Suffixes0 = (currentEnd+2)/3;
     unsigned int nMod3Suffixes1 = (currentEnd+1)/3;
     unsigned int nMod3Suffixes2 = (currentEnd+0)/3;
+    //cout<<currentEnd<<endl;
 
     const unsigned int rSize = nMod3Suffixes0 + nMod3Suffixes2 ;
 
@@ -182,8 +186,8 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
 
     unsigned int* SA0 = new unsigned int[nMod3Suffixes0];
     unsigned int* R0 = new unsigned int[nMod3Suffixes0];
-    for (int i = 0; i <= nMod3Suffixes0; i++) SA0[i] = 0;
-    for (int i = 0; i <= nMod3Suffixes0; i++) R0[i] = 0;
+    for (int i = 0; i < nMod3Suffixes0; i++) SA0[i] = 0;
+    for (int i = 0; i < nMod3Suffixes0; i++) R0[i] = 0;
 
 
     //cout << currentEnd <<"\n";
@@ -219,8 +223,9 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
     // bucketSortPass<T>(SA,R,buffer,1,alphabetSize);
     // bucketSortPass<T>(R,SA,buffer,0,alphabetSize);
 
+    // for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
+    // cout << " b12 sorted" << endl;    
     for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
-    cout << " b12 sorted" << endl;    for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
     cout << " b12 sorted" << endl;
 
     unsigned int rank = renameToRank<T>(SA, R, buffer, rSize, nMod3Suffixes0);
@@ -245,14 +250,22 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
                 R[k++] = i;
             }
         }
-
-        //for (int i = 0; i < rSize-3; i++) R[SA[i]] = i +1;
-
         // *********** figure out better way! - this seems better
   
         for (int i = 0; i < rSize; i++) SA[i] = R[SA[i]];
-        //renameToRank<T>(SA, R, buffer, rSize, nMod3Suffixes0);
-        for (int i = 0; i < rSize; i++) R[SA[i]] = i+1;
+        for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
+            cout << " sa12 out" << endl;
+        for (int i = 0; i < rSize; i++) {
+            if (SA[i] % 3 == 1) { 
+                R[SA[i]/3] = i+1; 
+            } // write to R1
+            else { 
+                R[SA[i]/3 + nMod3Suffixes0] = i+1; 
+            }
+        }
+
+        for (int i = 0; i < rSize; i++) cout << R[i] << " ";
+            cout << " R12 out" << endl;
 
     }  
     // bucketSortPass<T>(R0,R0,buffer,0, alphabetSize);
@@ -337,6 +350,8 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
         }
         //cout << "i " << i << " j " << j << "\n";
     }
+    for (int i = 0; i < currentEnd; i++) cout << suffixArray[i] << " ";
+    cout << " out"<< endl;
 
     delete [] R; delete [] R0; delete [] SA; delete [] SA0; 
 }
@@ -386,7 +401,7 @@ main(int argc, char const *argv[])
 
     ds3SuffixArray<uint8_t>(suffixArray, buffer, currentEnd+1, VALIDCHARS);
 
-    for (int i = 0; i < currentEnd; i++) {
+    for (int i = 0; i < currentEnd+1; i++) {
         cout << suffixArray[i] <<" ";
     }
     cout << endl;
@@ -397,7 +412,6 @@ main(int argc, char const *argv[])
             cout << buffer[suffixArray[i]-1];
         else
             cout << buffer[pos-1];
-        
     }
     
 
