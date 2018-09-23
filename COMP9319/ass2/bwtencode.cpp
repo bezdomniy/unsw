@@ -226,30 +226,29 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
 
         string levelStr = to_string(level);
 
-        // char bufPrefix[] = "tempBuf";
-        // string levelStr = to_string(level);
-        // const char *fileBuf = strcat(bufPrefix, levelStr.c_str());
-        // serialize<T>(buffer, currentEnd, fileBuf);
+        char bufPrefix[] = "tempBuf";
+        const char *fileBuf = strcat(bufPrefix, levelStr.c_str());
+        serialize<T>(buffer, currentEnd, fileBuf);
 
         char saPrefix[] = "tempSA";
         const char *fileSA = strcat(saPrefix, levelStr.c_str());
         serialize<unsigned int>(suffixArray, currentEnd, fileSA);
 
-        // free(buffer); 
-        // free(suffixArray);
-        //delete [] buffer; 
-        delete [] suffixArray;
+        // delete [] buffer; 
+        // delete [] suffixArray;
 
-        ds3SuffixArray<unsigned int>(SA, R, rSize, rank,++level);
+        ds3SuffixArray<unsigned int>(SA, R, rSize, rank,level+1);
         cout << "exiting recursion level "<<level<< endl;
 
         // buffer = new T[currentEnd];
         // deserialize<T>(fileBuf, currentEnd, buffer);
+        // suffixArray = new unsigned int[currentEnd];
+        // deserialize<unsigned int>(fileSA, currentEnd, suffixArray);
 
-        suffixArray = new unsigned int[currentEnd];
-        deserialize<unsigned int>(fileSA, currentEnd, suffixArray);
-        for (int i = 0; i < currentEnd; i++) cout << buffer[i] << " ";
-        cout << " buff" << endl;
+        for (int i = 0; i < rSize+3; i++) cout << R[i] << " ";
+        cout << "R" << endl;
+        for (int i = 0; i < rSize+3; i++) cout << SA[i] << " ";
+        cout << "SA" << endl;
         
         //unsigned int * temp = new unsigned int[currentEnd];
         for (int i = 0, j = 0, k = nMod3Suffixes1; i < currentEnd; i++) {
