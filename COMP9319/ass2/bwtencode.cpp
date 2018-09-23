@@ -163,7 +163,7 @@ unsigned int renameToRank(unsigned int *a, unsigned int *b, T *buffer, int sizeA
 
 
 template <typename T>
-void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd, unsigned int alphabetSize, unsigned int level=0) {
+void dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd, unsigned int alphabetSize, unsigned int level=0) {
     unsigned int nMod3Suffixes0 = (currentEnd+2)/3;
     unsigned int nMod3Suffixes1 = (currentEnd+1)/3;
     unsigned int nMod3Suffixes2 = (currentEnd+0)/3;
@@ -220,30 +220,46 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
     //cout << rank<< " " <<rSize-3 << endl;
 //    cout << rSize << "\n";
     if (rank < rSize) {
-        cout << "entering recursion"<< endl;
+        cout << "entering recursion level "<< level << endl;
         // for (int i = 0; i < rSize; i++) cout << R[i] << " ";
         //     cout << " R12 in" << endl;
 
         string levelStr = to_string(level);
 
+        unsigned int sizePlus=3;
+        if (level==0) sizePlus=1;
+
         char bufPrefix[] = "tempBuf";
         const char *fileBuf = strcat(bufPrefix, levelStr.c_str());
-        serialize<T>(buffer, currentEnd, fileBuf);
+        serialize<T>(buffer, currentEnd+sizePlus, fileBuf);
 
         char saPrefix[] = "tempSA";
         const char *fileSA = strcat(saPrefix, levelStr.c_str());
-        serialize<unsigned int>(suffixArray, currentEnd, fileSA);
+        serialize<unsigned int>(suffixArray, currentEnd+sizePlus, fileSA);
 
-        // delete [] buffer; 
+        // T** bufferAddress = &buffer;
+        // unsigned int** suffixArrayAddress = &suffixArray;
+
+        delete [] buffer; 
         // delete [] suffixArray;
 
-        ds3SuffixArray<unsigned int>(SA, R, rSize, rank,level+1);
+        dc3SuffixArray<unsigned int>(SA, R, rSize, rank,level+1);
         cout << "exiting recursion level "<<level<< endl;
 
-        // buffer = new T[currentEnd];
-        // deserialize<T>(fileBuf, currentEnd, buffer);
-        // suffixArray = new unsigned int[currentEnd];
-        // deserialize<unsigned int>(fileSA, currentEnd, suffixArray);
+        // buffer = *bufferAddress;
+        // suffixArray = *suffixArrayAddress;
+
+        buffer = new T[currentEnd+sizePlus];
+        deserialize<T>(fileBuf, currentEnd+sizePlus, buffer);
+        // suffixArray = new unsigned int[currentEnd+sizePlus];
+        // deserialize<unsigned int>(fileSA, currentEnd+sizePlus, suffixArray);
+
+
+
+        // for (int i = 0; i < currentEnd+sizePlus; i++) cout << buffer[i] << " ";
+        // cout << "buffer" << endl;
+        // for (int i = 0; i < currentEnd+sizePlus; i++) cout << suffixArray[i] << " ";
+        // cout << "suffixArray" << endl;
 
         for (int i = 0; i < rSize+3; i++) cout << R[i] << " ";
         cout << "R" << endl;
@@ -265,7 +281,7 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
         for (int i = 0; i < rSize; i++) {
             if (SA[i] % 3 == 1) { 
                 R[SA[i]/3] = i+1; 
-            } // write to R1
+            } 
             else { 
                 R[SA[i]/3 + nMod3Suffixes1] = i+1; 
             }
@@ -281,24 +297,19 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
         if (i % 3 == 0) 
             SA0[j++] = i;
     }
-    // bucketSortPass<T>(R0,R0,buffer,0, alphabetSize);
-    // bucketSortPass<unsigned int>(R0,R0,R,0, rank);
+    
     radixPass<unsigned int>(SA0,R0,R,nMod3Suffixes0,rSize,true);
     // for (int i = 0; i < nMod3Suffixes0; i++) cout << R0[i] << " ";
     // cout << " b0 sorted" << endl;
     radixPass<T>(R0,SA0,buffer,nMod3Suffixes0,alphabetSize);
     delete [] R0;
 
-    // for (int i = 0; i < rSize; i++) cout << R[i] << " ";
-    // cout << " Rs" << endl;
-    // //bucketSortPass(R0,R0,buffer,0,true);
 
-    // cout << endl;
-    // for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
-    // cout << " SA sorted" << endl;
-    // for (int i = 0; i < nMod3Suffixes0; i++) cout << SA0[i] << " ";
-    // cout << " SA0 sorted" << endl;
-
+    for (int i = 0; i < rSize; i++) cout << SA[i] << " ";
+    cout << " SA sorted" << endl;
+    for (int i = 0; i < nMod3Suffixes0; i++) cout << SA0[i] << " ";
+    cout << " SA0 sorted" << endl;
+    
     for (int i = 0, j = 0; i + j < currentEnd;) {
         // cout << "comparing: " << SA[i] << " " << SA0[j] << " " << buffer[SA[i]] <<  buffer[SA[i]+1] <<  buffer[SA[i]+2];
         // cout << " and "<< buffer[SA0[j]]<< buffer[SA0[j]+1]<< buffer[SA0[j]+2]<< " - ";
@@ -342,7 +353,8 @@ void ds3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
         }
         // cout << endl;
     }
-
+    for (int i = 0; i < currentEnd; i++) cout << suffixArray[i] << " ";
+        cout << "outputting" << endl;
     delete [] R; delete [] SA; delete [] SA0; //delete [] R0; 
 }
 
@@ -387,7 +399,7 @@ main(int argc, char const *argv[])
 
     input.close();
 
-    ds3SuffixArray<uint8_t>(suffixArray, buffer, currentEnd+1, VALIDCHARS);
+    dc3SuffixArray<uint8_t>(suffixArray, buffer, currentEnd+1, VALIDCHARS);
 
     // for (int i = 0; i < currentEnd+1; i++) {
     //     cout << suffixArray[i] <<" ";
