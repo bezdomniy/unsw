@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 
+
 #define VALIDCHARS 126
 using namespace std;
 
@@ -28,6 +29,33 @@ void deserialize(const char* fileName, unsigned int size, T* arrayPointer)
     fread(arrayPointer, sizeof(T), size, filePointer); 
     fclose(filePointer);
 }
+
+template <typename T>
+class fileArray {
+    const char * filePath;
+    T buffer;
+
+    public:
+        fileArray(const char * fileName);
+        T operator[] (const unsigned int index);
+};
+
+template <typename T>
+fileArray<T>::fileArray(const char * path) {
+    filePath = path;
+    T buffer = 0;
+}
+
+template <typename T>
+T fileArray<T>::operator[](const unsigned int index) {
+    FILE *fp = fopen(filePath, "rb");
+    fseek(fp,index*sizeof(T),SEEK_SET);
+    fread(buffer,sizeof(T),1,fp);
+    fclose(fp);
+
+    return buffer;
+}
+
 
 template<typename T>
 static void radixPass(unsigned int* a, unsigned int* b, T* r, unsigned int n, unsigned int K, bool byRank = false) { 
@@ -141,9 +169,9 @@ void dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
 
     string levelStr = to_string(level);
 
-    // char rPrefix[] = "tempR";
-    // const char *fileR = strcat(rPrefix, levelStr.c_str());
-    // serialize<unsigned int>(R, rSize+3, fileR);
+    char rPrefix[] = "tempR";
+    const char *fileR = strcat(rPrefix, levelStr.c_str());
+    serialize<unsigned int>(R, rSize+3, fileR);
     // delete [] R; 
 
     // char saPrefix[] = "tempSA";
@@ -214,51 +242,56 @@ void dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
 
 main(int argc, char const *argv[])
 {
-    string fileName = "./warandpeace15.txt";
+    string fileName = "./warandpeace.txt";
 
     ifstream input(fileName);
     input.unsetf(ios_base::skipws);
 
     ofstream output;
-    output.open("./warandpeace15.bwt");
+    output.open("./warandpeace.bwt");
 
-    unsigned int currentEnd = getFileSize(fileName);
-    uint8_t* buffer = new uint8_t[currentEnd+3];
+    // unsigned int currentEnd = getFileSize(fileName);
+    // uint8_t* buffer = new uint8_t[currentEnd+3];
 
-    unsigned int* suffixArray = new unsigned int[currentEnd+3];
+    // unsigned int* suffixArray = new unsigned int[currentEnd+3];
 
-    unsigned int pos = 0;
-    while (input.peek() != EOF) {
-        input >> buffer[pos];
-        suffixArray[pos] = pos;
-        pos++;
-    }
-    for (int i=0;i<3;i++) {
-        buffer[pos+i] = 0;
-        suffixArray[pos+i] = 0;
-    }
-
-    input.close();
-
-    dc3SuffixArray<uint8_t>(suffixArray, buffer, currentEnd+1, VALIDCHARS);
-
-    // for (int i = 0; i < currentEnd+1; i++) {
-    //     cout << suffixArray[i] <<" ";
+    // unsigned int pos = 0;
+    // while (input.peek() != EOF) {
+    //     input >> buffer[pos];
+    //     suffixArray[pos] = pos;
+    //     pos++;
     // }
-    // cout << endl;
+    // for (int i=0;i<3;i++) {
+    //     buffer[pos+i] = 0;
+    //     suffixArray[pos+i] = 0;
+    // }
+
+    // input.close();
+
+    // dc3SuffixArray<uint8_t>(suffixArray, buffer, currentEnd+1, VALIDCHARS);
+
+    // // for (int i = 0; i < currentEnd+1; i++) {
+    // //     cout << suffixArray[i] <<" ";
+    // // }
+    // // cout << endl;
     
-    for (int i = 1; i < currentEnd+1; i++) {
-        // subtract 1 from suffix index to get bwt
-        if (suffixArray[i] > 0)
-            output << buffer[suffixArray[i]-1];
-        else
-            output << buffer[pos-1];
-    }
+    // for (int i = 1; i < currentEnd+1; i++) {
+    //     // subtract 1 from suffix index to get bwt
+    //     if (suffixArray[i] > 0)
+    //         output << buffer[suffixArray[i]-1];
+    //     else
+    //         output << buffer[pos-1];
+    // }
     
-    delete [] suffixArray; 
-    delete [] buffer;
+    // delete [] suffixArray; 
+    // delete [] buffer;
 
     output.close();
+
+    const char *str = "./testR0";
+    fileArray<unsigned int> test(str);
+
+    cout << test[1] << endl;
 
     return 0;
 
