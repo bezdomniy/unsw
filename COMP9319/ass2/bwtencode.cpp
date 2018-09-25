@@ -159,18 +159,15 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
     FILE *fp = fopen(fileBuf, "rb");
     fileArray<T> bufferFile(fp,2);
     
-    
-
     if (level > DISK_WRITE_CUTOFF) {
         serialize<T>(buffer, currentEnd+sizePlus, fileBuf);
         delete [] buffer; 
     }
 
-    // read buffer into a file straight away and delete the array
+    // try:
+    // read R/SA/both into a file straight away and delete the array(s)
     // then rewrite operations to lseek positions from the file
-    // re-read the file back after SA,R have been deleted in the end
-    // make sure to return the address for the new versions of the vars
-
+    
     const unsigned int rSize = nMod3Suffixes1 + nMod3Suffixes2;
 
     unsigned int* SA = new unsigned int[rSize+3];
@@ -201,8 +198,6 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
     unsigned int rank;
 
     if (level > DISK_WRITE_CUTOFF) {
-        //fp = fopen(fileBuf, "rb");
-        
         radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
         bufferFile.setOffset(1);
         radixPass<fileArray<T>>(SA,R,bufferFile,rSize,alphabetSize);
@@ -220,11 +215,7 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
     }
 
 
-
-
-
     if (rank < rSize) {
-    // if (false) {
         cout << "entering recursion level "<< level << endl;
         R = dc3SuffixArray<unsigned int>(SA, R, rSize, rank,level+1);
         cout << "exiting recursion level "<<level<< endl;
@@ -249,19 +240,7 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
             }
         }
     }  
-
-    // string levelStr = to_string(level);
-
-    // char rPrefix[] = "tempR";
-    // const char *fileR = strcat(rPrefix, levelStr.c_str());
-    // serialize<unsigned int>(R, rSize+3, fileR);
-    // delete [] R; 
-
-    // char saPrefix[] = "tempSA";
-    // const char *fileSA = strcat(saPrefix, levelStr.c_str());
-    // serialize<unsigned int>(SA, rSize+3, fileSA);
-    // delete [] SA;
-    
+  
     unsigned int* SA0 = new unsigned int[nMod3Suffixes0];
     unsigned int* R0 = new unsigned int[nMod3Suffixes0];
     for (int i = 0; i < nMod3Suffixes0; i++) SA0[i] = 0;
@@ -345,13 +324,6 @@ main(int argc, char const *argv[])
     delete [] buffer;
 
     output.close();
-
-    // const char *str = "./tempR5";
-    // fileArray<unsigned int> test(str);
-
-    // cout << test[2] << endl;
-
-
 
     return 0;
 
