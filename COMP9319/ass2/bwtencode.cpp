@@ -32,33 +32,45 @@ void deserialize(const char* fileName, unsigned int size, T* arrayPointer)
 
 template <typename T>
 class fileArray {
-    const char * filePath;
-    T buffer;
+    FILE * fp;
+    size_t offset;
+    T buffer[sizeof(T)];
 
     public:
-        fileArray(const char * fileName);
+        fileArray<T>(FILE * filePointer, size_t off = 0);
+        ~fileArray<T>();
+        void setOffset(size_t off);
         T operator[] (const unsigned int index);
 };
 
 template <typename T>
-fileArray<T>::fileArray(const char * path) {
-    filePath = path;
-    T buffer = 0;
+fileArray<T>::fileArray(FILE * filePointer, size_t off) {
+    fp = filePointer;
+    offset = off;
 }
 
 template <typename T>
-T fileArray<T>::operator[](const unsigned int index) {
-    FILE *fp = fopen(filePath, "rb");
-    fseek(fp,index*sizeof(T),SEEK_SET);
-    fread(buffer,sizeof(T),1,fp);
-    fclose(fp);
+fileArray<T>::~fileArray() {}
 
-    return buffer;
+template <typename T>
+T fileArray<T>::operator[](const unsigned int index) {
+    //FILE *fp = fopen(filePath, "rb");
+    fseek(fp,index * sizeof(T) + offset * sizeof(T),SEEK_SET);
+    fread(&buffer,sizeof(T),1,fp);
+    
+    //fclose(fp);
+
+    return *buffer;
+}
+
+template <typename T>
+void fileArray<T>::setOffset(size_t off) {
+    offset = off;
 }
 
 
 template<typename T>
-static void radixPass(unsigned int* a, unsigned int* b, T* r, unsigned int n, unsigned int K, bool byRank = false) { 
+static void radixPass(unsigned int* a, unsigned int* b, T r, unsigned int n, unsigned int K, bool byRank = false) { 
     unsigned int* c = new unsigned int[K + 1]; // counter array
     for (int i = 0; i <= K; i++) c[i] = 0; // reset counters
     if (byRank)
@@ -76,7 +88,7 @@ static void radixPass(unsigned int* a, unsigned int* b, T* r, unsigned int n, un
 }
 
 template <typename T>
-unsigned int renameToRank(unsigned int *a, unsigned int *b, T *buffer, int sizeA, int size0) {
+unsigned int renameToRank(unsigned int *a, unsigned int *b, T buffer, int sizeA, int size0) {
     int rank = 0, c0 = -1, c1 = -1, c2 = -1;
     for (int i = 0; i < sizeA; i++) {
         if (buffer[a[i]] != c0 || buffer[a[i]+1] != c1 || buffer[a[i]+2] != c2) {
@@ -97,10 +109,23 @@ unsigned int renameToRank(unsigned int *a, unsigned int *b, T *buffer, int sizeA
 
 
 template <typename T>
-void dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd, unsigned int alphabetSize, unsigned int level=0) {
+T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd, unsigned int alphabetSize, unsigned int level=0) {
     unsigned int nMod3Suffixes0 = (currentEnd+2)/3;
     unsigned int nMod3Suffixes1 = (currentEnd+1)/3;
     unsigned int nMod3Suffixes2 = (currentEnd+0)/3;
+
+    string levelStr = to_string(level);
+
+    unsigned int sizePlus=3;
+    if (level==0) sizePlus=1;
+
+    char bufPrefix[] = "tempBuf";
+    const char *fileBuf = strcat(bufPrefix, levelStr.c_str());
+    serialize<T>(buffer, currentEnd+sizePlus, fileBuf);
+    delete [] buffer; 
+
+
+
 
     // read buffer into a file straight away and delete the array
     // then rewrite operations to lseek positions from the file
@@ -134,16 +159,23 @@ void dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
         }
     }
 
-    radixPass<T>(R,SA,buffer+2,rSize,alphabetSize);
-    radixPass<T>(SA,R,buffer+1,rSize,alphabetSize);
-    radixPass<T>(R,SA,buffer,rSize,alphabetSize);
 
-    unsigned int rank = renameToRank<T>(SA, R, buffer, rSize, nMod3Suffixes1);
+
+    FILE *fp = fopen(fileBuf, "rb");
+    fileArray<T> bufferFile(fp,2);
+    radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
+    bufferFile.setOffset(1);
+    radixPass<fileArray<T>>(SA,R,bufferFile,rSize,alphabetSize);
+    bufferFile.setOffset(0);
+    radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
+
+
+    unsigned int rank = renameToRank<fileArray<T>>(SA, R, bufferFile, rSize, nMod3Suffixes1);
 
     if (rank < rSize) {
     // if (false) {
         cout << "entering recursion level "<< level << endl;
-        dc3SuffixArray<unsigned int>(SA, R, rSize, rank,level+1);
+        R = dc3SuffixArray<unsigned int>(SA, R, rSize, rank,level+1);
         cout << "exiting recursion level "<<level<< endl;
 
         for (int i = 0, j = 0, k = nMod3Suffixes1; i < currentEnd; i++) {
@@ -167,11 +199,11 @@ void dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
         }
     }  
 
-    string levelStr = to_string(level);
+    // string levelStr = to_string(level);
 
-    char rPrefix[] = "tempR";
-    const char *fileR = strcat(rPrefix, levelStr.c_str());
-    serialize<unsigned int>(R, rSize+3, fileR);
+    // char rPrefix[] = "tempR";
+    // const char *fileR = strcat(rPrefix, levelStr.c_str());
+    // serialize<unsigned int>(R, rSize+3, fileR);
     // delete [] R; 
 
     // char saPrefix[] = "tempSA";
@@ -192,12 +224,15 @@ void dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
     // R = new unsigned int[rSize+3];
     // deserialize<unsigned int>(fileR, rSize+3, R);
     
-    radixPass<unsigned int>(SA0,R0,R,nMod3Suffixes0,rSize,true);
-    radixPass<T>(R0,SA0,buffer,nMod3Suffixes0,alphabetSize);
+    radixPass<unsigned int*>(SA0,R0,R,nMod3Suffixes0,rSize,true);
+    radixPass<fileArray<T>>(R0,SA0,bufferFile,nMod3Suffixes0,alphabetSize);
     delete [] R0;
 
     // SA = new unsigned int[rSize+3];
     // deserialize<unsigned int>(fileSA, rSize+3, SA);
+
+    
+    bufferFile.setOffset(0);
 
     for (int i = 0, j = 0; i + j < currentEnd;) {
         if (j == nMod3Suffixes0) {
@@ -207,10 +242,10 @@ void dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
             suffixArray[i+j] = SA0[j++];
         }
         else if (SA[i] % 3 == 1) {
-            if (buffer[SA[i]] < buffer[SA0[j]]) {
+            if (bufferFile[SA[i]] < bufferFile[SA0[j]]) {
                 suffixArray[i+j] = SA[i++];
             } 
-            else if (buffer[SA[i]] > buffer[SA0[j]]) {
+            else if (bufferFile[SA[i]] > bufferFile[SA0[j]]) {
                 suffixArray[i+j] = SA0[j++];
             }
             else {
@@ -218,16 +253,16 @@ void dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
             }
         }
         else {
-            if (buffer[SA[i]] < buffer[SA0[j]]) {
+            if (bufferFile[SA[i]] < bufferFile[SA0[j]]) {
                 suffixArray[i+j] = SA[i++];
             } 
-            else if (buffer[SA[i]] > buffer[SA0[j]]) {
+            else if (bufferFile[SA[i]] > bufferFile[SA0[j]]) {
                 suffixArray[i+j] = SA0[j++];
             }
-            else if (buffer[SA[i]+1] < buffer[SA0[j]+1]) {
+            else if (bufferFile[SA[i]+1] < bufferFile[SA0[j]+1]) {
                 suffixArray[i+j] = SA[i++];
             }        
-            else if (buffer[SA[i]+1] > buffer[SA0[j]+1]) {
+            else if (bufferFile[SA[i]+1] > bufferFile[SA0[j]+1]) {
                 suffixArray[i+j] = SA0[j++];
             }
             else {
@@ -235,7 +270,14 @@ void dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEn
             }
         }
     }
+
+    fclose(fp);
     delete [] R; delete [] SA; delete [] SA0;
+
+    buffer = new T[currentEnd + sizePlus];
+    deserialize<T>(fileBuf, currentEnd + sizePlus, buffer);
+
+    return buffer;
 }
 
 
@@ -250,48 +292,50 @@ main(int argc, char const *argv[])
     ofstream output;
     output.open("./warandpeace.bwt");
 
-    // unsigned int currentEnd = getFileSize(fileName);
-    // uint8_t* buffer = new uint8_t[currentEnd+3];
+    unsigned int currentEnd = getFileSize(fileName);
+    uint8_t* buffer = new uint8_t[currentEnd+3];
 
-    // unsigned int* suffixArray = new unsigned int[currentEnd+3];
+    unsigned int* suffixArray = new unsigned int[currentEnd+3];
 
-    // unsigned int pos = 0;
-    // while (input.peek() != EOF) {
-    //     input >> buffer[pos];
-    //     suffixArray[pos] = pos;
-    //     pos++;
+    unsigned int pos = 0;
+    while (input.peek() != EOF) {
+        input >> buffer[pos];
+        suffixArray[pos] = pos;
+        pos++;
+    }
+    for (int i=0;i<3;i++) {
+        buffer[pos+i] = 0;
+        suffixArray[pos+i] = 0;
+    }
+
+    input.close();
+
+    buffer = dc3SuffixArray<uint8_t>(suffixArray, buffer, currentEnd+1, VALIDCHARS);
+
+    // for (int i = 0; i < currentEnd+1; i++) {
+    //     cout << suffixArray[i] <<" ";
     // }
-    // for (int i=0;i<3;i++) {
-    //     buffer[pos+i] = 0;
-    //     suffixArray[pos+i] = 0;
-    // }
-
-    // input.close();
-
-    // dc3SuffixArray<uint8_t>(suffixArray, buffer, currentEnd+1, VALIDCHARS);
-
-    // // for (int i = 0; i < currentEnd+1; i++) {
-    // //     cout << suffixArray[i] <<" ";
-    // // }
-    // // cout << endl;
+    // cout << endl;
     
-    // for (int i = 1; i < currentEnd+1; i++) {
-    //     // subtract 1 from suffix index to get bwt
-    //     if (suffixArray[i] > 0)
-    //         output << buffer[suffixArray[i]-1];
-    //     else
-    //         output << buffer[pos-1];
-    // }
+    for (int i = 1; i < currentEnd+1; i++) {
+        // subtract 1 from suffix index to get bwt
+        if (suffixArray[i] > 0)
+            output << buffer[suffixArray[i]-1];
+        else
+            output << buffer[pos-1];
+    }
     
-    // delete [] suffixArray; 
-    // delete [] buffer;
+    delete [] suffixArray; 
+    delete [] buffer;
 
     output.close();
 
-    const char *str = "./testR0";
-    fileArray<unsigned int> test(str);
+    // const char *str = "./tempR5";
+    // fileArray<unsigned int> test(str);
 
-    cout << test[1] << endl;
+    // cout << test[2] << endl;
+
+
 
     return 0;
 
