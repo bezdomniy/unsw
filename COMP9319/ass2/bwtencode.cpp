@@ -7,6 +7,7 @@
 
 
 #define VALIDCHARS 126
+#define DISK_WRITE_CUTOFF 3
 using namespace std;
 
 unsigned int getFileSize(string fileName) {
@@ -37,6 +38,7 @@ class fileArray {
     T buffer[sizeof(T)];
 
     public:
+        fileArray<T>();
         fileArray<T>(FILE * filePointer, size_t off = 0);
         ~fileArray<T>();
         void setOffset(size_t off);
@@ -54,12 +56,8 @@ fileArray<T>::~fileArray() {}
 
 template <typename T>
 T fileArray<T>::operator[](const unsigned int index) {
-    //FILE *fp = fopen(filePath, "rb");
     fseek(fp,index * sizeof(T) + offset * sizeof(T),SEEK_SET);
     fread(&buffer,sizeof(T),1,fp);
-    
-    //fclose(fp);
-
     return *buffer;
 }
 
@@ -67,7 +65,6 @@ template <typename T>
 void fileArray<T>::setOffset(size_t off) {
     offset = off;
 }
-
 
 template<typename T>
 static void radixPass(unsigned int* a, unsigned int* b, T r, unsigned int n, unsigned int K, bool byRank = false) { 
@@ -107,6 +104,45 @@ unsigned int renameToRank(unsigned int *a, unsigned int *b, T buffer, int sizeA,
     return rank;
 }
 
+template <typename T>
+void mergeSuffixes(unsigned int* suffixArray, unsigned int* SA, unsigned int* SA0, unsigned int* R, T buffer, unsigned int currentEnd, unsigned int rSize, unsigned int nMod3Suffixes0, unsigned int nMod3Suffixes1) {
+    for (int i = 0, j = 0; i + j < currentEnd;) {
+        if (j == nMod3Suffixes0) {
+            suffixArray[i+j] = SA[i++];
+        }
+        else if (i == rSize) {
+            suffixArray[i+j] = SA0[j++];
+        }
+        else if (SA[i] % 3 == 1) {
+            if (buffer[SA[i]] < buffer[SA0[j]]) {
+                suffixArray[i+j] = SA[i++];
+            } 
+            else if (buffer[SA[i]] > buffer[SA0[j]]) {
+                suffixArray[i+j] = SA0[j++];
+            }
+            else {
+                suffixArray[i+j] = R[(SA[i]/3)+nMod3Suffixes1] < R[SA0[j]/3] ? SA[i++] : SA0[j++];
+            }
+        }
+        else {
+            if (buffer[SA[i]] < buffer[SA0[j]]) {
+                suffixArray[i+j] = SA[i++];
+            } 
+            else if (buffer[SA[i]] > buffer[SA0[j]]) {
+                suffixArray[i+j] = SA0[j++];
+            }
+            else if (buffer[SA[i]+1] < buffer[SA0[j]+1]) {
+                suffixArray[i+j] = SA[i++];
+            }        
+            else if (buffer[SA[i]+1] > buffer[SA0[j]+1]) {
+                suffixArray[i+j] = SA0[j++];
+            }
+            else {
+                suffixArray[i+j] = R[(SA[i]/3)+1]  < R[(SA[j]/3)+nMod3Suffixes1+1] ? SA[i++] : SA0[j++];
+            }
+        }
+    }
+}
 
 template <typename T>
 T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd, unsigned int alphabetSize, unsigned int level=0) {
@@ -115,17 +151,20 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
     unsigned int nMod3Suffixes2 = (currentEnd+0)/3;
 
     string levelStr = to_string(level);
-
-    unsigned int sizePlus=3;
-    if (level==0) sizePlus=1;
+    unsigned int sizePlus = 3;
+    if (level == 0) sizePlus = 1;
 
     char bufPrefix[] = "tempBuf";
     const char *fileBuf = strcat(bufPrefix, levelStr.c_str());
-    serialize<T>(buffer, currentEnd+sizePlus, fileBuf);
-    delete [] buffer; 
+    FILE *fp = fopen(fileBuf, "rb");
+    fileArray<T> bufferFile(fp,2);
+    
+    
 
-
-
+    if (level > DISK_WRITE_CUTOFF) {
+        serialize<T>(buffer, currentEnd+sizePlus, fileBuf);
+        delete [] buffer; 
+    }
 
     // read buffer into a file straight away and delete the array
     // then rewrite operations to lseek positions from the file
@@ -159,18 +198,30 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
         }
     }
 
+    unsigned int rank;
+
+    if (level > DISK_WRITE_CUTOFF) {
+        //fp = fopen(fileBuf, "rb");
+        
+        radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
+        bufferFile.setOffset(1);
+        radixPass<fileArray<T>>(SA,R,bufferFile,rSize,alphabetSize);
+        bufferFile.setOffset(0);
+        radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
+
+        rank = renameToRank<fileArray<T>>(SA, R, bufferFile, rSize, nMod3Suffixes1);
+    }
+    else {
+        radixPass<T*>(R,SA,buffer+2,rSize,alphabetSize);
+        radixPass<T*>(SA,R,buffer+1,rSize,alphabetSize);
+        radixPass<T*>(R,SA,buffer,rSize,alphabetSize);
+
+        rank = renameToRank<T*>(SA, R, buffer, rSize, nMod3Suffixes1);
+    }
 
 
-    FILE *fp = fopen(fileBuf, "rb");
-    fileArray<T> bufferFile(fp,2);
-    radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
-    bufferFile.setOffset(1);
-    radixPass<fileArray<T>>(SA,R,bufferFile,rSize,alphabetSize);
-    bufferFile.setOffset(0);
-    radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
 
 
-    unsigned int rank = renameToRank<fileArray<T>>(SA, R, bufferFile, rSize, nMod3Suffixes1);
 
     if (rank < rSize) {
     // if (false) {
@@ -220,62 +271,27 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
         if (i % 3 == 0) 
             SA0[j++] = i;
     }
-    
-    // R = new unsigned int[rSize+3];
-    // deserialize<unsigned int>(fileR, rSize+3, R);
-    
+        
+
     radixPass<unsigned int*>(SA0,R0,R,nMod3Suffixes0,rSize,true);
-    radixPass<fileArray<T>>(R0,SA0,bufferFile,nMod3Suffixes0,alphabetSize);
+    if (level > DISK_WRITE_CUTOFF)
+        radixPass<fileArray<T>>(R0,SA0,bufferFile,nMod3Suffixes0,alphabetSize);
+    else
+        radixPass<T*>(R0,SA0,buffer,nMod3Suffixes0,alphabetSize);
     delete [] R0;
 
-    // SA = new unsigned int[rSize+3];
-    // deserialize<unsigned int>(fileSA, rSize+3, SA);
+    if (level > DISK_WRITE_CUTOFF)
+        mergeSuffixes<fileArray<T>>(suffixArray, SA, SA0, R, bufferFile, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
+    else
+        mergeSuffixes<T*>(suffixArray, SA, SA0, R, buffer, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
 
-    
-    bufferFile.setOffset(0);
-
-    for (int i = 0, j = 0; i + j < currentEnd;) {
-        if (j == nMod3Suffixes0) {
-            suffixArray[i+j] = SA[i++];
-        }
-        else if (i == rSize) {
-            suffixArray[i+j] = SA0[j++];
-        }
-        else if (SA[i] % 3 == 1) {
-            if (bufferFile[SA[i]] < bufferFile[SA0[j]]) {
-                suffixArray[i+j] = SA[i++];
-            } 
-            else if (bufferFile[SA[i]] > bufferFile[SA0[j]]) {
-                suffixArray[i+j] = SA0[j++];
-            }
-            else {
-                suffixArray[i+j] = R[(SA[i]/3)+nMod3Suffixes1] < R[SA0[j]/3] ? SA[i++] : SA0[j++];
-            }
-        }
-        else {
-            if (bufferFile[SA[i]] < bufferFile[SA0[j]]) {
-                suffixArray[i+j] = SA[i++];
-            } 
-            else if (bufferFile[SA[i]] > bufferFile[SA0[j]]) {
-                suffixArray[i+j] = SA0[j++];
-            }
-            else if (bufferFile[SA[i]+1] < bufferFile[SA0[j]+1]) {
-                suffixArray[i+j] = SA[i++];
-            }        
-            else if (bufferFile[SA[i]+1] > bufferFile[SA0[j]+1]) {
-                suffixArray[i+j] = SA0[j++];
-            }
-            else {
-                suffixArray[i+j] = R[(SA[i]/3)+1]  < R[(SA[j]/3)+nMod3Suffixes1+1] ? SA[i++] : SA0[j++];
-            }
-        }
+    if (level > DISK_WRITE_CUTOFF) {
+        buffer = new T[currentEnd + sizePlus];
+        deserialize<T>(fileBuf, currentEnd + sizePlus, buffer);
     }
 
     fclose(fp);
     delete [] R; delete [] SA; delete [] SA0;
-
-    buffer = new T[currentEnd + sizePlus];
-    deserialize<T>(fileBuf, currentEnd + sizePlus, buffer);
 
     return buffer;
 }
