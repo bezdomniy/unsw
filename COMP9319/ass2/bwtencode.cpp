@@ -7,7 +7,7 @@
 
 
 #define VALIDCHARS 126
-#define DISK_WRITE_CUTOFF 3
+#define DISK_WRITE_CUTOFF 0
 using namespace std;
 
 unsigned int getFileSize(string fileName) {
@@ -42,6 +42,7 @@ class fileArray {
         fileArray<T>(FILE * filePointer, size_t off = 0);
         ~fileArray<T>();
         void setOffset(size_t off);
+        
         T operator[] (const unsigned int index);
 };
 
@@ -145,7 +146,81 @@ void mergeSuffixes(unsigned int* suffixArray, unsigned int* SA, unsigned int* SA
 }
 
 template <typename T>
-T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd, unsigned int alphabetSize, unsigned int level=0) {
+void mergeSuffixesToBWTFile(const char* suffixArray, unsigned int* SA, unsigned int* SA0, unsigned int* R, T* buffer, unsigned int currentEnd, unsigned int rSize, unsigned int nMod3Suffixes0, unsigned int nMod3Suffixes1) {
+    ofstream out(suffixArray);
+
+    bool firstRec = true;
+    // fix starting at 1
+    for (int i = 0, j = 0; i + j < currentEnd;) {
+        if (firstRec) {
+            if (j == nMod3Suffixes0 || buffer[SA[i]] < buffer[SA0[j]] || R[(SA[i]/3)+nMod3Suffixes1] < R[SA0[j]/3] || buffer[SA[i]+1] < buffer[SA0[j]+1] || R[(SA[i]/3)+1] < R[(SA[j]/3)+nMod3Suffixes1+1])
+                i++;
+            else
+                j++;
+
+            firstRec = false;
+            continue;
+        }
+
+        if (j == nMod3Suffixes0) {
+            out << buffer[SA[i]-1];
+            i++;
+        }
+        else if (i == rSize) {
+            out << (SA0[j] == 0 ? buffer[currentEnd-2] : buffer[SA0[j] - 1]);
+            j++;
+        }
+        else if (SA[i] % 3 == 1) {
+            if (buffer[SA[i]] < buffer[SA0[j]]) {
+                out << buffer[SA[i]-1];
+                i++;
+            } 
+            else if (buffer[SA[i]] > buffer[SA0[j]]) {
+                out << (SA0[j] == 0 ? buffer[currentEnd-2] : buffer[SA0[j] - 1]);
+                j++;
+            }
+            else if (R[(SA[i]/3)+nMod3Suffixes1] < R[SA0[j]/3]) {
+                out << buffer[SA[i] - 1];
+                i++;
+            }
+            else {
+                out << (SA0[j] == 0 ? buffer[currentEnd-2] : buffer[SA0[j] - 1]);
+                j++;
+            }
+        }
+        else {
+            if (buffer[SA[i]] < buffer[SA0[j]]) {
+                out << buffer[SA[i]-1];
+                i++;
+            } 
+            else if (buffer[SA[i]] > buffer[SA0[j]]) {
+                out << (SA0[j] == 0 ? buffer[currentEnd-2] : buffer[SA0[j] - 1]);
+                j++;
+            }
+            else if (buffer[SA[i]+1] < buffer[SA0[j]+1]) {
+                out << buffer[SA[i]-1];
+                i++;
+            }        
+            else if (buffer[SA[i]+1] > buffer[SA0[j]+1]) {
+                out << (SA0[j] == 0 ? buffer[currentEnd-2] : buffer[SA0[j] - 1]);
+                j++;
+            }
+            else if (R[(SA[i]/3)+1] < R[(SA[j]/3)+nMod3Suffixes1+1]) {
+                out << buffer[SA[i] -1];
+                i++;
+            }
+            else {
+                out << (SA0[j] == 0 ? buffer[currentEnd-2] : buffer[SA0[j] -1]);
+                j++;
+            }
+        }
+    }
+    
+    out.close();
+}
+
+template <typename T>
+T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd, unsigned int alphabetSize, unsigned int level=0, const char* outName="") {
     unsigned int nMod3Suffixes0 = (currentEnd+2)/3;
     unsigned int nMod3Suffixes1 = (currentEnd+1)/3;
     unsigned int nMod3Suffixes2 = (currentEnd+0)/3;
@@ -165,8 +240,7 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
     }
 
     // try:
-    // read R/SA/both into a file straight away and delete the array(s)
-    // then rewrite operations to lseek positions from the file
+    // only delete buffer in the second half... to save on R0 + SA0 space
     
     const unsigned int rSize = nMod3Suffixes1 + nMod3Suffixes2;
 
@@ -216,9 +290,9 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
 
 
     if (rank < rSize) {
-        cout << "entering recursion level "<< level << endl;
+        cout << "entering into recursion level "<< level+1 << endl;
         R = dc3SuffixArray<unsigned int>(SA, R, rSize, rank,level+1);
-        cout << "exiting recursion level "<<level<< endl;
+        cout << "exiting from recursion level "<<level+1<< endl;
 
         for (int i = 0, j = 0, k = nMod3Suffixes1; i < currentEnd; i++) {
             if (i % 3 == 1) {
@@ -240,7 +314,11 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
             }
         }
     }  
-  
+    // char saPrefix[] = "tempSA_";
+    // const char *fileSA = strcat(saPrefix, levelStr.c_str());
+    // serialize<unsigned int>(SA, rSize + 3, fileSA);
+    // delete [] SA;
+
     unsigned int* SA0 = new unsigned int[nMod3Suffixes0];
     unsigned int* R0 = new unsigned int[nMod3Suffixes0];
     for (int i = 0; i < nMod3Suffixes0; i++) SA0[i] = 0;
@@ -251,79 +329,93 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
             SA0[j++] = i;
     }
         
-
     radixPass<unsigned int*>(SA0,R0,R,nMod3Suffixes0,rSize,true);
+    
     if (level > DISK_WRITE_CUTOFF)
         radixPass<fileArray<T>>(R0,SA0,bufferFile,nMod3Suffixes0,alphabetSize);
     else
         radixPass<T*>(R0,SA0,buffer,nMod3Suffixes0,alphabetSize);
+
     delete [] R0;
 
-    if (level > DISK_WRITE_CUTOFF)
+    // SA = new unsigned int[rSize + 3];
+    // deserialize<unsigned int>(fileSA, rSize + 3, SA);
+
+    if (level == 0) {
+    // if (false) {
+        mergeSuffixesToBWTFile<T>(outName, SA, SA0, R, buffer, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
+    }
+    else if (level > DISK_WRITE_CUTOFF) {
         mergeSuffixes<fileArray<T>>(suffixArray, SA, SA0, R, bufferFile, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
-    else
+    }
+    else {
         mergeSuffixes<T*>(suffixArray, SA, SA0, R, buffer, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
+    }
+        
+    
+    if (fp!=NULL) fclose(fp);
+            
+    delete [] R; delete [] SA; delete [] SA0;
 
     if (level > DISK_WRITE_CUTOFF) {
         buffer = new T[currentEnd + sizePlus];
         deserialize<T>(fileBuf, currentEnd + sizePlus, buffer);
     }
 
-    fclose(fp);
-    delete [] R; delete [] SA; delete [] SA0;
-
     return buffer;
 }
-
-
 
 main(int argc, char const *argv[])
 {
     string fileName = "./warandpeace.txt";
+    const char* outName = (const char*)"./warandpeace.bwt";
 
     ifstream input(fileName);
     input.unsetf(ios_base::skipws);
 
-    ofstream output;
-    output.open("./warandpeace.bwt");
-
     unsigned int currentEnd = getFileSize(fileName);
     uint8_t* buffer = new uint8_t[currentEnd+3];
 
-    unsigned int* suffixArray = new unsigned int[currentEnd+3];
+    
+    // unsigned int* suffixArray = new unsigned int[currentEnd+3];
+    // ofstream output(outName);
+
+    unsigned int* suffixArray;
 
     unsigned int pos = 0;
     while (input.peek() != EOF) {
         input >> buffer[pos];
-        suffixArray[pos] = pos;
+        //suffixArray[pos] = pos;
         pos++;
     }
     for (int i=0;i<3;i++) {
         buffer[pos+i] = 0;
-        suffixArray[pos+i] = 0;
+        //suffixArray[pos+i] = 0;
     }
+    //cout << pos << endl;
+    //cout << currentEnd+1-1 << endl;
 
     input.close();
 
-    buffer = dc3SuffixArray<uint8_t>(suffixArray, buffer, currentEnd+1, VALIDCHARS);
+    buffer = dc3SuffixArray<uint8_t>(suffixArray, buffer, currentEnd+1, VALIDCHARS, 0, outName);
 
     // for (int i = 0; i < currentEnd+1; i++) {
     //     cout << suffixArray[i] <<" ";
     // }
     // cout << endl;
     
-    for (int i = 1; i < currentEnd+1; i++) {
-        // subtract 1 from suffix index to get bwt
-        if (suffixArray[i] > 0)
-            output << buffer[suffixArray[i]-1];
-        else
-            output << buffer[pos-1];
-    }
+    // for (int i = 1; i < currentEnd+1; i++) {
+    //     // subtract 1 from suffix index to get bwt
+    //     if (suffixArray[i] > 0)
+    //         output << buffer[suffixArray[i]-1];
+    //     else
+    //         output << buffer[pos-1];
+    // }
     
-    delete [] suffixArray; 
+    // delete [] suffixArray; 
     delete [] buffer;
 
-    output.close();
+
 
     return 0;
 
