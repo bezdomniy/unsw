@@ -106,43 +106,53 @@ unsigned int renameToRank(unsigned int *a, unsigned int *b, T buffer, int sizeA,
 }
 
 template <typename T>
-void mergeSuffixes(unsigned int* suffixArray, unsigned int* SA, unsigned int* SA0, unsigned int* R, T buffer, unsigned int currentEnd, unsigned int rSize, unsigned int nMod3Suffixes0, unsigned int nMod3Suffixes1) {
+void mergeSuffixes(const char* suffixArray, unsigned int* SA, unsigned int* SA0, unsigned int* R, T* buffer, unsigned int currentEnd, unsigned int rSize, unsigned int nMod3Suffixes0, unsigned int nMod3Suffixes1) {
+    ofstream out(suffixArray, ofstream::binary);
+
     for (int i = 0, j = 0; i + j < currentEnd;) {
         if (j == nMod3Suffixes0) {
-            suffixArray[i+j] = SA[i++];
+            out.write((char*)&SA[i++],4);
         }
         else if (i == rSize) {
-            suffixArray[i+j] = SA0[j++];
+            out.write((char*)&SA0[j++],4);
         }
         else if (SA[i] % 3 == 1) {
             if (buffer[SA[i]] < buffer[SA0[j]]) {
-                suffixArray[i+j] = SA[i++];
+                out.write((char*)&SA[i++],4);
             } 
             else if (buffer[SA[i]] > buffer[SA0[j]]) {
-                suffixArray[i+j] = SA0[j++];
+                out.write((char*)&SA0[j++],4);
+            }
+            else if (R[(SA[i]/3)+nMod3Suffixes1] < R[SA0[j]/3]) {
+                out.write((char*)&SA[i++],4);
             }
             else {
-                suffixArray[i+j] = R[(SA[i]/3)+nMod3Suffixes1] < R[SA0[j]/3] ? SA[i++] : SA0[j++];
+                out.write((char*)&SA0[j++],4);
             }
         }
         else {
             if (buffer[SA[i]] < buffer[SA0[j]]) {
-                suffixArray[i+j] = SA[i++];
+                out.write((char*)&SA[i++],4);
             } 
             else if (buffer[SA[i]] > buffer[SA0[j]]) {
-                suffixArray[i+j] = SA0[j++];
+                out.write((char*)&SA0[j++],4);
             }
             else if (buffer[SA[i]+1] < buffer[SA0[j]+1]) {
-                suffixArray[i+j] = SA[i++];
+                out.write((char*)&SA[i++],4);
             }        
             else if (buffer[SA[i]+1] > buffer[SA0[j]+1]) {
-                suffixArray[i+j] = SA0[j++];
+                out.write((char*)&SA0[j++],4);
+            }
+            else if (R[(SA[i]/3)+1]  < R[(SA[j]/3)+nMod3Suffixes1+1]) {
+                out.write((char*)&SA[i++],4);
             }
             else {
-                suffixArray[i+j] = R[(SA[i]/3)+1]  < R[(SA[j]/3)+nMod3Suffixes1+1] ? SA[i++] : SA0[j++];
+                out.write((char*)&SA0[j++],4);
             }
         }
     }
+
+    out.close();
 }
 
 template <typename T>
@@ -220,24 +230,24 @@ void mergeSuffixesToBWTFile(const char* suffixArray, unsigned int* SA, unsigned 
 }
 
 template <typename T>
-T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd, unsigned int alphabetSize, unsigned int level=0, const char* outName="") {
+void dc3SuffixArray(T *buffer, unsigned int currentEnd, unsigned int alphabetSize, unsigned int level=0, const char* outName="") {
     unsigned int nMod3Suffixes0 = (currentEnd+2)/3;
     unsigned int nMod3Suffixes1 = (currentEnd+1)/3;
     unsigned int nMod3Suffixes2 = (currentEnd+0)/3;
 
-    string levelStr = to_string(level);
-    unsigned int sizePlus = 3;
-    if (level == 0) sizePlus = 1;
+    // string levelStr = to_string(level);
+    // unsigned int sizePlus = 3;
+    // if (level == 0) sizePlus = 1;
 
-    char bufPrefix[] = "tempBuf";
-    const char *fileBuf = strcat(bufPrefix, levelStr.c_str());
-    FILE *fp = fopen(fileBuf, "rb");
-    fileArray<T> bufferFile(fp,2);
+    // char bufPrefix[] = "tempBuf";
+    // const char *fileBuf = strcat(bufPrefix, levelStr.c_str());
+    // FILE *fp = fopen(fileBuf, "rb");
+    // fileArray<T> bufferFile(fp,2);
     
-    if (level > DISK_WRITE_CUTOFF) {
-        serialize<T>(buffer, currentEnd+sizePlus, fileBuf);
-        delete [] buffer; 
-    }
+    // if (level > DISK_WRITE_CUTOFF) {
+    //     serialize<T>(buffer, currentEnd+sizePlus, fileBuf);
+    //     delete [] buffer; 
+    // }
 
     // try:
     // only delete buffer in the second half... to save on R0 + SA0 space
@@ -271,28 +281,30 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
 
     unsigned int rank;
 
-    if (level > DISK_WRITE_CUTOFF) {
-        radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
-        bufferFile.setOffset(1);
-        radixPass<fileArray<T>>(SA,R,bufferFile,rSize,alphabetSize);
-        bufferFile.setOffset(0);
-        radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
+    // if (level > DISK_WRITE_CUTOFF) {
+    //     radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
+    //     bufferFile.setOffset(1);
+    //     radixPass<fileArray<T>>(SA,R,bufferFile,rSize,alphabetSize);
+    //     bufferFile.setOffset(0);
+    //     radixPass<fileArray<T>>(R,SA,bufferFile,rSize,alphabetSize);
 
-        rank = renameToRank<fileArray<T>>(SA, R, bufferFile, rSize, nMod3Suffixes1);
-    }
-    else {
+    //     rank = renameToRank<fileArray<T>>(SA, R, bufferFile, rSize, nMod3Suffixes1);
+    // }
+    // else {
         radixPass<T*>(R,SA,buffer+2,rSize,alphabetSize);
         radixPass<T*>(SA,R,buffer+1,rSize,alphabetSize);
         radixPass<T*>(R,SA,buffer,rSize,alphabetSize);
 
         rank = renameToRank<T*>(SA, R, buffer, rSize, nMod3Suffixes1);
-    }
+    // }
 
 
     if (rank < rSize) {
         cout << "entering into recursion level "<< level+1 << endl;
-        R = dc3SuffixArray<unsigned int>(SA, R, rSize, rank,level+1);
+        // const char* fileOut = 
+        dc3SuffixArray<unsigned int>(R, rSize, rank,level+1);
         cout << "exiting from recursion level "<<level+1<< endl;
+
 
         for (int i = 0, j = 0, k = nMod3Suffixes1; i < currentEnd; i++) {
             if (i % 3 == 1) {
@@ -302,6 +314,16 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
                 R[k++] = i;
             }
         }
+
+        delete [] SA;
+
+        string levelStrPlus1 = to_string(level+1);
+        char saOutPrefix[] = "tempSA";
+        const char *fileOut = strcat(saOutPrefix, levelStrPlus1.c_str());
+
+        SA = new unsigned int[rSize + 3];
+        deserialize<unsigned int>(fileOut, rSize + 3, SA);
+        
 
         for (int i = 0; i < rSize; i++) SA[i] = R[SA[i]];
         
@@ -331,38 +353,46 @@ T* dc3SuffixArray(unsigned int *suffixArray, T *buffer, unsigned int currentEnd,
         
     radixPass<unsigned int*>(SA0,R0,R,nMod3Suffixes0,rSize,true);
     
-    if (level > DISK_WRITE_CUTOFF)
-        radixPass<fileArray<T>>(R0,SA0,bufferFile,nMod3Suffixes0,alphabetSize);
-    else
-        radixPass<T*>(R0,SA0,buffer,nMod3Suffixes0,alphabetSize);
+    // if (level > DISK_WRITE_CUTOFF)
+    //     radixPass<fileArray<T>>(R0,SA0,bufferFile,nMod3Suffixes0,alphabetSize);
+    // else
+    radixPass<T*>(R0,SA0,buffer,nMod3Suffixes0,alphabetSize);
 
     delete [] R0;
 
     // SA = new unsigned int[rSize + 3];
     // deserialize<unsigned int>(fileSA, rSize + 3, SA);
 
+    string levelStr = to_string(level);
+    //char *fileSA = new char[8];
+    char saPrefix[] = "tempSA";
+    const char *fileSA = strcat(saPrefix, levelStr.c_str());
+
     if (level == 0) {
     // if (false) {
         mergeSuffixesToBWTFile<T>(outName, SA, SA0, R, buffer, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
     }
-    else if (level > DISK_WRITE_CUTOFF) {
-        mergeSuffixes<fileArray<T>>(suffixArray, SA, SA0, R, bufferFile, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
-    }
+    // else if (level > DISK_WRITE_CUTOFF) {
+    //     mergeSuffixes<fileArray<T>>(suffixArray, SA, SA0, R, bufferFile, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
+    // }
     else {
-        mergeSuffixes<T*>(suffixArray, SA, SA0, R, buffer, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
+        mergeSuffixes<T>(fileSA, SA, SA0, R, buffer, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
     }
+
+
+    // old_mergeSuffixes<T>(outName, SA, SA0, R, buffer, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
         
     
-    if (fp!=NULL) fclose(fp);
+    // if (fp!=NULL) fclose(fp);
             
     delete [] R; delete [] SA; delete [] SA0;
 
-    if (level > DISK_WRITE_CUTOFF) {
-        buffer = new T[currentEnd + sizePlus];
-        deserialize<T>(fileBuf, currentEnd + sizePlus, buffer);
-    }
+    // if (level > DISK_WRITE_CUTOFF) {
+    //     buffer = new T[currentEnd + sizePlus];
+    //     deserialize<T>(fileBuf, currentEnd + sizePlus, buffer);
+    // }
 
-    return buffer;
+    //return fileSA;
 }
 
 main(int argc, char const *argv[])
@@ -380,7 +410,7 @@ main(int argc, char const *argv[])
     // unsigned int* suffixArray = new unsigned int[currentEnd+3];
     // ofstream output(outName);
 
-    unsigned int* suffixArray;
+    // unsigned int* suffixArray;
 
     unsigned int pos = 0;
     while (input.peek() != EOF) {
@@ -397,7 +427,7 @@ main(int argc, char const *argv[])
 
     input.close();
 
-    buffer = dc3SuffixArray<uint8_t>(suffixArray, buffer, currentEnd+1, VALIDCHARS, 0, outName);
+    dc3SuffixArray<uint8_t>(buffer, currentEnd+1, VALIDCHARS, 0, outName);
 
     // for (int i = 0; i < currentEnd+1; i++) {
     //     cout << suffixArray[i] <<" ";
