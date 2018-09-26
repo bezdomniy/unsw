@@ -298,48 +298,7 @@ void dc3SuffixArray(T *buffer, unsigned int currentEnd, unsigned int alphabetSiz
         rank = renameToRank<T*>(SA, R, buffer, rSize, nMod3Suffixes1);
     // }
 
-
-    if (rank < rSize) {
-        cout << "entering into recursion level "<< level+1 << endl;
-        // const char* fileOut = 
-        dc3SuffixArray<unsigned int>(R, rSize, rank,level+1);
-        cout << "exiting from recursion level "<<level+1<< endl;
-
-
-        for (int i = 0, j = 0, k = nMod3Suffixes1; i < currentEnd; i++) {
-            if (i % 3 == 1) {
-                R[j++] = i;
-            }
-            else if (i % 3 == 2) {
-                R[k++] = i;
-            }
-        }
-
-        delete [] SA;
-
-        string levelStrPlus1 = to_string(level+1);
-        char saOutPrefix[] = "tempSA";
-        const char *fileOut = strcat(saOutPrefix, levelStrPlus1.c_str());
-
-        SA = new unsigned int[rSize + 3];
-        deserialize<unsigned int>(fileOut, rSize + 3, SA);
-        
-
-        for (int i = 0; i < rSize; i++) SA[i] = R[SA[i]];
-        
-        for (int i = 0; i < rSize; i++) {
-            if (SA[i] % 3 == 1) { 
-                R[SA[i]/3] = i+1; 
-            } 
-            else { 
-                R[SA[i]/3 + nMod3Suffixes1] = i+1; 
-            }
-        }
-    }  
-    // char saPrefix[] = "tempSA_";
-    // const char *fileSA = strcat(saPrefix, levelStr.c_str());
-    // serialize<unsigned int>(SA, rSize + 3, fileSA);
-    // delete [] SA;
+    if (rank < rSize) delete [] SA;
 
     unsigned int* SA0 = new unsigned int[nMod3Suffixes0];
     unsigned int* R0 = new unsigned int[nMod3Suffixes0];
@@ -360,16 +319,49 @@ void dc3SuffixArray(T *buffer, unsigned int currentEnd, unsigned int alphabetSiz
 
     delete [] R0;
 
-    // SA = new unsigned int[rSize + 3];
-    // deserialize<unsigned int>(fileSA, rSize + 3, SA);
+
+    if (rank < rSize) {
+        cout << "entering into recursion level "<< level+1 << endl;
+        dc3SuffixArray<unsigned int>(R, rSize, rank,level+1);
+        cout << "exiting from recursion level "<<level+1<< endl;
+
+
+        for (int i = 0, j = 0, k = nMod3Suffixes1; i < currentEnd; i++) {
+            if (i % 3 == 1) {
+                R[j++] = i;
+            }
+            else if (i % 3 == 2) {
+                R[k++] = i;
+            }
+        }
+
+        //delete [] SA;
+
+        string levelStrPlus1 = to_string(level+1);
+        char saOutPrefix[9] = "tempSA";
+        const char *fileOut = strcat(saOutPrefix, levelStrPlus1.c_str());
+
+        SA = new unsigned int[rSize + 3];
+        deserialize<unsigned int>(fileOut, rSize + 3, SA);
+        
+
+        for (int i = 0; i < rSize; i++) SA[i] = R[SA[i]];
+        
+        for (int i = 0; i < rSize; i++) {
+            if (SA[i] % 3 == 1) { 
+                R[SA[i]/3] = i+1; 
+            } 
+            else { 
+                R[SA[i]/3 + nMod3Suffixes1] = i+1; 
+            }
+        }
+    }  
 
     string levelStr = to_string(level);
-    //char *fileSA = new char[8];
-    char saPrefix[] = "tempSA";
+    char saPrefix[9] = "tempSA";
     const char *fileSA = strcat(saPrefix, levelStr.c_str());
 
     if (level == 0) {
-    // if (false) {
         mergeSuffixesToBWTFile<T>(outName, SA, SA0, R, buffer, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
     }
     // else if (level > DISK_WRITE_CUTOFF) {
@@ -379,10 +371,6 @@ void dc3SuffixArray(T *buffer, unsigned int currentEnd, unsigned int alphabetSiz
         mergeSuffixes<T>(fileSA, SA, SA0, R, buffer, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
     }
 
-
-    // old_mergeSuffixes<T>(outName, SA, SA0, R, buffer, currentEnd, rSize, nMod3Suffixes0, nMod3Suffixes1);
-        
-    
     // if (fp!=NULL) fclose(fp);
             
     delete [] R; delete [] SA; delete [] SA0;
@@ -397,8 +385,8 @@ void dc3SuffixArray(T *buffer, unsigned int currentEnd, unsigned int alphabetSiz
 
 main(int argc, char const *argv[])
 {
-    string fileName = "./warandpeace.txt";
-    const char* outName = (const char*)"./warandpeace.bwt";
+    string fileName = "./warandpeace3.txt";
+    const char* outName = (const char*)"./warandpeace3.bwt";
 
     ifstream input(fileName);
     input.unsetf(ios_base::skipws);
