@@ -58,6 +58,7 @@ def q4():
     airStations = pd.read_csv('air_stations_Nov2017.csv')
     airStations = cleanData(airStations)
     print(airStations[['Station','District Name']].to_json(orient='records'))
+    print()
 
     ## 2
     airQuality = pd.read_csv('air_quality_Nov2017.csv')
