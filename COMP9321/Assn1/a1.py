@@ -99,17 +99,23 @@ def q5():
     '''
     # %matplotlib notebook
     import matplotlib.pyplot as plt
-    geoData = pd.read_csv('accidents_2017.csv', float_precision='high')
-    geoData = dropMissing(geoData)
-
     import matplotlib.image as mpimg
     mapImg=mpimg.imread('Map.png')
+    
+    geoData = pd.read_csv('accidents_2017.csv', float_precision='high')
+    geoData = dropMissing(geoData)
+    
+    geoDataAgg = geoData.groupby(["Latitude","Longitude"]).agg('sum').reset_index().sort_values(by='Victims',ascending=False)
+    
+    # Change outliers to top value to make colour bar and dot size more descriptive
+    geoDataAgg.loc[geoDataAgg['Victims'] > 10, 'Victims'] = 10
+    geoDataAgg.loc[geoDataAgg['Vehicles involved'] > 20, 'Vehicles involved'] = 20
 
-    ax = geoData.plot(kind="scatter", x="Longitude", y="Latitude", figsize=(10,10),
-                       s=(geoData['Vehicles involved']**3)/20, label="Population",
-                       c="Victims", cmap=plt.get_cmap("OrRd"),
-                       colorbar=False, alpha=0.2
-                      )
+    geoDataAgg.plot(kind="scatter", x="Longitude", y="Latitude", figsize=(10,10),
+                           s=(geoDataAgg['Vehicles involved']**2)/30, label="Population",
+                           c=geoDataAgg["Victims"], cmap=plt.get_cmap("OrRd"),
+                           colorbar=False, alpha=0.2
+                          )
 
     # plt.imshow(mapImg, extent=[1.916805, 2.42321, 41.282911,41.493609], alpha=1)
     plt.imshow(mapImg, extent=[2.006874, 2.334000, 41.314292,41.462289], alpha=1)
