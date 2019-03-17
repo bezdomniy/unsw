@@ -234,13 +234,13 @@ class Year_Endpoint(Resource):
             if q[:3] == 'top':
                 limit = int(q[-(len(q)-3):])
                 entries = list(x.serialize for x in Entry.query.join(Collection)
-                               .filter(Entry.date == year, Entry.value != None, Collection.location == collection)
-                               .order_by(Entry.value.desc()).limit(limit).all())
+                               .filter(Entry.date == year, Collection.location == collection)
+                               .order_by(Entry.value.is_(None), Entry.value.desc()).limit(limit).all()) 
             elif q[:6] == 'bottom':
                 limit = int(q[-(len(q)-6):])
                 entries = list(x.serialize for x in Entry.query.join(Collection)
-                               .filter(Entry.date == year, Entry.value != None, Collection.location == collection)
-                               .order_by(Entry.value).limit(limit).all())
+                               .filter(Entry.date == year, Collection.location == collection)
+                               .order_by(Entry.value.is_(None), Entry.value).limit(limit).all())  
             else:
                 abort(404, message="q: {} is invalid.".format(q))
         except ValueError:
