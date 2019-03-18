@@ -127,17 +127,19 @@ class Entry(db.Model):
         return '<Country: {}, Date: {}, Value: {}>'.format(self.country, self.date, self.value)
     
 db.create_all()
-api = Api(app)
+api = Api(app, version='1.0', title='Data Service for World Bank Economic Indicators',
+    description='Student ID: z3218424\nAssignment 2')
 
 expected_fields = api.model('Resource', {
     'indicator_id': fields.String,
 })
 
-@api.route('/<collection>')
-@api.doc(params={'collection': 'Your collection name'})
+@api.route('/<collections>')
+@api.doc(params={'collections': 'Your resource name'})
 class Collection_Endpoint(Resource):
+    @api.doc(description='Question 1- Import a collection from the data service')
     @api.expect(expected_fields)
-    def post(self, collection):
+    def post(self, collections):
         indicator_id = api.payload['indicator_id']
         jsonContent = getJsonContent(indicator_id)
         cleanedContent = cleanJSON(jsonContent)
@@ -145,117 +147,125 @@ class Collection_Endpoint(Resource):
         creation_time = datetime.datetime.utcnow()
         collection_id = str(uuid.uuid4())
 
-        retStatus = loadJSON(cleanedContent, creation_time, collection_id, collection)
+        retStatus = loadJSON(cleanedContent, creation_time, collection_id, collections)
         if retStatus[1]:
             collection_id = retStatus[1]
             creation_time = retStatus[2]
 
-        return Response(json.dumps({'location' : '/' + collection + '/' + collection_id, 
+        return Response(json.dumps({'location' : '/' + collections + '/' + collection_id, 
                 'collection_id' : collection_id,  
                 'creation_time': creation_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
                 'indicator' : indicator_id}), status=retStatus[0], mimetype='application/json')
     
-    def get(self, collection):
-        return jsonify(list(x.get_repr(collection) for x in Collection.query
-                            .filter(Collection.location == collection).all()))
+    @api.doc(description='Question 3 - Retrieve the list of available collections')
+    def get(self, collections):
+        return jsonify(list(x.get_repr(collections) for x in Collection.query
+                            .filter(Collection.location == collections).all()))
 
 
-@api.route('/<collection>/<collection_id>')
+@api.route('/<collections>/<collection_id>')
+@api.doc(params={'collections': 'Your resource name', 'collection_id': 'Your collection ID'})
 class Collection_ID_Endpoint(Resource):
-    def delete(self, collection, collection_id):
-        query_result = db.session.query(Collection).filter(Collection.collection_id == collection_id, Collection.location == collection)
+    @api.doc(description='Question 2- Deleting a collection with the data service')
+    def delete(self, collections, collection_id):
+        query_result = db.session.query(Collection).filter(Collection.collection_id == collection_id, Collection.location == collections)
     
         if query_result.first():
             query_result.delete()
             db.session.commit()
             return jsonify({'message' :'Collection = ' + collection_id + 'is removed from the database!'})
         else:
-            abort(404, message="ID {} doesn't exist in collection {}".format(collection_id, collection))
+            abort(404, message="ID {} doesn't exist in resource {}".format(collection_id, collections))
         
-    
-    def get(self, collection, collection_id):
+    @api.doc(description='Question 4 - Retrieve a collection')
+    def get(self, collections, collection_id):
         try:
-            collections = Collection.query.filter(Collection.collection_id == collection_id, Collection.location == collection).all()[0].serialize
+            collections_q = Collection.query.filter(Collection.collection_id == collection_id, Collection.location == collections).all()[0].serialize
         except IndexError:
-            abort(404, message="ID {} doesn't exist in collection {}".format(collection_id, collection))
+            abort(404, message="ID {} doesn't exist in resource {}".format(collection_id, collections))
             
         entries = list(x.serialize for x in Entry.query.join(Collection)
-                       .filter(Entry.collection_id == collection_id, Collection.location == collection).all())
+                       .filter(Entry.collection_id == collection_id, Collection.location == collections).all())
         
-        collections['entries'] = entries
+        collections_q['entries'] = entries
         
-        return jsonify(collections)
+        return jsonify(collections_q)
     
-@api.route('/<collection>/<collection_id>/<year>/<country>')
+@api.route('/<collections>/<collection_id>/<year>/<country>')
+@api.doc(params={'collections': 'Your resource name', 'collection_id': 'Your collection ID','year': '4 character year - 2013-2018','country': 'Country name, space separated'})
 class Country_Year_Endpoint(Resource):
-    def get(self, collection, collection_id, year, country):
+    @api.doc(description='Question 5 - Retrieve economic indicator value for given country and a year')
+    def get(self, collections, collection_id, year, country):
         try:
-            collections = Collection.query.filter(Collection.collection_id == collection_id, Collection.location == collection).all()[0].serialize
+            collections_q = Collection.query.filter(Collection.collection_id == collection_id, Collection.location == collections).all()[0].serialize
         except IndexError:
-            abort(404, message="ID {} doesn't exist in collection {}".format(collection_id, collection))
+            abort(404, message="ID {} doesn't exist in resource {}".format(collection_id, collections))
             
         entries = list(x.serialize for x in Entry.query.join(Collection)
                        .filter(Entry.collection_id == collection_id,
-                                                       Entry.country == country.title(),
+                                                       ((Entry.country == country.title()) | (Entry.country == country)),
                                                        Entry.date == year,
-                                                       Collection.location == collection
+                                                       Collection.location == collections
                                                         ).all())
 
-        del collections['collection_id']
-        del collections['creation_time']
+        del collections_q['indicator_value']
+        del collections_q['creation_time']
         
         if not entries:
             abort(404, message="No such records found in: /{}/{}".format(collection, collection_id))
-#             return jsonify({'message' :'No such record found in: ' + collection + '/' + collection_id})
         
-        collections['country'] = entries[0]['country']
-        collections['year'] = entries[0]['date']
-        collections['value'] = entries[0]['value']
+        collections_q['country'] = entries[0]['country']
+        collections_q['year'] = entries[0]['date']
+        collections_q['value'] = entries[0]['value']
         
         
-        return jsonify(collections)
+        return jsonify(collections_q)
     
-@api.route('/<collection>/<collection_id>/<year>')
+@api.route('/<collections>/<collection_id>/<year>')
+@api.doc(params={'collections': 'Your resource name', 'collection_id': 'Your collection ID','year': '4 character year - 2013-2018'})
 class Year_Endpoint(Resource):
     parser = reqparse.RequestParser()
-    parser.add_argument('q', type=str)
+    parser.add_argument('q', type=str, required=True, help='topN or bottomN entries by value (up to 999). E.g. top5, bottom1')
     
     @api.expect(parser)
-    def get(self, collection, collection_id, year):    
+    @api.doc(description='Question 6 - Retrieve top/bottom economic indicator values for a given year')
+    def get(self, collections, collection_id, year):    
 
         q = self.parser.parse_args()['q']
 
         try:
-            collections = Collection.query.filter(Collection.collection_id == collection_id, Collection.location == collection).all()[0].serialize
+            collections_q = Collection.query.filter(Collection.collection_id == collection_id, Collection.location == collections).all()[0].serialize
         except IndexError:
-            abort(404, message="ID {} doesn't exist in collection {}".format(collection_id, collection))
+            abort(404, message="ID {} doesn't exist in resource {}".format(collection_id, collections))
         
         try:
             if q[:3] == 'top':
                 limit = int(q[-(len(q)-3):])
                 entries = list(x.serialize for x in Entry.query.join(Collection)
-                               .filter(Entry.date == year, Collection.location == collection)
+                               .filter(Entry.date == year, Collection.location == collections)
                                .order_by(Entry.value.is_(None), Entry.value.desc()).limit(limit).all()) 
             elif q[:6] == 'bottom':
                 limit = int(q[-(len(q)-6):])
                 entries = list(x.serialize for x in Entry.query.join(Collection)
-                               .filter(Entry.date == year, Collection.location == collection)
+                               .filter(Entry.date == year, Collection.location == collections)
                                .order_by(Entry.value.is_(None), Entry.value).limit(limit).all())  
             else:
                 abort(404, message="q: {} is invalid.".format(q))
         except ValueError:
             abort(404, message="q: {} is invalid.".format(q))
+        except TypeError:
+            abort(404, message="Please pass a value for parameter q.")
 
         
-        del collections['collection_id']
-        del collections['creation_time']
+        del collections_q['collection_id']
+        del collections_q['creation_time']
         
         try:
-            collections['entries'] = entries
+            collections_q['entries'] = entries
         except UnboundLocalError:
             abort(404, message="q: {} is invalid.".format(q))
         
-        return jsonify(collections)
+        return jsonify(collections_q)
 
 if __name__ == '__main__':
     app.run()
