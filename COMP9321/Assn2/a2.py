@@ -225,7 +225,7 @@ class Country_Year_Endpoint(Resource):
 @api.doc(params={'collections': 'Your resource name', 'collection_id': 'Your collection ID','year': '4 character year - 2013-2018'})
 class Year_Endpoint(Resource):
     parser = reqparse.RequestParser()
-    parser.add_argument('q', type=str, required=True, help='topN or bottomN entries by value (up to 999). E.g. top5, bottom1')
+    parser.add_argument('q', type=str, help='Optional: topN or bottomN entries by value (up to 999). E.g. top5, bottom1')
     
     @api.expect(parser)
     @api.doc(description='Question 6 - Retrieve top/bottom economic indicator values for a given year')
@@ -238,23 +238,27 @@ class Year_Endpoint(Resource):
         except IndexError:
             abort(404, message="ID {} doesn't exist in resource {}".format(collection_id, collections))
         
-        try:
-            if q[:3] == 'top':
-                limit = int(q[-(len(q)-3):])
-                entries = list(x.serialize for x in Entry.query.join(Collection)
-                               .filter(Entry.date == year, Collection.location == collections)
-                               .order_by(Entry.value.is_(None), Entry.value.desc()).limit(limit).all()) 
-            elif q[:6] == 'bottom':
-                limit = int(q[-(len(q)-6):])
-                entries = list(x.serialize for x in Entry.query.join(Collection)
-                               .filter(Entry.date == year, Collection.location == collections)
-                               .order_by(Entry.value.is_(None), Entry.value).limit(limit).all())  
-            else:
+        if (q):
+            try:
+                if q[:3] == 'top':
+                    limit = int(q[-(len(q)-3):])
+                    entries = list(x.serialize for x in Entry.query.join(Collection)
+                                .filter(Entry.date == year, Collection.location == collections)
+                                .order_by(Entry.value.is_(None), Entry.value.desc()).limit(limit).all()) 
+                elif q[:6] == 'bottom':
+                    limit = int(q[-(len(q)-6):])
+                    entries = list(x.serialize for x in Entry.query.join(Collection)
+                                .filter(Entry.date == year, Collection.location == collections)
+                                .order_by(Entry.value.is_(None), Entry.value).limit(limit).all())  
+                else:
+                    abort(404, message="q: {} is invalid.".format(q))
+            except ValueError:
                 abort(404, message="q: {} is invalid.".format(q))
-        except ValueError:
-            abort(404, message="q: {} is invalid.".format(q))
-        except TypeError:
-            abort(404, message="Please pass a value for parameter q.")
+            # except TypeError:
+            #     abort(404, message="Please pass a value for parameter q.")
+        else:
+            entries = list(x.serialize for x in Entry.query.join(Collection)
+                                .filter(Entry.date == year, Collection.location == collections).all())  
 
         
         del collections_q['collection_id']
