@@ -1,3 +1,7 @@
+# COMP9321 Assignment 2
+# Name: Ilia Chibaev
+# Student ID: z3218424
+
 from flask import Flask, request, jsonify, Response
 
 from flask_restplus import Resource, Api, reqparse, abort, fields
