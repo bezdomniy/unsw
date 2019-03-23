@@ -212,7 +212,7 @@ class Collection_ID_Endpoint(Resource):
         if query_result.first():
             query_result.delete()
             db.session.commit()
-            return jsonify({'message': 'Collection = ' + collection_id + 'is removed from the database!'})
+            return jsonify({'message': 'Collection = ' + collection_id + ' is removed from the database!'})
         else:
             abort(404, message="ID {} doesn't exist in resource {}".format(
                 collection_id, collections))
