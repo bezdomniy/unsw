@@ -10,6 +10,7 @@ import json
 import io
 import datetime
 import uuid
+import re
 
 def create_db(db_file):
     '''
@@ -39,7 +40,7 @@ def getJsonContent(indicator_id):
                 jsonContent = json.load(io.BytesIO(response.content))
         return jsonContent
     except KeyError:
-        abort(404, message="Indicator_id {} not found!".format(indicator_id))
+        abort(400, message="Indicator_id {} not found at World Bank!".format(indicator_id))
 
 def cleanJSON(jsonContent):
     ret = dict()
@@ -56,11 +57,6 @@ def loadJSON(jsonContent, creation_time, collection_id, location):
     indicator = jsonContent['indicator']
     indicator_value = jsonContent['indicator_value']
     
-    indicatorExistsCheck = db.session.query(Collection).filter(Collection.indicator == indicator, Collection.location == location)
-    if indicatorExistsCheck.first():
-        return 200, indicatorExistsCheck.first().collection_id, indicatorExistsCheck.first().creation_time
-        
-    
     nextItem = Collection(creation_time = creation_time, 
                              collection_id = collection_id, 
                              indicator = indicator,
@@ -76,7 +72,17 @@ def loadJSON(jsonContent, creation_time, collection_id, location):
         db.session.add(nextItem)
         
     db.session.commit()
-    return 201, None
+    return 201
+
+def checkIndicatorInResource(location, indicator):
+    indicatorExistsCheck = db.session.query(Collection).filter(Collection.indicator == indicator, Collection.location == location)
+    if indicatorExistsCheck.first():
+        return 200, indicatorExistsCheck.first().collection_id, indicatorExistsCheck.first().creation_time
+
+def validateResourceName(name):
+    if (not(bool(re.match('^[a-zA-Z][a-z0-9A-Z]+$', name)))):
+        abort(400, message="Resource name {} is invalid. It must be alphanumeric, and begin with a letter.".format(name))
+    return name.lower()
 
 app = Flask(__name__)
 create_db('data.db')
@@ -135,22 +141,28 @@ expected_fields = api.model('Resource', {
 })
 
 @api.route('/<collections>')
-@api.doc(params={'collections': 'Your resource name'})
+@api.doc(params={'collections': 'Your resource name. Must be alphanumeric, and begin with a letter.'})
 class Collection_Endpoint(Resource):
-    @api.doc(description='Question 1- Import a collection from the data service')
+    @api.doc(description='Question 1 - Import a collection from the data service')
     @api.expect(expected_fields)
     def post(self, collections):
-        indicator_id = api.payload['indicator_id']
-        jsonContent = getJsonContent(indicator_id)
-        cleanedContent = cleanJSON(jsonContent)
-        
-        creation_time = datetime.datetime.utcnow()
-        collection_id = str(uuid.uuid4())
+        collections = validateResourceName(collections)
 
-        retStatus = loadJSON(cleanedContent, creation_time, collection_id, collections)
-        if retStatus[1]:
+        indicator_id = api.payload['indicator_id']
+        retStatus = checkIndicatorInResource(collections, indicator_id)
+
+        if retStatus:
             collection_id = retStatus[1]
             creation_time = retStatus[2]
+        else:
+            jsonContent = getJsonContent(indicator_id)
+            cleanedContent = cleanJSON(jsonContent)
+            
+            creation_time = datetime.datetime.utcnow()
+            collection_id = str(uuid.uuid4())
+
+            loadJSON(cleanedContent, creation_time, collection_id, collections)
+            retStatus = [201]
 
         return Response(json.dumps({'location' : '/' + collections + '/' + collection_id, 
                 'collection_id' : collection_id,  
@@ -159,15 +171,19 @@ class Collection_Endpoint(Resource):
     
     @api.doc(description='Question 3 - Retrieve the list of available collections')
     def get(self, collections):
+        collections = validateResourceName(collections)
         return jsonify(list(x.get_repr(collections) for x in Collection.query
                             .filter(Collection.location == collections).all()))
 
 
 @api.route('/<collections>/<collection_id>')
-@api.doc(params={'collections': 'Your resource name', 'collection_id': 'Your collection ID'})
+@api.doc(params={'collections': 'Your resource name. Must be alphanumeric, and begin with a letter.', 'collection_id': 'Your collection ID'})
 class Collection_ID_Endpoint(Resource):
     @api.doc(description='Question 2- Deleting a collection with the data service')
     def delete(self, collections, collection_id):
+        collections = validateResourceName(collections)
+        collection_id = collection_id.lower()
+
         query_result = db.session.query(Collection).filter(Collection.collection_id == collection_id, Collection.location == collections)
     
         if query_result.first():
@@ -179,6 +195,9 @@ class Collection_ID_Endpoint(Resource):
         
     @api.doc(description='Question 4 - Retrieve a collection')
     def get(self, collections, collection_id):
+        collections = validateResourceName(collections)
+        collection_id = collection_id.lower()
+
         try:
             collections_q = Collection.query.filter(Collection.collection_id == collection_id, Collection.location == collections).all()[0].serialize
         except IndexError:
@@ -192,10 +211,13 @@ class Collection_ID_Endpoint(Resource):
         return jsonify(collections_q)
     
 @api.route('/<collections>/<collection_id>/<year>/<country>')
-@api.doc(params={'collections': 'Your resource name', 'collection_id': 'Your collection ID','year': '4 character year - 2013-2018','country': 'Country name, space separated'})
+@api.doc(params={'collections': 'Your resource name. Must be alphanumeric, and begin with a letter.', 'collection_id': 'Your collection ID','year': '4 character year - 2013-2018','country': 'Country name, space separated'})
 class Country_Year_Endpoint(Resource):
     @api.doc(description='Question 5 - Retrieve economic indicator value for given country and a year')
     def get(self, collections, collection_id, year, country):
+        collections = validateResourceName(collections)
+        collection_id = collection_id.lower()
+
         try:
             collections_q = Collection.query.filter(Collection.collection_id == collection_id, Collection.location == collections).all()[0].serialize
         except IndexError:
@@ -203,7 +225,8 @@ class Country_Year_Endpoint(Resource):
             
         entries = list(x.serialize for x in Entry.query.join(Collection)
                        .filter(Entry.collection_id == collection_id,
-                                                       ((Entry.country == country.title()) | (Entry.country == country)),
+                                                    #    ((Entry.country == country.title()) | (Entry.country == country)),
+                                                       (Entry.country.ilike(country.lower())),
                                                        Entry.date == year,
                                                        Collection.location == collections
                                                         ).all())
@@ -222,7 +245,7 @@ class Country_Year_Endpoint(Resource):
         return jsonify(collections_q)
     
 @api.route('/<collections>/<collection_id>/<year>')
-@api.doc(params={'collections': 'Your resource name', 'collection_id': 'Your collection ID','year': '4 character year - 2013-2018'})
+@api.doc(params={'collections': 'Your resource name. Must be alphanumeric, and begin with a letter.', 'collection_id': 'Your collection ID','year': '4 character year - 2013-2018'})
 class Year_Endpoint(Resource):
     parser = reqparse.RequestParser()
     parser.add_argument('q', type=str, help='Optional: topN or bottomN entries by value (up to 999). E.g. top5, bottom1')
@@ -230,6 +253,8 @@ class Year_Endpoint(Resource):
     @api.expect(parser)
     @api.doc(description='Question 6 - Retrieve top/bottom economic indicator values for a given year')
     def get(self, collections, collection_id, year):    
+        collections = validateResourceName(collections)
+        collection_id = collection_id.lower()
 
         q = self.parser.parse_args()['q']
 
@@ -251,9 +276,9 @@ class Year_Endpoint(Resource):
                                 .filter(Entry.date == year, Collection.location == collections)
                                 .order_by(Entry.value.is_(None), Entry.value).limit(limit).all())  
                 else:
-                    abort(404, message="q: {} is invalid.".format(q))
+                    abort(400, message="q: {} is invalid.".format(q))
             except ValueError:
-                abort(404, message="q: {} is invalid.".format(q))
+                abort(400, message="q: {} is invalid.".format(q))
             # except TypeError:
             #     abort(404, message="Please pass a value for parameter q.")
         else:
@@ -267,7 +292,7 @@ class Year_Endpoint(Resource):
         try:
             collections_q['entries'] = entries
         except UnboundLocalError:
-            abort(404, message="q: {} is invalid.".format(q))
+            abort(400, message="q: {} is invalid.".format(q))
         
         return jsonify(collections_q)
 
