@@ -1,0 +1,15 @@
+{
+    "sqltools.connections": [
+        {
+            "askForPassword": false,
+            "connectionTimeout": 30,
+            "database": "beer",
+            "dialect": "PostgreSQL",
+            "name": "beer",
+            "port": 1188,
+            "server": "grieg.cse.unsw.edu.au",
+            "username": "z3218424"
+        }
+    ],
+    "C_Cpp.errorSquiggles": "Enabled"
+}

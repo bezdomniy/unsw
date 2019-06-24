@@ -1,0 +1,211 @@
+---------------------------------------------------------------------------
+--
+-- email.sql-
+--    This file shows how to create a new user-defined type and how to
+--    use this new type.
+--
+--
+-- Portions Copyright (c) 1996-2018, PostgreSQL Global Development Group
+-- Portions Copyright (c) 1994, Regents of the University of California
+--
+-- src/tutorial/email.source
+--
+---------------------------------------------------------------------------
+
+-----------------------------
+-- Creating a new type:
+--	We are going to create a new type called 'email' which represents
+--	email numbers.
+--	A user-defined type must have an input and an output function, and
+--	optionally can have binary input and output functions.  All of these
+--	are usually user-defined C functions.
+-----------------------------
+
+-- Assume the user defined functions are in _OBJWD_/email$DLSUFFIX
+-- (we do not want to assume this is in the dynamic loader search path).
+-- Look at $PWD/email.c for the source.  Note that we declare all of
+-- them as STRICT, so we do not need to cope with NULL inputs in the
+-- C code.  We also mark them IMMUTABLE, since they always return the
+-- same outputs given the same inputs.
+
+-- the input function 'email_in' takes a null-terminated string (the
+-- textual representation of the type) and turns it into the internal
+-- (in memory) representation. You will get a message telling you 'email'
+-- does not exist yet but that's okay.
+
+CREATE FUNCTION email_in(cstring)
+   RETURNS email
+   AS '_OBJWD_/email'
+   LANGUAGE C IMMUTABLE STRICT;
+
+-- the output function 'email_out' takes the internal representation and
+-- converts it into the textual representation.
+
+CREATE FUNCTION email_out(email)
+   RETURNS cstring
+   AS '_OBJWD_/email'
+   LANGUAGE C IMMUTABLE STRICT;
+
+
+-- now, we can create the type. The internallength specifies the size of the
+-- memory block required to hold the type (we need two 8-byte doubles).
+
+CREATE TYPE email (
+   internallength = VARIABLE,
+   input = email_in,
+   output = email_out,
+   alignment = int4,
+   storage = EXTERNAL
+);
+
+
+-----------------------------
+-- Using the new type:
+--	user-defined types can be used like ordinary built-in types.
+-----------------------------
+
+-- eg. we can use it in a table
+
+CREATE TABLE test_email (
+	a	email
+);
+
+-- data for user-defined types are just strings in the proper textual
+-- representation.
+INSERT INTO test_email VALUES ('iliaiscool@coolco.com');
+INSERT INTO test_email VALUES ('at@goog.au');
+
+INSERT INTO test_email VALUES ('doodles@mymy.net');
+
+SELECT * FROM test_email;
+
+-- -----------------------------
+-- -- Creating an operator for the new type:
+-- --	Let's define an add operator for email types. Since POSTGRES
+-- --	supports function overloading, we'll use + as the add operator.
+-- --	(Operator names can be reused with different numbers and types of
+-- --	arguments.)
+-- -----------------------------
+
+-- -- first, define a function email_add (also in email.c)
+-- CREATE FUNCTION email_add(email, email)
+--    RETURNS email
+--    AS '_OBJWD_/email'
+--    LANGUAGE C IMMUTABLE STRICT;
+
+-- -- we can now define the operator. We show a binary operator here but you
+-- -- can also define unary operators by omitting either of leftarg or rightarg.
+-- CREATE OPERATOR + (
+--    leftarg = email,
+--    rightarg = email,
+--    procedure = email_add,
+--    commutator = +
+-- );
+
+
+-- SELECT (a + b) AS c FROM test_email;
+
+-- -- Occasionally, you may find it useful to cast the string to the desired
+-- -- type explicitly. :: denotes a type cast.
+
+-- SELECT  a + '(1.0,1.0)'::email AS aa,
+--         b + '(1.0,1.0)'::email AS bb
+--    FROM test_email;
+
+
+-- -----------------------------
+-- -- Creating aggregate functions
+-- --	you can also define aggregate functions. The syntax is somewhat
+-- --	cryptic but the idea is to express the aggregate in terms of state
+-- --	transition functions.
+-- -----------------------------
+
+-- CREATE AGGREGATE email_sum (
+--    sfunc = email_add,
+--    basetype = email,
+--    stype = email,
+--    initcond = '(0,0)'
+-- );
+
+-- SELECT email_sum(a) FROM test_email;
+
+
+-- -----------------------------
+-- -- Interfacing New Types with Indexes:
+-- --	We cannot define a secondary index (eg. a B-tree) over the new type
+-- --	yet. We need to create all the required operators and support
+-- --      functions, then we can make the operator class.
+-- -----------------------------
+
+-- -- first, define the required operators
+-- CREATE FUNCTION email_abs_lt(email, email) RETURNS bool
+--    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
+-- CREATE FUNCTION email_abs_le(email, email) RETURNS bool
+--    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
+-- CREATE FUNCTION email_abs_eq(email, email) RETURNS bool
+--    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
+-- CREATE FUNCTION email_abs_ge(email, email) RETURNS bool
+--    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
+-- CREATE FUNCTION email_abs_gt(email, email) RETURNS bool
+--    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
+
+-- CREATE OPERATOR < (
+--    leftarg = email, rightarg = email, procedure = email_abs_lt,
+--    commutator = > , negator = >= ,
+--    restrict = scalarltsel, join = scalarltjoinsel
+-- );
+-- CREATE OPERATOR <= (
+--    leftarg = email, rightarg = email, procedure = email_abs_le,
+--    commutator = >= , negator = > ,
+--    restrict = scalarlesel, join = scalarlejoinsel
+-- );
+-- CREATE OPERATOR = (
+--    leftarg = email, rightarg = email, procedure = email_abs_eq,
+--    commutator = = ,
+--    -- leave out negator since we didn't create <> operator
+--    -- negator = <> ,
+--    restrict = eqsel, join = eqjoinsel
+-- );
+-- CREATE OPERATOR >= (
+--    leftarg = email, rightarg = email, procedure = email_abs_ge,
+--    commutator = <= , negator = < ,
+--    restrict = scalargesel, join = scalargejoinsel
+-- );
+-- CREATE OPERATOR > (
+--    leftarg = email, rightarg = email, procedure = email_abs_gt,
+--    commutator = < , negator = <= ,
+--    restrict = scalargtsel, join = scalargtjoinsel
+-- );
+
+-- -- create the support function too
+-- CREATE FUNCTION email_abs_cmp(email, email) RETURNS int4
+--    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
+
+-- -- now we can make the operator class
+-- CREATE OPERATOR CLASS email_abs_ops
+--     DEFAULT FOR TYPE email USING btree AS
+--         OPERATOR        1       < ,
+--         OPERATOR        2       <= ,
+--         OPERATOR        3       = ,
+--         OPERATOR        4       >= ,
+--         OPERATOR        5       > ,
+--         FUNCTION        1       email_abs_cmp(email, email);
+
+
+-- -- now, we can define a btree index on email types. First, let's populate
+-- -- the table. Note that postgres needs many more tuples to start using the
+-- -- btree index during selects.
+-- INSERT INTO test_email VALUES ('(56.0,-22.5)', '(-43.2,-0.07)');
+-- INSERT INTO test_email VALUES ('(-91.9,33.6)', '(8.6,3.0)');
+
+-- CREATE INDEX test_cplx_ind ON test_email
+--    USING btree(a email_abs_ops);
+
+-- SELECT * from test_email where a = '(56.0,-22.5)';
+-- SELECT * from test_email where a < '(56.0,-22.5)';
+-- SELECT * from test_email where a > '(56.0,-22.5)';
+
+
+-- clean up the example
+DROP TABLE test_email;
+DROP TYPE email CASCADE;
