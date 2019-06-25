@@ -73,9 +73,8 @@ CREATE TABLE test_email (
 -- data for user-defined types are just strings in the proper textual
 -- representation.
 INSERT INTO test_email VALUES ('iliaiscool@coolco.com');
-INSERT INTO test_email VALUES ('at@goog.au');
-
-INSERT INTO test_email VALUES ('doodles@mymy.net');
+INSERT INTO test_email VALUES ('at@Goog.au');
+INSERT INTO test_email VALUES ('Doodles@mymY.net');
 
 SELECT * FROM test_email;
 
@@ -155,34 +154,43 @@ CREATE FUNCTION email_abs_cmp(emailaddr, emailaddr) RETURNS int4
 
 -- now we can make the operator class
 CREATE OPERATOR CLASS email_abs_ops
-    DEFAULT FOR TYPE emailaddr USING btree AS
-        OPERATOR        1       < ,
-        OPERATOR        2       <= ,
-        OPERATOR        3       = ,
-        OPERATOR        4       >= ,
-        OPERATOR        5       > ,
-        OPERATOR        6       <> ,
-        OPERATOR        7       ~ ,
-        OPERATOR        8       !~ ,
-        FUNCTION        1       email_abs_cmp(emailaddr, emailaddr);
+    DEFAULT FOR TYPE emailaddr USING hash AS
+        OPERATOR        1       = ;
+      --   ,
+      --   FUNCTION        1       email_abs_cmp(emailaddr, emailaddr);
 
 
 -- now, we can define a btree index on email types. First, let's populate
 -- the table. Note that postgres needs many more tuples to start using the
 -- btree index during selects.
-INSERT INTO test_email VALUES ('jas@cse.unsw.edu.au');
-INSERT INTO test_email VALUES ('jas@cse.unsw.EDU.AU');
-INSERT INTO test_email VALUES ('jas@abc.mail.com');
-INSERT INTO test_email VALUES ('richard@cse.unsw.EDU.AU');
+create table UserSessions (
+   username  EmailAddr,
+   loggedIn  timestamp,
+   loggedOut timestamp
+   -- etc. etc.
+);
 
-CREATE INDEX test_cplx_ind ON test_email
-   USING btree(a email_abs_ops);
+insert into UserSessions(username,loggedIn,loggedOut) values
+('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15');
 
-SELECT * from test_email where a = 'jas@cse.unsw.edu.au';
-SELECT * from test_email where a < 'doodles@mymy.net';
-SELECT * from test_email where a > 'jas@cse.unsw.edu.au';
+SELECT * FROM UserSessions;
+
+-- create index on UserSessions using hash (username);
+
+select a.username, a.loggedIn, b.loggedIn
+from   UserSessions a, UserSessions b
+where  a.username = b.username and a.loggedIn <> b.loggedIn;
+
+-- select path,count(*)
+-- from   Users
+-- group  by path;
 
 
 -- clean up the example
 DROP TABLE test_email;
+DROP TABLE UserSessions;
 DROP TYPE emailaddr CASCADE;

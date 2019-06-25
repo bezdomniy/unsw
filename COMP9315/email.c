@@ -14,6 +14,7 @@
 
 #include "stdio.h"
 #include "string.h"
+#include "ctype.h"
 
 PG_MODULE_MAGIC;
 
@@ -96,10 +97,22 @@ typedef struct StringPair {
 } StringPair;
 
 // StringPair* splitString(char* str, int nameLen, int domainLen) {
-StringPair* getLocalDomainPair(Email* email) {
-	char * str = &email->name_domain[0];
+StringPair* getLocalDomainPair(Email* email, bool lowercase) {
+	char * str;
+	int str_len = email->nameLen + email->domainLen + 1;
+	int i;
+	
+	if (lowercase) {
+		str = (char*) palloc(str_len);
+		for (i = 0; i < str_len; i++) {
+			str[i] = tolower(email->name_domain[i]);
+		}
+	}
+	else {
+		str = &email->name_domain[0];
+	}
 
-	StringPair *ret = palloc(sizeof(StringPair) + email->nameLen + email->domainLen + 2);;
+	StringPair *ret = palloc(sizeof(StringPair) + str_len + 1);;
     
     ret->a = palloc(email->nameLen + 1);
     ret->b = palloc(email->domainLen + 1);
@@ -118,7 +131,7 @@ char* varlena_p_to_string(struct varlena *varlena_ptr) {
 	Email *email = VARLENA_P_TO_EMAIL(varlena_ptr);
 	char *ret;
 
-	StringPair* pair = getLocalDomainPair(email);
+	StringPair* pair = getLocalDomainPair(email, true);
 	//char *ret = palloc(email->nameLen + email->domainLen + 2 * sizeof(char));
 
 	ret = psprintf("%s@%s", pair->a, pair->b);
@@ -143,22 +156,33 @@ email_out(PG_FUNCTION_ARGS)
  * an internal three-way-comparison function, as we do here.
  *****************************************************************************/
 
-// #define Mag(c)	((c)->x*(c)->x + (c)->y*(c)->y)
-
-
-
 static int
 email_abs_cmp_internal(Email * a, Email * b)
 {
-	if (strcmp(&a->name_domain[0], &b->name_domain[0]) == 0) {
+	int ret = strcmp(&a->name_domain[0], &b->name_domain[0]);
+	if (ret == 0) {
 		return 0;
 	}
 
-	StringPair* a_pair = splitString(a);
-	StringPair* b_pair = splitString(b);
+	StringPair* a_pair = getLocalDomainPair(a, true);
+	StringPair* b_pair = getLocalDomainPair(b, true);
 
-	return 0;
+	ret = strcmp(a_pair->b, b_pair->b);
 
+	if (ret != 0) {
+		return ret;
+	}
+
+	return strcmp(a_pair->a, b_pair->a);
+}
+
+static int
+email_abs_domain_cmp_internal(Email * a, Email * b)
+{
+	StringPair* a_pair = getLocalDomainPair(a, true);
+	StringPair* b_pair = getLocalDomainPair(b, true);
+
+	return strcmp(a_pair->b, b_pair->b) == 0;
 }
 
 
@@ -236,7 +260,7 @@ email_abs_domain_eq(PG_FUNCTION_ARGS)
 	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
 	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
 
-	PG_RETURN_BOOL(email_abs_cmp_internal(a, b) > 0);
+	PG_RETURN_BOOL(email_abs_domain_cmp_internal(a, b) == 0);
 }
 
 PG_FUNCTION_INFO_V1(email_abs_domain_neq);
@@ -247,7 +271,7 @@ email_abs_domain_neq(PG_FUNCTION_ARGS)
 	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
 	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
 
-	PG_RETURN_BOOL(email_abs_cmp_internal(a, b) > 0);
+	PG_RETURN_BOOL(email_abs_domain_cmp_internal(a, b) != 0);
 }
 
 PG_FUNCTION_INFO_V1(email_abs_cmp);
