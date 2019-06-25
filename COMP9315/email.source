@@ -154,15 +154,22 @@ CREATE OPERATOR !~ (
 CREATE FUNCTION email_abs_cmp(emailaddr, emailaddr) RETURNS int4
    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
 
--- now we can make the operator class
-CREATE OPERATOR CLASS email_abs_ops
-    DEFAULT FOR TYPE emailaddr USING hash AS
-        OPERATOR        1       = ,
-        FUNCTION        1       email_abs_hash(emailaddr);
-   --  DEFAULT FOR TYPE cstring USING hash AS
-   --      OPERATOR        1       = ,
-   --      FUNCTION        1       email_abs_hash(emailaddr);
-      --   FUNCTION        1       MD5('abc');
+-- now we can make the operator classes
+
+CREATE OPERATOR CLASS email_btree_ops DEFAULT FOR TYPE emailaddr 
+   USING btree AS
+        OPERATOR        1       < ,
+        OPERATOR        2       <= ,
+        OPERATOR        3       = ,
+        OPERATOR        4       >= ,
+        OPERATOR        5       > ,
+        FUNCTION        1       email_abs_cmp(emailaddr, emailaddr);
+   ;
+
+CREATE OPERATOR CLASS email_abs_ops DEFAULT FOR TYPE emailaddr 
+   USING hash AS
+      OPERATOR        1       = ,
+      FUNCTION        1       email_abs_hash(emailaddr);
 
 
 -- now, we can define a btree index on email types. First, let's populate
@@ -176,53 +183,58 @@ create table UserSessions (
 );
 
 insert into UserSessions(username,loggedIn,loggedOut) values
-('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+('wrank@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
 ('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
 ('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
 ('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
-('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
-('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
-('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
-('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
-('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
-('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
-('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
-('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
-('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
-('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
-('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
-('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
-('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
-('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
-('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
-('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
-('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
-('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
-('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
-('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
-('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
-('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
-('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
-('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
-('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
-('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
-('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
-('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
-('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05')
-,('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06') -- this triggers index cond
+('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15')
+-- ,
+-- ('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+-- ('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+-- ('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+-- ('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+-- ('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+-- ('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+-- ('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+-- ('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+-- ('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+-- ('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+-- ('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+-- ('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+-- ('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+-- ('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+-- ('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+-- ('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+-- ('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+-- ('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+-- ('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+-- ('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+-- ('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+-- ('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+-- ('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+-- ('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+-- ('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+-- ('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+-- ('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+-- ('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+-- ('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+-- ('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15') -- this triggers index cond
 ;
 
 -- SELECT * FROM UserSessions;
 
 create index on UserSessions using hash(username);
 
-select a.username, a.loggedIn, b.loggedIn
-from   UserSessions a, UserSessions b
-where  a.username = b.username and a.loggedIn <> b.loggedIn;
+-- select a.username, a.loggedIn, b.loggedIn
+-- from   UserSessions a, UserSessions b
+-- where  a.username ~ b.username and a.loggedIn <> b.loggedIn;
 
 explain analyze select a.username, a.loggedIn, b.loggedIn
 from   UserSessions a, UserSessions b
 where  a.username = b.username and a.loggedIn <> b.loggedIn;
+
+SELECT a.username from UserSessions a order by a.username;
+-- explain analyze SELECT * from UserSessions where username ~ 'm.mouse@cse.unsw.edu.au';
 
 -- select path,count(*)
 -- from   Users

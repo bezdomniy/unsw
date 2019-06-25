@@ -182,7 +182,7 @@ email_abs_domain_cmp_internal(Email * a, Email * b)
 	StringPair* a_pair = getLocalDomainPair(a, true);
 	StringPair* b_pair = getLocalDomainPair(b, true);
 
-	return strcmp(a_pair->b, b_pair->b) == 0;
+	return strcmp(a_pair->b, b_pair->b);
 }
 
 
