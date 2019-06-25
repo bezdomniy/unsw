@@ -103,6 +103,8 @@ CREATE FUNCTION email_abs_domain_eq(emailaddr, emailaddr) RETURNS bool
    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
 CREATE FUNCTION email_abs_domain_neq(emailaddr, emailaddr) RETURNS bool
    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION email_abs_hash(emailaddr) RETURNS int4
+   AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
 
 CREATE OPERATOR < (
    leftarg = emailaddr, rightarg = emailaddr, procedure = email_abs_lt,
@@ -155,9 +157,12 @@ CREATE FUNCTION email_abs_cmp(emailaddr, emailaddr) RETURNS int4
 -- now we can make the operator class
 CREATE OPERATOR CLASS email_abs_ops
     DEFAULT FOR TYPE emailaddr USING hash AS
-        OPERATOR        1       = ;
-      --   ,
-      --   FUNCTION        1       email_abs_cmp(emailaddr, emailaddr);
+        OPERATOR        1       = ,
+        FUNCTION        1       email_abs_hash(emailaddr);
+   --  DEFAULT FOR TYPE cstring USING hash AS
+   --      OPERATOR        1       = ,
+   --      FUNCTION        1       email_abs_hash(emailaddr);
+      --   FUNCTION        1       MD5('abc');
 
 
 -- now, we can define a btree index on email types. First, let's populate
@@ -175,13 +180,47 @@ insert into UserSessions(username,loggedIn,loggedOut) values
 ('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
 ('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
 ('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
-('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15');
+('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05'),
+('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06'),
+('a-user@fast-money.com','2012-07-01 15:52:25','2012-07-01 16:10:15'),
+('jas@cse.unsw.edu.au','2012-07-01 15:45:55','2012-07-01 15:51:20'),
+('jas@cse.unsw.EDU.AU','2012-07-01 15:50:30','2012-07-01 15:53:15'),
+('z9987654@unsw.edu.au','2012-07-01 15:51:10','2012-07-01 16:01:05')
+,('m.mouse@disney.com','2012-07-01 15:51:11','2012-07-01 16:01:06') -- this triggers index cond
+;
 
-SELECT * FROM UserSessions;
+-- SELECT * FROM UserSessions;
 
--- create index on UserSessions using hash (username);
+create index on UserSessions using hash(username);
 
 select a.username, a.loggedIn, b.loggedIn
+from   UserSessions a, UserSessions b
+where  a.username = b.username and a.loggedIn <> b.loggedIn;
+
+explain analyze select a.username, a.loggedIn, b.loggedIn
 from   UserSessions a, UserSessions b
 where  a.username = b.username and a.loggedIn <> b.loggedIn;
 

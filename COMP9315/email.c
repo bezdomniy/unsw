@@ -71,11 +71,11 @@ email_in(PG_FUNCTION_ARGS)
 
 	
 	for (i = 0; i < nameLen; i++) {
-		email->name_domain[i] = *(name + i);
+		email->name_domain[i] = tolower(*(name + i));
 	}
 
 	for (i = 0; i < domainLen + 1; i++) {
-		email->name_domain[nameLen + i] = *(domain + i);
+		email->name_domain[nameLen + i] = tolower(*(domain + i));
 	}
 
 	email->nameLen = (unsigned char) nameLen;
@@ -285,3 +285,31 @@ email_abs_cmp(PG_FUNCTION_ARGS)
 	PG_RETURN_INT32(email_abs_cmp_internal(a, b));
 }
 
+/* D. J. Bernstein hash function from
+   https://codereview.stackexchange.com/questions/85556/simple-string-hashing-algorithm-implementation */
+size_t djb_hash(char* cp)
+{
+    size_t hash = 5381;
+    while (*cp)
+        hash = 33 * hash ^ (unsigned char) *cp++;
+    return hash;
+}
+
+PG_FUNCTION_INFO_V1(email_abs_hash);
+
+
+// TODO need to make another for cstring type
+Datum
+email_abs_hash(PG_FUNCTION_ARGS)
+{
+	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
+
+	size_t hash = djb_hash(&a->name_domain[0]);
+
+				// 	ereport(WARNING,
+				// (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				//  errmsg("str: %s, hash: \"%d\"",
+				// 		a->name_domain,hash)));
+
+	PG_RETURN_INT32(hash);
+}
