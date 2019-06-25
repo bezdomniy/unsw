@@ -13,18 +13,18 @@
 #include "libpq/pqformat.h"		/* needed for send/recv functions */
 
 #include "stdio.h"
+#include "string.h"
 
 PG_MODULE_MAGIC;
 
 typedef struct Email
 {	
 	unsigned char nameLen;
-	unsigned char domainLen; // change to unsigned char
+	unsigned char domainLen;
 	char name_domain[];
-    // unsigned    logged_in;
-    // unsigned    logged_out;
 }			Email;
 
+#define VARLENA_P_TO_EMAIL(e) ((Email*)VARDATA(e))
 
 /*****************************************************************************
  * Input/Output functions
@@ -38,9 +38,10 @@ email_in(PG_FUNCTION_ARGS)
 	char *str = strdup(PG_GETARG_CSTRING(0));
 	char *name = palloc(sizeof(char) * 255);
 	char  *domain = palloc(sizeof(char) * 255);
-	// Email *result; 
+	Email *email; 
 	struct varlena *result; 
 	char *buf = palloc(sizeof(char) * 255);
+	int i;
 
 	unsigned char nameLen;
 	unsigned char domainLen;
@@ -65,9 +66,9 @@ email_in(PG_FUNCTION_ARGS)
 	result = (struct varlena *) palloc(nameLen + domainLen + 1 + VARHDRSZ);
 	SET_VARSIZE(result, sizeof(Email) + sizeof(char) * (nameLen + domainLen + 1) + 4);
 
-	Email *email = (Email *) palloc(sizeof(Email) + sizeof(char) * (nameLen + domainLen + 1));
+	email = (Email *) palloc(sizeof(Email) + sizeof(char) * (nameLen + domainLen + 1));
 
-	int i;
+	
 	for (i = 0; i < nameLen; i++) {
 		email->name_domain[i] = *(name + i);
 	}
@@ -79,51 +80,55 @@ email_in(PG_FUNCTION_ARGS)
 	email->nameLen = (unsigned char) nameLen;
 	email->domainLen = (unsigned char) domainLen;
 
-				ereport(WARNING,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("test: \"%s\"",
-						email->name_domain)));
+				// ereport(WARNING,
+				// (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				//  errmsg("test: \"%s\"",
+				// 		email->name_domain)));
 
 	memcpy(VARDATA(result), email, sizeof(Email) + nameLen + domainLen + 1);
 	
 	PG_RETURN_POINTER(result);
 }
 
+typedef struct StringPair {
+    char* a;
+    char* b;
+} StringPair;
+
+// StringPair* splitString(char* str, int nameLen, int domainLen) {
+StringPair* getLocalDomainPair(Email* email) {
+	char * str = &email->name_domain[0];
+
+	StringPair *ret = palloc(sizeof(StringPair) + email->nameLen + email->domainLen + 2);;
+    
+    ret->a = palloc(email->nameLen + 1);
+    ret->b = palloc(email->domainLen + 1);
+
+    memcpy(ret->a, str, email->nameLen);
+    ret->a[email->nameLen] = '\0';
+    memcpy(ret->b, str + email->nameLen, email->domainLen);
+	ret->b[email->domainLen] = '\0';
+
+	return ret;
+}
+
 PG_FUNCTION_INFO_V1(email_out);
+
+char* varlena_p_to_string(struct varlena *varlena_ptr) {
+	Email *email = VARLENA_P_TO_EMAIL(varlena_ptr);
+	char *ret;
+
+	StringPair* pair = getLocalDomainPair(email);
+	//char *ret = palloc(email->nameLen + email->domainLen + 2 * sizeof(char));
+
+	ret = psprintf("%s@%s", pair->a, pair->b);
+	return ret;
+}
 
 Datum
 email_out(PG_FUNCTION_ARGS)
 {
-	// Email    *email = (Email *) PG_GETARG_VARLENA_P(0);
-	struct varlena *result = (struct varlena *) PG_GETARG_VARLENA_P(0);
-				// 	ereport(WARNING,
-				// (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				//  errmsg("test: \"%d\"",
-				// 		VARSIZE(result))));
-	// struct varlena *result = (struct varlena *) PG_GETARG_POINTER(0);
-	// Email *email = (Email *) palloc(sizeof(Email) + VARSIZE(result) - VARHDRSZ);
-	Email *email = (Email*)VARDATA(result);
-
-	// 				ereport(WARNING,
-	// 			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-	// 			 errmsg("test: \"%d\"",
-	// 					email->size)));
-	// // memcpy(email, VARDATA(result), VARSIZE(result) - VARHDRSZ);
-	
-	// 			ereport(WARNING,
-	// 			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-	// 			 errmsg("test: \"%s\"",
-	// 					email->name_domain)));
-	// size_t nameLen = VARSIZE(email->name) - VARHDRSZ;
-	// size_t domainLen = VARSIZE(email->domain) - VARHDRSZ;
-
-	char *out = palloc(email->nameLen + email->domainLen + 2 * sizeof(char));
-
-	snprintf(out, email->nameLen+1, "%s", email->name_domain);
-	strcat(out, "@");
-	strcat(out, &email->name_domain[email->nameLen]);
-	//snprintf(out + email->sepPos, email->size - email->sepPos, "%s", &(email->name_domain[email->sepPos]));
-
+	char *out = varlena_p_to_string(PG_GETARG_VARLENA_P(0));
 	PG_RETURN_CSTRING(out);
 }
 
@@ -140,83 +145,119 @@ email_out(PG_FUNCTION_ARGS)
 
 // #define Mag(c)	((c)->x*(c)->x + (c)->y*(c)->y)
 
-// static int
-// complex_abs_cmp_internal(Complex * a, Complex * b)
-// {
-// 	double		amag = Mag(a),
-// 				bmag = Mag(b);
-
-// 	if (amag < bmag)
-// 		return -1;
-// 	if (amag > bmag)
-// 		return 1;
-// 	return 0;
-// }
 
 
-// PG_FUNCTION_INFO_V1(complex_abs_lt);
+static int
+email_abs_cmp_internal(Email * a, Email * b)
+{
+	if (strcmp(&a->name_domain[0], &b->name_domain[0]) == 0) {
+		return 0;
+	}
 
-// Datum
-// complex_abs_lt(PG_FUNCTION_ARGS)
-// {
-// 	Complex    *a = (Complex *) PG_GETARG_POINTER(0);
-// 	Complex    *b = (Complex *) PG_GETARG_POINTER(1);
+	StringPair* a_pair = splitString(a);
+	StringPair* b_pair = splitString(b);
 
-// 	PG_RETURN_BOOL(complex_abs_cmp_internal(a, b) < 0);
-// }
+	return 0;
 
-// PG_FUNCTION_INFO_V1(complex_abs_le);
+}
 
-// Datum
-// complex_abs_le(PG_FUNCTION_ARGS)
-// {
-// 	Complex    *a = (Complex *) PG_GETARG_POINTER(0);
-// 	Complex    *b = (Complex *) PG_GETARG_POINTER(1);
 
-// 	PG_RETURN_BOOL(complex_abs_cmp_internal(a, b) <= 0);
-// }
+PG_FUNCTION_INFO_V1(email_abs_lt);
 
-// PG_FUNCTION_INFO_V1(complex_abs_eq);
+Datum
+email_abs_lt(PG_FUNCTION_ARGS)
+{
+	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
+	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
 
-// Datum
-// complex_abs_eq(PG_FUNCTION_ARGS)
-// {
-// 	Complex    *a = (Complex *) PG_GETARG_POINTER(0);
-// 	Complex    *b = (Complex *) PG_GETARG_POINTER(1);
+	PG_RETURN_BOOL(email_abs_cmp_internal(a, b) < 0);
+}
 
-// 	PG_RETURN_BOOL(complex_abs_cmp_internal(a, b) == 0);
-// }
+PG_FUNCTION_INFO_V1(email_abs_le);
 
-// PG_FUNCTION_INFO_V1(complex_abs_ge);
+Datum
+email_abs_le(PG_FUNCTION_ARGS)
+{
+	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
+	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
 
-// Datum
-// complex_abs_ge(PG_FUNCTION_ARGS)
-// {
-// 	Complex    *a = (Complex *) PG_GETARG_POINTER(0);
-// 	Complex    *b = (Complex *) PG_GETARG_POINTER(1);
+	PG_RETURN_BOOL(email_abs_cmp_internal(a, b) <= 0);
+}
 
-// 	PG_RETURN_BOOL(complex_abs_cmp_internal(a, b) >= 0);
-// }
+PG_FUNCTION_INFO_V1(email_abs_eq);
 
-// PG_FUNCTION_INFO_V1(complex_abs_gt);
+Datum
+email_abs_eq(PG_FUNCTION_ARGS)
+{
+	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
+	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
 
-// Datum
-// complex_abs_gt(PG_FUNCTION_ARGS)
-// {
-// 	Complex    *a = (Complex *) PG_GETARG_POINTER(0);
-// 	Complex    *b = (Complex *) PG_GETARG_POINTER(1);
+	PG_RETURN_BOOL(email_abs_cmp_internal(a, b) == 0);
+}
 
-// 	PG_RETURN_BOOL(complex_abs_cmp_internal(a, b) > 0);
-// }
+PG_FUNCTION_INFO_V1(email_abs_ge);
 
-// PG_FUNCTION_INFO_V1(complex_abs_cmp);
+Datum
+email_abs_ge(PG_FUNCTION_ARGS)
+{
+	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
+	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
 
-// Datum
-// complex_abs_cmp(PG_FUNCTION_ARGS)
-// {
-// 	Complex    *a = (Complex *) PG_GETARG_POINTER(0);
-// 	Complex    *b = (Complex *) PG_GETARG_POINTER(1);
+	PG_RETURN_BOOL(email_abs_cmp_internal(a, b) >= 0);
+}
 
-// 	PG_RETURN_INT32(complex_abs_cmp_internal(a, b));
-// }
+PG_FUNCTION_INFO_V1(email_abs_gt);
+
+Datum
+email_abs_gt(PG_FUNCTION_ARGS)
+{
+	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
+	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
+
+	PG_RETURN_BOOL(email_abs_cmp_internal(a, b) > 0);
+}
+
+PG_FUNCTION_INFO_V1(email_abs_neq);
+
+Datum
+email_abs_neq(PG_FUNCTION_ARGS)
+{
+	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
+	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
+
+	PG_RETURN_BOOL(email_abs_cmp_internal(a, b) != 0);
+}
+
+PG_FUNCTION_INFO_V1(email_abs_domain_eq);
+
+Datum
+email_abs_domain_eq(PG_FUNCTION_ARGS)
+{
+	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
+	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
+
+	PG_RETURN_BOOL(email_abs_cmp_internal(a, b) > 0);
+}
+
+PG_FUNCTION_INFO_V1(email_abs_domain_neq);
+
+Datum
+email_abs_domain_neq(PG_FUNCTION_ARGS)
+{
+	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
+	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
+
+	PG_RETURN_BOOL(email_abs_cmp_internal(a, b) > 0);
+}
+
+PG_FUNCTION_INFO_V1(email_abs_cmp);
+
+Datum
+email_abs_cmp(PG_FUNCTION_ARGS)
+{
+	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
+	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
+
+	PG_RETURN_INT32(email_abs_cmp_internal(a, b));
+}
 
