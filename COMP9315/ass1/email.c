@@ -12,9 +12,11 @@
 #include "fmgr.h"
 #include "libpq/pqformat.h"		/* needed for send/recv functions */
 
-#include "stdio.h"
-#include "string.h"
-#include "ctype.h"
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <regex.h>
 
 PG_MODULE_MAGIC;
 
@@ -27,6 +29,33 @@ typedef struct Email
 
 #define VARLENA_P_TO_EMAIL(e) ((Email*)VARDATA(e))
 
+bool parseEmail(const char * email) {
+    const char * emailPattern = "^([a-zA-Z]+[a-zA-Z0-9]*)+([-.][a-zA-Z0-9]+)*@([a-zA-Z]+([-][a-zA-Z0-9]+)*[.])+([a-zA-Z]+([-][a-zA-Z0-9]*)?)$";
+
+    regex_t regex;
+    int reti = regcomp(&regex, emailPattern, REG_EXTENDED);
+
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        exit(1);
+    }
+
+    reti = regexec(&regex, email, 0, NULL, 0);
+
+    if (!reti) {
+        return true;
+    }
+    else if (reti == REG_NOMATCH) {
+        return false;
+    }
+    else {
+        fprintf(stderr, "Regex match failed.\n");
+        exit(1);
+    }
+
+    return false;
+}
+
 /*****************************************************************************
  * Input/Output functions
  *****************************************************************************/
@@ -36,7 +65,15 @@ PG_FUNCTION_INFO_V1(email_in);
 Datum
 email_in(PG_FUNCTION_ARGS)
 {
-	char *str = strdup(PG_GETARG_CSTRING(0));
+	const char *str = strdup(PG_GETARG_CSTRING(0));
+
+	if (!parseEmail(str)) {
+		ereport(ERROR,
+			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+			 errmsg("invalid input syntax for email: \"%s\"",
+						str)));
+	}
+
 	char *name = palloc(sizeof(char) * 255);
 	char  *domain = palloc(sizeof(char) * 255);
 	Email *email; 
@@ -96,7 +133,6 @@ typedef struct StringPair {
     char* b;
 } StringPair;
 
-// StringPair* splitString(char* str, int nameLen, int domainLen) {
 StringPair* getLocalDomainPair(Email* email, bool lowercase) {
 	char * str;
 	int str_len = email->nameLen + email->domainLen + 1;
@@ -297,19 +333,11 @@ size_t djb_hash(char* cp)
 
 PG_FUNCTION_INFO_V1(email_abs_hash);
 
-
-// TODO need to make another for cstring type
 Datum
 email_abs_hash(PG_FUNCTION_ARGS)
 {
 	Email    *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
-
 	size_t hash = djb_hash(&a->name_domain[0]);
-
-				// 	ereport(WARNING,
-				// (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				//  errmsg("str: %s, hash: \"%d\"",
-				// 		a->name_domain,hash)));
 
 	PG_RETURN_INT32(hash);
 }

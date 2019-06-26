@@ -75,6 +75,9 @@ CREATE TABLE test_email (
 INSERT INTO test_email VALUES ('iliaiscool@coolco.com');
 INSERT INTO test_email VALUES ('at@Goog.au');
 INSERT INTO test_email VALUES ('Doodles@mymY.net');
+INSERT INTO test_email VALUES ('jas@cse');
+INSERT INTO test_email VALUES ('123jas@marketing.abc.com');
+INSERT INTO test_email VALUES ('a-very-silly-name.org@jas.com');
 
 SELECT * FROM test_email;
 
