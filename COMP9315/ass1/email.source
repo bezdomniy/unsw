@@ -1,8 +1,13 @@
 ---------------------------------------------------------------------------
+-- COMP9315
+-- Term 2
+-- Assignment 1
+-- Ilia Chibaev
+-- z3218424
 --
--- email.sql-
---    This file shows how to create a new user-defined type and how to
---    use this new type.
+-- email.sql -
+--    This file creates a new user-defined type to store parsed email
+--    address data.
 --
 --
 -- Portions Copyright (c) 1996-2018, PostgreSQL Global Development Group
@@ -11,21 +16,6 @@
 -- src/tutorial/email.source
 --
 ---------------------------------------------------------------------------
-
------------------------------
--- Creating a new type:
---	We are going to create a new type called 'email' which represents
---	email addresses.
---	A user-defined type must have an input and an output function.  All 
--- of these	are usually user-defined C functions.
------------------------------
-
--- Assume the user defined functions are in _OBJWD_/email$DLSUFFIX
--- (we do not want to assume this is in the dynamic loader search path).
--- Look at $PWD/email.c for the source.  Note that we declare all of
--- them as STRICT, so we do not need to cope with NULL inputs in the
--- C code.  We also mark them IMMUTABLE, since they always return the
--- same outputs given the same inputs.
 
 -- the input function 'email_in' takes a null-terminated string (the
 -- textual representation of the type) and turns it into the internal
@@ -46,8 +36,7 @@ CREATE FUNCTION email_out(emailaddr)
    LANGUAGE C IMMUTABLE STRICT;
 
 
--- now, we can create the type.
-
+-- create the type.
 CREATE TYPE emailaddr (
    internallength = VARIABLE,
    input = email_in,
@@ -59,12 +48,9 @@ CREATE TYPE emailaddr (
 
 -----------------------------
 -- Interfacing New Types with Indexes:
---	We cannot define a secondary index (eg. a B-tree) over the new type
---	yet. We need to create all the required operators and support
---      functions, then we can make the operator class.
 -----------------------------
 
--- first, define the required operators
+-- defining the required operators
 CREATE FUNCTION email_abs_lt(emailaddr, emailaddr) RETURNS bool
    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
 CREATE FUNCTION email_abs_le(emailaddr, emailaddr) RETURNS bool
@@ -132,7 +118,7 @@ CREATE OPERATOR !~ (
 CREATE FUNCTION email_abs_cmp(emailaddr, emailaddr) RETURNS int4
    AS '_OBJWD_/email' LANGUAGE C IMMUTABLE STRICT;
 
--- now we can make the operator classes
+-- operator class used for sorting
 CREATE OPERATOR CLASS email_btree_ops DEFAULT FOR TYPE emailaddr 
    USING btree AS
         OPERATOR        1       < ,
@@ -143,6 +129,7 @@ CREATE OPERATOR CLASS email_btree_ops DEFAULT FOR TYPE emailaddr
         FUNCTION        1       email_abs_cmp(emailaddr, emailaddr);
    ;
 
+-- operator class used for hash index
 CREATE OPERATOR CLASS email_abs_ops DEFAULT FOR TYPE emailaddr 
    USING hash AS
       OPERATOR        1       = ,
