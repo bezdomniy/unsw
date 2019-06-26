@@ -20,6 +20,16 @@
 
 PG_MODULE_MAGIC;
 
+
+/*****************************************************************************
+ * Macros
+ *****************************************************************************/
+#define VARLENA_P_TO_EMAIL(e) ((Email*)VARDATA(e))
+
+
+/*****************************************************************************
+ * Typedefs
+ *****************************************************************************/
 typedef struct Email
 {	
 	unsigned char nameLen;
@@ -27,9 +37,26 @@ typedef struct Email
 	char name_domain[];
 }			Email;
 
-#define VARLENA_P_TO_EMAIL(e) ((Email*)VARDATA(e))
+typedef struct StringPair {
+    char* a;
+    char* b;
+} StringPair;
 
-bool parseEmail(const char * email) {
+
+/*****************************************************************************
+ * Prototypes
+ *****************************************************************************/
+StringPair* getLocalDomainPair(Email* email, bool lowercase);
+bool parseEmail(char * email);
+char* varlena_p_to_string(struct varlena *varlena_ptr);
+size_t djb_hash(char* cp);
+
+
+/*****************************************************************************
+ * Helper functions
+ *****************************************************************************/
+
+bool parseEmail(char * email) {
     const char * emailPattern = "^([a-zA-Z]+[a-zA-Z0-9]*)+([-.][a-zA-Z0-9]+)*@([a-zA-Z]+([-][a-zA-Z0-9]+)*[.])+([a-zA-Z]+([-][a-zA-Z0-9]*)?)$";
 
     regex_t regex;
@@ -56,6 +83,54 @@ bool parseEmail(const char * email) {
     return false;
 }
 
+StringPair* getLocalDomainPair(Email* email, bool lowercase) {
+	char * str;
+	int str_len = email->nameLen + email->domainLen + 1;
+	int i;
+	StringPair *ret = palloc(sizeof(StringPair) + str_len + 1);
+	
+	if (lowercase) {
+		str = (char*) palloc(str_len);
+		for (i = 0; i < str_len; i++) {
+			str[i] = tolower(email->name_domain[i]);
+		}
+	}
+	else {
+		str = &email->name_domain[0];
+	}
+
+    ret->a = palloc(email->nameLen + 1);
+    ret->b = palloc(email->domainLen + 1);
+
+    memcpy(ret->a, str, email->nameLen);
+    ret->a[email->nameLen] = '\0';
+    memcpy(ret->b, str + email->nameLen, email->domainLen);
+	ret->b[email->domainLen] = '\0';
+
+	return ret;
+}
+
+/* D. J. Bernstein hash function from
+   https://codereview.stackexchange.com/questions/85556/simple-string-hashing-algorithm-implementation */
+size_t djb_hash(char* cp)
+{
+    size_t hash = 5381;
+    while (*cp)
+        hash = 33 * hash ^ (unsigned char) *cp++;
+    return hash;
+}
+
+char* varlena_p_to_string(struct varlena *varlena_ptr) {
+	Email *email = VARLENA_P_TO_EMAIL(varlena_ptr);
+	char *ret;
+
+	StringPair* pair = getLocalDomainPair(email, true);
+
+	ret = psprintf("%s@%s", pair->a, pair->b);
+	return ret;
+}
+
+
 /*****************************************************************************
  * Input/Output functions
  *****************************************************************************/
@@ -65,14 +140,7 @@ PG_FUNCTION_INFO_V1(email_in);
 Datum
 email_in(PG_FUNCTION_ARGS)
 {
-	const char *str = strdup(PG_GETARG_CSTRING(0));
-
-	if (!parseEmail(str)) {
-		ereport(ERROR,
-			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-			 errmsg("invalid input syntax for email: \"%s\"",
-						str)));
-	}
+	char *str = strdup(PG_GETARG_CSTRING(0));
 
 	char *name = palloc(sizeof(char) * 255);
 	char  *domain = palloc(sizeof(char) * 255);
@@ -83,6 +151,13 @@ email_in(PG_FUNCTION_ARGS)
 
 	unsigned char nameLen;
 	unsigned char domainLen;
+
+	if (!parseEmail(str)) {
+		ereport(ERROR,
+			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+			 errmsg("invalid input syntax for email: \"%s\"",
+						str)));
+	}
 
     buf = strtok(str, "@");
     strcpy(name, buf);
@@ -118,61 +193,12 @@ email_in(PG_FUNCTION_ARGS)
 	email->nameLen = (unsigned char) nameLen;
 	email->domainLen = (unsigned char) domainLen;
 
-				// ereport(WARNING,
-				// (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				//  errmsg("test: \"%s\"",
-				// 		email->name_domain)));
-
 	memcpy(VARDATA(result), email, sizeof(Email) + nameLen + domainLen + 1);
 	
 	PG_RETURN_POINTER(result);
 }
 
-typedef struct StringPair {
-    char* a;
-    char* b;
-} StringPair;
-
-StringPair* getLocalDomainPair(Email* email, bool lowercase) {
-	char * str;
-	int str_len = email->nameLen + email->domainLen + 1;
-	int i;
-	
-	if (lowercase) {
-		str = (char*) palloc(str_len);
-		for (i = 0; i < str_len; i++) {
-			str[i] = tolower(email->name_domain[i]);
-		}
-	}
-	else {
-		str = &email->name_domain[0];
-	}
-
-	StringPair *ret = palloc(sizeof(StringPair) + str_len + 1);;
-    
-    ret->a = palloc(email->nameLen + 1);
-    ret->b = palloc(email->domainLen + 1);
-
-    memcpy(ret->a, str, email->nameLen);
-    ret->a[email->nameLen] = '\0';
-    memcpy(ret->b, str + email->nameLen, email->domainLen);
-	ret->b[email->domainLen] = '\0';
-
-	return ret;
-}
-
 PG_FUNCTION_INFO_V1(email_out);
-
-char* varlena_p_to_string(struct varlena *varlena_ptr) {
-	Email *email = VARLENA_P_TO_EMAIL(varlena_ptr);
-	char *ret;
-
-	StringPair* pair = getLocalDomainPair(email, true);
-	//char *ret = palloc(email->nameLen + email->domainLen + 2 * sizeof(char));
-
-	ret = psprintf("%s@%s", pair->a, pair->b);
-	return ret;
-}
 
 Datum
 email_out(PG_FUNCTION_ARGS)
@@ -182,26 +208,20 @@ email_out(PG_FUNCTION_ARGS)
 }
 
 /*****************************************************************************
- * Operator class for defining B-tree index
- *
- * It's essential that the comparison operators and support function for a
- * B-tree index opclass always agree on the relative ordering of any two
- * data values.  Experience has shown that it's depressingly easy to write
- * unintentionally inconsistent functions.  One way to reduce the odds of
- * making a mistake is to make all the functions simple wrappers around
- * an internal three-way-comparison function, as we do here.
+Comparator helper functions
  *****************************************************************************/
 
 static int
 email_abs_cmp_internal(Email * a, Email * b)
 {
 	int ret = strcmp(&a->name_domain[0], &b->name_domain[0]);
-	if (ret == 0) {
-		return 0;
-	}
 
 	StringPair* a_pair = getLocalDomainPair(a, true);
 	StringPair* b_pair = getLocalDomainPair(b, true);
+
+	if (ret == 0) {
+		return 0;
+	}
 
 	ret = strcmp(a_pair->b, b_pair->b);
 
@@ -221,6 +241,10 @@ email_abs_domain_cmp_internal(Email * a, Email * b)
 	return strcmp(a_pair->b, b_pair->b);
 }
 
+
+/*****************************************************************************
+Comparator functions
+ *****************************************************************************/
 
 PG_FUNCTION_INFO_V1(email_abs_lt);
 
@@ -319,16 +343,6 @@ email_abs_cmp(PG_FUNCTION_ARGS)
 	Email    *b = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(1));
 
 	PG_RETURN_INT32(email_abs_cmp_internal(a, b));
-}
-
-/* D. J. Bernstein hash function from
-   https://codereview.stackexchange.com/questions/85556/simple-string-hashing-algorithm-implementation */
-size_t djb_hash(char* cp)
-{
-    size_t hash = 5381;
-    while (*cp)
-        hash = 33 * hash ^ (unsigned char) *cp++;
-    return hash;
 }
 
 PG_FUNCTION_INFO_V1(email_abs_hash);
