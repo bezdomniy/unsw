@@ -60,6 +60,7 @@ typedef struct StringPair
 StringPair *getLocalDomainPair(Email *email, bool lowercase);
 bool parseEmail(char *email);
 char *varlena_p_to_string(struct varlena *varlena_ptr);
+char *emailToString(Email *email);
 size_t djb_hash(char *cp);
 
 /*****************************************************************************
@@ -68,7 +69,7 @@ size_t djb_hash(char *cp);
 
 bool parseEmail(char *email)
 {
-	const char *emailPattern = "^([a-zA-Z]+[a-zA-Z0-9]*)+([-.][a-zA-Z0-9]+)*@([a-zA-Z]+([-][a-zA-Z0-9]+)*[.])+([a-zA-Z]+([-][a-zA-Z0-9]*)?)$";
+	const char *emailPattern = "^([a-zA-Z]+[a-zA-Z0-9]*)+([-.][a-zA-Z0-9]+)*@([a-zA-Z]+([-]?[a-zA-Z0-9])*[.])+([a-zA-Z]+([-][a-zA-Z0-9]*)?)$";
 
 	regex_t regex;
 	int reti = regcomp(&regex, emailPattern, REG_EXTENDED);
@@ -121,8 +122,8 @@ StringPair *getLocalDomainPair(Email *email, bool lowercase)
 		str = &email->name_domain[0];
 	}
 
-	ret->a = palloc(ADD_ONE(email->nameLen));
-	ret->b = palloc(ADD_ONE(email->domainLen));
+	ret->a = palloc(ADD_ONE(email->nameLen) + 1);
+	ret->b = palloc(ADD_ONE(email->domainLen) + 1);
 
 	memcpy(ret->a, str, ADD_ONE(email->nameLen));
 	ret->a[ADD_ONE(email->nameLen)] = '\0';
@@ -139,17 +140,27 @@ size_t djb_hash(char *cp)
 	size_t hash = 5381;
 	while (*cp)
 		hash = 33 * hash ^ (unsigned char)*cp++;
+
 	return hash;
+}
+
+char * emailToString(Email *email) {
+	char * out = palloc0(sizeof(char) * (ADD_ONE(email->nameLen) + ADD_ONE(email->domainLen) + 2));
+
+	memcpy(out, &email->name_domain[0], ADD_ONE(email->nameLen));
+	out[ADD_ONE(email->nameLen)] = '@';
+	
+	memcpy(out + ADD_ONE(email->nameLen) + 1, &email->name_domain[ADD_ONE(email->nameLen)], ADD_ONE(email->domainLen));
+	out[ADD_ONE(email->nameLen) + ADD_ONE(email->domainLen) + 2] = '\0';
+
+	return out;
 }
 
 char *varlena_p_to_string(struct varlena *varlena_ptr)
 {
 	Email *email = VARLENA_P_TO_EMAIL(varlena_ptr);
-	char *ret;
+	char *ret = emailToString(email);
 
-	StringPair *pair = getLocalDomainPair(email, true);
-
-	ret = psprintf("%s@%s", pair->a, pair->b);
 	return ret;
 }
 
@@ -164,12 +175,12 @@ Datum
 {
 	char *str = strdup(PG_GETARG_CSTRING(0));
 
-	char *name = palloc(sizeof(char) * MAX_NAME_LENGTH);
-	char *domain = palloc(sizeof(char) * MAX_NAME_LENGTH);
 	Email *email;
 	struct varlena *result;
-	char *buf = palloc0(sizeof(char) * MAX_NAME_LENGTH);
 	int i;
+
+	char *at_ptr;
+	int at_pos = 0;
 
 	unsigned char nameLen;
 	unsigned char domainLen;
@@ -182,59 +193,53 @@ Datum
 						str)));
 	}
 
-	buf = strtok(str, "@");
-	strcpy(name, buf);
+	at_ptr = strchr(str, '@');
+	at_pos = (int)(at_ptr - str);
 
-	buf = strtok(NULL, "@");
-	strcpy(domain, buf);
-
-	if (strtok(NULL, "@") != NULL)
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input syntax for email: \"%s\"",
-						str)));
-	}
-
-	if (strlen(name) > MAX_NAME_LENGTH)
+	if (at_pos > MAX_NAME_LENGTH)
 	{
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
 				 errmsg("invalid input syntax for email. Local part too long. Length: %d",
-						strlen(name))));
+						at_pos)));
 	}
 
-	if (strlen(domain) > MAX_NAME_LENGTH)
+	if (strlen(str) - (at_pos + 1) > MAX_NAME_LENGTH)
 	{
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
 				 errmsg("invalid input syntax for email. Domain part too long. Length: %d",
-						strlen(domain))));
+						strlen(str) - (at_pos + 1))));
 	}
 
 	// Decrement by 1 to fit in 1 byte
-	nameLen = strlen(name) - 1;
-	domainLen = strlen(domain) - 1;
+	nameLen = at_pos - 1;
+	domainLen = strlen(str) - (at_pos + 1) - 1;
 
-	result = (struct varlena *)palloc(ADD_ONE(nameLen) + ADD_ONE(domainLen) + VARHDRSZ);
-	SET_VARSIZE(result, sizeof(Email) + sizeof(char) * (ADD_ONE(nameLen) + ADD_ONE(domainLen)) + 4);
+	result = (struct varlena *)palloc0(sizeof(Email) + sizeof(char) * (ADD_ONE(nameLen) + ADD_ONE(domainLen)) + 1 + VARHDRSZ);
+	SET_VARSIZE(result, sizeof(Email) + sizeof(char) * (ADD_ONE(nameLen) + ADD_ONE(domainLen)) + 4 + 1);
 
-	email = (Email *)palloc0(sizeof(Email) + sizeof(char) * (ADD_ONE(nameLen) + ADD_ONE(domainLen)));
+	email = (Email *)palloc0(sizeof(Email) + sizeof(char) * (ADD_ONE(nameLen) + ADD_ONE(domainLen)) + 1);
 
 	for (i = 0; i < ADD_ONE(nameLen); i++)
 	{
-		email->name_domain[i] = tolower(*(name + i));
+		email->name_domain[i] = tolower(*(str + i));
 	}
 
 	for (i = 0; i < ADD_ONE(domainLen); i++)
 	{
-		email->name_domain[ADD_ONE(nameLen) + i] = tolower(*(domain + i));
+		email->name_domain[ADD_ONE(nameLen) + i] = tolower(*(str + ADD_ONE(nameLen) + 1 + i));
 	}
+	email->name_domain[ADD_ONE(nameLen) + ADD_ONE(domainLen)] = '\0';
 
-	email->nameLen = (unsigned char)nameLen;
-	email->domainLen = (unsigned char)domainLen;
+	free(str);
 
-	memcpy(VARDATA(result), email, sizeof(Email) + ADD_ONE(nameLen) + ADD_ONE(domainLen));
+	email->nameLen = nameLen;
+	email->domainLen = domainLen;
+
+	memcpy(VARDATA(result), email, sizeof(Email) + sizeof(char) * (ADD_ONE(nameLen) + ADD_ONE(domainLen)) + 1);
+
+	pfree(email);
 
 	PG_RETURN_POINTER(result);
 }
@@ -255,24 +260,24 @@ Comparator helper functions
 static int
 email_abs_cmp_internal(Email *a, Email *b)
 {
-	int ret = strcmp(&a->name_domain[0], &b->name_domain[0]);
-
 	StringPair *a_pair = getLocalDomainPair(a, true);
 	StringPair *b_pair = getLocalDomainPair(b, true);
 
-	if (ret == 0)
-	{
-		return 0;
-	}
-
-	ret = strcmp(a_pair->b, b_pair->b);
+	int ret = strcmp(a_pair->b, b_pair->b);
 
 	if (ret != 0)
 	{
+		pfree(a_pair);
+		pfree(b_pair);
 		return ret;
 	}
 
-	return strcmp(a_pair->a, b_pair->a);
+	ret = strcmp(a_pair->a, b_pair->a);
+
+	pfree(a_pair);
+	pfree(b_pair);
+
+	return ret;
 }
 
 static int
