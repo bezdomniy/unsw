@@ -135,5 +135,3 @@ CREATE OPERATOR CLASS email_abs_ops DEFAULT FOR TYPE emailaddr
       OPERATOR        1       = ,
       FUNCTION        1       email_abs_hash(emailaddr);
 
--- --clean up the example
--- DROP TYPE emailaddr CASCADE;

@@ -13,8 +13,8 @@
 #
 #-------------------------------------------------------------------------
 
-MODULES = email 
-DATA_built = email.sql
+MODULES = complex email 
+DATA_built = complex.sql email.sql
 
 ifdef NO_PGXS
 subdir = src/tutorial

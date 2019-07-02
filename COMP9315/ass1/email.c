@@ -15,11 +15,10 @@
 ******************************************************************************/
 
 #include "postgres.h"
-
 #include "fmgr.h"
-#include "libpq/pqformat.h" /* needed for send/recv functions */
 
-#include <stdio.h>
+#include "access/hash.h"
+
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
@@ -36,7 +35,7 @@ PG_MODULE_MAGIC;
 // ADD_ONE in used to increment length values stored in an unsigned char.
 // This is needed because the max length of the local and domain fields is
 // 1 greater than the maximum value of an unsigned char.
-#define ADD_ONE(i) (i + 1)
+#define ADD_ONE(i) ((unsigned short)(i + 1))
 
 /*****************************************************************************
  * Typedefs
@@ -48,20 +47,15 @@ typedef struct Email
 	char name_domain[];
 } Email;
 
-typedef struct StringPair
-{
-	char *a;
-	char *b;
-} StringPair;
-
 /*****************************************************************************
  * Prototypes
  *****************************************************************************/
-StringPair *getLocalDomainPair(Email *email, bool lowercase);
+char *getLocal(Email *email);
+char *getDomain(Email *email);
+
 bool parseEmail(char *email);
 char *varlena_p_to_string(struct varlena *varlena_ptr);
 char *emailToString(Email *email);
-size_t djb_hash(char *cp);
 
 /*****************************************************************************
  * Helper functions
@@ -69,16 +63,10 @@ size_t djb_hash(char *cp);
 
 bool parseEmail(char *email)
 {
-	const char *emailPattern = "^([a-zA-Z]+[a-zA-Z0-9]*)+([-.][a-zA-Z0-9]+)*@([a-zA-Z]+([-]?[a-zA-Z0-9])*[.])+([a-zA-Z]+([-][a-zA-Z0-9]*)?)$";
+	const char *emailPattern = "^([a-zA-Z]|([a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]))([.]([a-zA-Z]|([a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9])))*@([a-zA-Z]|([a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]))[.]([a-zA-Z]|([a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]))([.]([a-zA-Z]|([a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9])))*$";
 
 	regex_t regex;
 	int reti = regcomp(&regex, emailPattern, REG_EXTENDED);
-
-	if (reti)
-	{
-		fprintf(stderr, "Could not compile regex\n");
-		exit(1);
-	}
 
 	reti = regexec(&regex, email, 0, NULL, 0);
 
@@ -94,7 +82,10 @@ bool parseEmail(char *email)
 	}
 	else
 	{
-		fprintf(stderr, "Regex match failed.\n");
+		ereport(ERROR,
+			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("regex match failed on input: \"%s\"",
+						email)));
 		exit(1);
 	}
 
@@ -102,46 +93,26 @@ bool parseEmail(char *email)
 	return false;
 }
 
-StringPair *getLocalDomainPair(Email *email, bool lowercase)
+char *getLocal(Email *email)
 {
-	char *str;
-	int str_len = ADD_ONE(email->nameLen) + ADD_ONE(email->domainLen);
-	int i;
-	StringPair *ret = palloc(sizeof(StringPair) + str_len);
+	char *str = &email->name_domain[0];
+	char *ret = palloc(ADD_ONE(email->nameLen) + 1);
 
-	if (lowercase)
-	{
-		str = (char *)palloc(str_len);
-		for (i = 0; i < str_len; i++)
-		{
-			str[i] = tolower(email->name_domain[i]);
-		}
-	}
-	else
-	{
-		str = &email->name_domain[0];
-	}
-
-	ret->a = palloc(ADD_ONE(email->nameLen) + 1);
-	ret->b = palloc(ADD_ONE(email->domainLen) + 1);
-
-	memcpy(ret->a, str, ADD_ONE(email->nameLen));
-	ret->a[ADD_ONE(email->nameLen)] = '\0';
-	memcpy(ret->b, str + ADD_ONE(email->nameLen), ADD_ONE(email->domainLen));
-	ret->b[ADD_ONE(email->domainLen)] = '\0';
+	memcpy(ret, str, ADD_ONE(email->nameLen));
+	ret[ADD_ONE(email->nameLen)] = '\0';
 
 	return ret;
 }
 
-/* D. J. Bernstein hash function from
-   https://codereview.stackexchange.com/questions/85556/simple-string-hashing-algorithm-implementation */
-size_t djb_hash(char *cp)
+char *getDomain(Email *email)
 {
-	size_t hash = 5381;
-	while (*cp)
-		hash = 33 * hash ^ (unsigned char)*cp++;
+	char *str = &email->name_domain[0];
+	char *ret = palloc(ADD_ONE(email->domainLen) + 1);
 
-	return hash;
+	memcpy(ret, str + ADD_ONE(email->nameLen), ADD_ONE(email->domainLen));
+	ret[ADD_ONE(email->domainLen)] = '\0';
+
+	return ret;
 }
 
 char * emailToString(Email *email) {
@@ -180,7 +151,7 @@ Datum
 	int i;
 
 	char *at_ptr;
-	int at_pos = 0;
+	unsigned short at_pos = 0;
 
 	unsigned char nameLen;
 	unsigned char domainLen;
@@ -194,7 +165,7 @@ Datum
 	}
 
 	at_ptr = strchr(str, '@');
-	at_pos = (int)(at_ptr - str);
+	at_pos = (unsigned short)(at_ptr - str);
 
 	if (at_pos > MAX_NAME_LENGTH)
 	{
@@ -260,22 +231,28 @@ Comparator helper functions
 static int
 email_abs_cmp_internal(Email *a, Email *b)
 {
-	StringPair *a_pair = getLocalDomainPair(a, true);
-	StringPair *b_pair = getLocalDomainPair(b, true);
+	char *a_domain = getDomain(a);
+	char *b_domain = getDomain(b);
+	char *a_local;
+	char *b_local;
 
-	int ret = strcmp(a_pair->b, b_pair->b);
+	int ret = strcmp(a_domain, b_domain);
+
+	pfree(a_domain);
+	pfree(b_domain);
 
 	if (ret != 0)
 	{
-		pfree(a_pair);
-		pfree(b_pair);
 		return ret;
 	}
 
-	ret = strcmp(a_pair->a, b_pair->a);
+	a_local = getLocal(a);
+	b_local = getLocal(b);
 
-	pfree(a_pair);
-	pfree(b_pair);
+	ret = strcmp(a_local, b_local);
+
+	pfree(a_local);
+	pfree(b_local);
 
 	return ret;
 }
@@ -283,10 +260,10 @@ email_abs_cmp_internal(Email *a, Email *b)
 static int
 email_abs_domain_cmp_internal(Email *a, Email *b)
 {
-	StringPair *a_pair = getLocalDomainPair(a, true);
-	StringPair *b_pair = getLocalDomainPair(b, true);
+	char *a_domain = getDomain(a);
+	char *b_domain = getDomain(b);
 
-	return strcmp(a_pair->b, b_pair->b);
+	return strcmp(a_domain, b_domain);
 }
 
 /*****************************************************************************
@@ -397,8 +374,8 @@ PG_FUNCTION_INFO_V1(email_abs_hash);
 Datum
 	email_abs_hash(PG_FUNCTION_ARGS)
 {
-	Email *a = VARLENA_P_TO_EMAIL(PG_GETARG_VARLENA_P(0));
-	size_t hash = djb_hash(&a->name_domain[0]);
-
-	PG_RETURN_INT32(hash);
+	struct varlena *varlena_ptr = PG_GETARG_VARLENA_PP(0);
+	Datum hash = hash_any((unsigned char *) VARDATA_ANY(varlena_ptr), VARSIZE_ANY_EXHDR(varlena_ptr));;
+	PG_FREE_IF_COPY(varlena_ptr, 0);
+	PG_RETURN_DATUM(hash);
 }
