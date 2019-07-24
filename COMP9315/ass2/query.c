@@ -34,6 +34,35 @@ Query startQuery(Reln r, char *q)
 	// compute PageID of first page
 	//   using known bits and first "unknown" value
 	// set all values in QueryRep object
+
+	new->rel = r;
+	new->known = tupleHash(r, q);
+	
+	new->unknown = 0;
+
+	Count nvals = nattrs(r);
+	char **vals = malloc(nvals*sizeof(char *));
+	assert(vals != NULL);
+	tupleVals(q, vals);
+
+	int i;
+	Byte a;
+
+	for (i = 0; i < MAXCHVEC; i++) {
+		a = chvec(r)[i].att;
+
+		if (strcmp(vals[a], "?") == 0) {
+			new->unknown = setBit(new->unknown, i);
+		}
+			
+	}
+
+	freeVals(vals, nvals);
+
+	// 	char buf[MAXBITS+1];
+	// bitsString(new->unknown,buf);
+	// printf("unknown  = %s\n", buf);
+
 	return new;
 }
 

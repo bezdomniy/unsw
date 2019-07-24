@@ -90,7 +90,6 @@ Bits tupleHash(Reln r, Tuple t)
         b = chvec(r)[i].bit;
 
 		if (bitIsSet(hashArray[a], b)) {
-			//printf("here %d\n", i);
 			hash = setBit(hash, i);
 		}
 			
