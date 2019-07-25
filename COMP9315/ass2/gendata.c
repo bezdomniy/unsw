@@ -43,9 +43,9 @@ int main(int argc, char **argv)
 
 	// seed random # generator
 	if (argc < 5)
-		srandom(0);
+		srand(0);
 	else
-		srandom(atoi(argv[4]));
+		srand(atoi(argv[4]));
 
 	// reflects distribution of letter usage in english ... somewhat
 	// id ensures that all tuples are distinct
@@ -107,5 +107,5 @@ char *words[251] =
 
 char *randWord()
 {
-	return words[random()%251];
+	return words[rand()%251];
 }

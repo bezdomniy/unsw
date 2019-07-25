@@ -31,7 +31,7 @@ Tuple readTuple(Reln r, FILE *in)
 		if (*c == ',') nf++;
 	// invalid tuple
 	if (nf != nattrs(r)) return NULL;
-	return strdup(line); // needs to be free'd sometime
+	return copyString(line); // needs to be free'd sometime
 }
 
 // extract values into an array of strings
@@ -44,13 +44,13 @@ void tupleVals(Tuple t, char **vals)
 		while (*c != ',' && *c != '\0') c++;
 		if (*c == '\0') {
 			// end of tuple; add last field to vals
-			vals[i++] = strdup(c0);
+			vals[i++] = copyString(c0);
 			break;
 		}
 		else {
 			// end of next field; add to vals
 			*c = '\0';
-			vals[i++] = strdup(c0);
+			vals[i++] = copyString(c0);
 			*c = ',';
 			c++; c0 = c;
 		}
@@ -66,7 +66,7 @@ void freeVals(char **vals, int nattrs)
 }
 
 // hash a tuple using the choice vector
-// TODO: actually use the choice vector to make the hash - DONE
+// TODO: actually use the choice vector to make the hash
 
 Bits tupleHash(Reln r, Tuple t)
 {
@@ -75,25 +75,7 @@ Bits tupleHash(Reln r, Tuple t)
 	char **vals = malloc(nvals*sizeof(char *));
 	assert(vals != NULL);
 	tupleVals(t, vals);
-
-	Bits hashArray[nvals+1];
-	int i;
-	Byte a, b;
-	Bits hash = 0;
-
-	for (i = 0; i < nvals; i++) {
-		hashArray[i] = hash_any((unsigned char *)vals[i],strlen(vals[i]));
-	}
-
-	for (i = 0; i < MAXCHVEC; i++) {
-		a = chvec(r)[i].att;
-        b = chvec(r)[i].bit;
-
-		if (bitIsSet(hashArray[a], b)) {
-			hash = setBit(hash, i);
-		}
-			
-	}
+	Bits hash = hash_any((unsigned char *)vals[0],strlen(vals[0]));
 	bitsString(hash,buf);
 	printf("hash(%s) = %s\n", vals[0], buf);
 	return hash;

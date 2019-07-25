@@ -8,5 +8,6 @@
 #define UTIL_H 1
 
 void fatal(char *);
+char *copyString(char *);
 
 #endif

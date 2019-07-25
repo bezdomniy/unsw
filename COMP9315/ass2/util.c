@@ -13,3 +13,10 @@ void fatal(char *msg)
 	fprintf(stderr,"%s\n",msg);
 	exit(1);
 }
+
+char *copyString(char *str)
+{
+	char *new = malloc(strlen(str)+1);
+	strcpy(new, str);
+	return new;
+}
