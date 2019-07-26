@@ -14,7 +14,7 @@ typedef struct QueryRep *Query;
 Query startQuery(Reln, char *);
 Tuple getNextTuple(Query);
 Tuple getMatchingTupleFromCurrentPage(Query);
-int strcmpWithWildcard(char*, char*);
+int strcmpWithWildcard(char* str, Query q);
 Status nextPage(Query);
 void closeQuery(Query);
 
