@@ -7,6 +7,7 @@
 #include "query.h"
 #include "reln.h"
 #include "tuple.h"
+#include "page.h"
 
 // A suggestion ... you can change however you like
 
@@ -15,8 +16,15 @@ struct QueryRep {
 	Bits    known;     // the hash value from MAH
 	Bits    unknown;   // the unknown bits from MAH
 	PageID  curpage;   // current page in scan
+
 	int     is_ovflow; // are we in the overflow pages?
 	Offset  curtup;    // offset of current tuple within page
+
+	Page 	pageBuffer;
+	Count 	curPageSize;
+
+	char* 	queryString;
+	Tuple	resultBuffer;
 	//TODO
 };
 
@@ -36,8 +44,19 @@ Query startQuery(Reln r, char *q)
 	// set all values in QueryRep object
 
 	new->rel = r;
-	new->known = tupleHash(r, q);
-	
+	new->queryString = copyString(q); //TODO: check if i need to copy
+	Bits h = tupleHash(r, q);
+
+	if (depth(r) == 0)
+		new->known = 1;
+	else {
+		new->known = getLower(h, depth(r));
+		if (new->known < splitp(r)) new->known = getLower(h, depth(r)+1);
+	}
+
+	new->is_ovflow = 0;
+	new->curtup = 0;
+
 	new->unknown = 0;
 
 	Count nvals = nattrs(r);
@@ -53,23 +72,116 @@ Query startQuery(Reln r, char *q)
 
 		if (strcmp(vals[a], "?") == 0) {
 			new->unknown = setBit(new->unknown, i);
+			new->known = unsetBit(new->known, i); //init all unknown in known as 0
 		}
 			
 	}
 
 	freeVals(vals, nvals);
 
-	// 	char buf[MAXBITS+1];
-	// bitsString(new->unknown,buf);
-	// printf("unknown  = %s\n", buf);
+	new->curpage = new->known;
+	new->pageBuffer = getPage(dataFile(new->rel), new->curpage);
+	new->curtup = 0;
 
 	return new;
+}
+
+Status nextPage(Query q) {
+	int i;
+
+	putPage(dataFile(q->rel), q->curpage, q->pageBuffer);
+	for (i = 0; i < MAXCHVEC; i++) {
+		if (!bitIsSet(q->known, i) && bitIsSet(q->unknown, i)) {
+			q->curpage = setBit(q->known, i);
+			q->known = q->curpage;
+			q->pageBuffer = getPage(dataFile(q->rel), q->curpage);
+			q->curtup = 0;
+			break;
+		}
+	}
+	if (i == MAXCHVEC) {
+		return 1; //no more pages
+	}
+	return 0;
+}
+
+int strcmpWithWildcard(char* a, char* b) {
+	return strcmp(a, b); //TODO: add wildcard 
+}
+
+Tuple getMatchingTupleFromCurrentPage(Query q) {
+	char* currentPageData = pageData(q->pageBuffer);
+	Count tuplesInPage = pageNTuples(q->pageBuffer);
+
+	int i;
+	size_t stringSize;
+	Tuple out;
+
+	for (i = 0; i < tuplesInPage; i++) {
+		stringSize = strlen(currentPageData + q->curtup);
+		out = malloc(stringSize + 1);
+		
+		q->curtup += sprintf(out, "%s",currentPageData + q->curtup) + 1;
+	
+		if (strcmpWithWildcard(out, q->queryString) == 0) {
+			return out;
+		}
+		free(out);
+	}
+	return NULL;
 }
 
 // get next tuple during a scan
 
 Tuple getNextTuple(Query q)
 {
+	for (;;) {
+		q->resultBuffer = getMatchingTupleFromCurrentPage(q);
+		if (q->resultBuffer != NULL) {
+			return q->resultBuffer;
+		}
+		else {
+			q->curpage = pageOvflow(q->pageBuffer);
+
+			if (q->curpage != NO_PAGE) {
+				q->pageBuffer = getPage(ovflowFile(q->rel), q->curpage);
+				q->curtup = 0;
+				q->is_ovflow = 1;
+
+				q->resultBuffer = getMatchingTupleFromCurrentPage(q);
+			}
+
+			if (q->resultBuffer != NULL) {
+				return q->resultBuffer;
+			}
+			else {
+				int i;
+				for (i = 0; i < MAXCHVEC; i++) {
+					if (bitIsSet(q->unknown, i)) { //move unknown bit to curpage to try other permutation
+						q->curpage = setBit(q->curpage, i);
+						q->unknown = unsetBit(q->unknown, i);
+					}
+				}
+
+				if (i == MAXCHVEC) {
+					break;
+				}
+
+				q->curtup = 0;
+				q->is_ovflow = 0;
+				q->pageBuffer = getPage(ovflowFile(q->rel), q->curpage);
+				q->resultBuffer = getMatchingTupleFromCurrentPage(q);
+
+				if (q->resultBuffer != NULL) {
+					return q->resultBuffer;
+				}
+			}
+		}
+	}
+
+
+	// printf("%s\n", out);
+
 	// TODO
 	// Partial algorithm:
 	// if (more tuples in current page)

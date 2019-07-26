@@ -66,7 +66,7 @@ void freeVals(char **vals, int nattrs)
 }
 
 // hash a tuple using the choice vector
-// TODO: actually use the choice vector to make the hash
+// TODO: actually use the choice vector to make the hash - DONE
 
 Bits tupleHash(Reln r, Tuple t)
 {
@@ -75,11 +75,30 @@ Bits tupleHash(Reln r, Tuple t)
 	char **vals = malloc(nvals*sizeof(char *));
 	assert(vals != NULL);
 	tupleVals(t, vals);
-	Bits hash = hash_any((unsigned char *)vals[0],strlen(vals[0]));
+
+	Bits hashArray[nvals+1];
+	int i;
+	Byte a, b;
+	Bits hash = 0;
+
+	for (i = 0; i < nvals; i++) {
+		hashArray[i] = hash_any((unsigned char *)vals[i],strlen(vals[i]));
+	}
+
+	for (i = 0; i < MAXCHVEC; i++) {
+		a = chvec(r)[i].att;
+        b = chvec(r)[i].bit;
+
+		if (bitIsSet(hashArray[a], b)) {
+			hash = setBit(hash, i);
+		}
+			
+	}
 	bitsString(hash,buf);
 	printf("hash(%s) = %s\n", vals[0], buf);
 	return hash;
 }
+
 
 // compare two tuples (allowing for "unknown" values)
 
