@@ -59,6 +59,7 @@ Page getPage(FILE *f, PageID pid)
 	int ok = fseek(f, pid*PAGESIZE, SEEK_SET);
 	assert(ok == 0);
 	int n = fread(p, 1, PAGESIZE, f);
+	//printf("%d, %d\n",n,PAGESIZE);
 	assert(n == PAGESIZE);
 	return p;
 }
@@ -70,6 +71,7 @@ Status putPage(FILE *f, PageID pid, Page p)
 	int ok = fseek(f, pid*PAGESIZE, SEEK_SET);
 	assert(ok == 0);
 	int n = fwrite(p, 1, PAGESIZE, f);
+	//printf("%d, %d\n",n,PAGESIZE);
 	assert(n == PAGESIZE);
 	free(p);
 	return 0;

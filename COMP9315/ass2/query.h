@@ -7,6 +7,7 @@
 #define QUERY_H 1
 
 typedef struct QueryRep *Query;
+typedef struct BucketArrayRep *BucketArray;
 
 #include "reln.h"
 #include "tuple.h"
@@ -14,8 +15,14 @@ typedef struct QueryRep *Query;
 Query startQuery(Reln, char *);
 Tuple getNextTuple(Query);
 Tuple getMatchingTupleFromCurrentPage(Query);
+void generateBuckets(Query q, Bits data, Count unknownIndex);
 int strcmpWithWildcard(char* str, Query q);
 Status nextPage(Query);
 void closeQuery(Query);
+
+BucketArray initBucketArray(BucketArray bucketArray, size_t length);
+void freeBucketArray(BucketArray bucketArray);
+void addToBucketArray(BucketArray bucketArray, Bits data);
+Status moreBuckets(BucketArray bucketArray);
 
 #endif

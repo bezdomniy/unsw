@@ -9,7 +9,42 @@
 #include "tuple.h"
 #include "page.h"
 
+#include <math.h> 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
 // A suggestion ... you can change however you like
+
+struct BucketArrayRep {
+	Count nextFreeSpot;
+	//size_t length;
+	Bits data[];
+};
+
+BucketArray initBucketArray(BucketArray bucketArray, size_t length) {
+	bucketArray = malloc(sizeof(Bits[length]) + sizeof(struct BucketArrayRep));
+	bucketArray->nextFreeSpot = 0;
+	//bucketArray->length = length;
+	return bucketArray;
+};
+
+void freeBucketArray(BucketArray bucketArray) {
+	free(bucketArray->data);
+};
+
+void addToBucketArray(BucketArray bucketArray, Bits data) {
+	// if (moreBuckets(bucketArray)) {
+		printf("added\n");
+		bucketArray->data[bucketArray->nextFreeSpot] = data;
+		bucketArray->nextFreeSpot++;
+	// }
+};
+
+// Status moreBuckets(BucketArray bucketArray) {
+// 	if (bucketArray->nextFreeSpot < bucketArray->length)
+// 		return 1;
+// 	else
+// 		return 0;
+// };
 
 struct QueryRep {
 	Reln    rel;       // need to remember Relation info
@@ -24,6 +59,10 @@ struct QueryRep {
 
 	Page 	pageBuffer;
 	Count 	curPageSize;
+
+	BucketArray	bucketArray;
+	Count	unknownBits;
+	Count   curBucket;
 
 	char** 	query;
 	Count 	nvals;
@@ -67,27 +106,40 @@ Query startQuery(Reln r, char *q)
 
 	int i;
 	Byte a;
+	new->unknownBits = 0;
 
 	for (i = 0; i < MAXCHVEC; i++) {
 		a = chvec(r)[i].att;
 
 		if (strcmp(new->query[a], "?") == 0) {
 			new->unknown = setBit(new->unknown, i);
-			new->known = unsetBit(new->known, i); //init all unknown in known as 0
+			//new->known = unsetBit(new->known, i); //init all unknown in known as 0
+			new->unknownBits++;
 		}
 	}
-	
-	printf("%d\n",depth(r));
+
+	// printf("%d\n",depth(r));
 	new->unknown = getLower(new->unknown, depth(r));
 	if (new->unknown < splitp(r)) new->unknown = getLower(new->unknown, depth(r)+1);
 
-	char* tempPrint = malloc(sizeof(new->unknown) + 1);
-	bitsString(new->unknown, tempPrint);
-	printf("unknown: %s\n",tempPrint);
+	new->unknownBits = MIN(new->unknownBits, depth(r));
 
-	
+	printf("unknownBits: %d\n",new->unknownBits);
 
-	new->curpage = new->known;
+	new->bucketArray = initBucketArray(new->bucketArray, pow(2, new->unknownBits));
+
+	generateBuckets(new, new->known, 0);
+
+
+	new->curBucket = 0;
+	new->curpage = new->bucketArray->data[new->curBucket];
+
+		char* tempPrint;
+		tempPrint = malloc(MAXCHVEC + 1);
+		bitsString(new->curpage, tempPrint);
+		printf("start: %s\n",tempPrint);
+		free(tempPrint);
+
 	new->pageBuffer = getPage(dataFile(new->rel), new->curpage);
 	// putPage(dataFile(new->rel), new->curpage, new->pageBuffer);
 	// printf("here\n");
@@ -95,38 +147,61 @@ Query startQuery(Reln r, char *q)
 	new->curtup = 0;
 	new->curtupIndex = 0;
 	new->is_ovflow = 0;
+	
 
 	return new;
 }
 
-Status nextBucket(Query q) {
-	int i;
+void generateBuckets(Query q, Bits data, Count unknownIndex) {
+	if (unknownIndex == MAXCHVEC) 
+    { 
+		char* tempPrint;
+		tempPrint = malloc(MAXCHVEC + 1);
+		bitsString(data, tempPrint);
+		printf("bitstring: %s\n",tempPrint);
+		free(tempPrint);
 
-	// if (q->is_ovflow) {
-	// 	putPage(ovflowFile(q->rel), q->curpage, q->pageBuffer);
-	// }
-	// else {
-	// 	putPage(dataFile(q->rel), q->curpage, q->pageBuffer);
-	// }
-	free(q->pageBuffer);
-	
-	for (i = 0; i < MAXCHVEC; i++) {
-		if (bitIsSet(q->unknown, i)) {
-			q->curpage = setBit(q->known, i);
-			q->unknown = unsetBit(q->unknown, i);
-			q->pageBuffer = getPage(dataFile(q->rel), q->curpage);
-			q->nextOverflowPage = pageOvflow(q->pageBuffer);
-			q->curtup = 0;
-			q->curtupIndex = 0;
-			q->is_ovflow = 0;
-			break;
-		}
+		addToBucketArray(q->bucketArray, data);
+
+        return; 
+    } 
+  
+    if (bitIsSet(q->unknown, unknownIndex)) 
+    {	
+        data = unsetBit(data, unknownIndex); 
+		generateBuckets(q, data, unknownIndex + 1); 
+
+        data = setBit(data, unknownIndex); 
+        generateBuckets(q, data, unknownIndex + 1); 
+    }
+    else {
+        generateBuckets(q, data, unknownIndex + 1); 
 	}
-	if (i == MAXCHVEC) {
-		printf("here\n");
-		return 0; //no more pages
+}
+
+Status nextBucket(Query q) {
+	q->curBucket++;
+	if (q->curBucket < q->bucketArray->nextFreeSpot) {
+		
+		free(q->pageBuffer);
+
+		q->curpage = q->bucketArray->data[q->curBucket];
+		q->pageBuffer = getPage(dataFile(q->rel), q->curpage);
+		q->nextOverflowPage = pageOvflow(q->pageBuffer);
+		q->curtup = 0;
+		q->curtupIndex = 0;
+		q->is_ovflow = 0;
+
+			char* tempPrint = malloc(sizeof(q->curpage) + 1);
+			bitsString(q->curpage, tempPrint);
+			printf("trying: %s\n",tempPrint);
+			free(tempPrint);
+
+		return 1;
 	}
-	return 1;
+	else {
+		return 0;
+	}
 }
 
 int strcmpWithWildcard(char* str, Query q) {
@@ -153,24 +228,25 @@ Tuple getMatchingTupleFromCurrentPage(Query q) {
 	char* currentPageData = pageData(q->pageBuffer);
 	Count tuplesInPage = pageNTuples(q->pageBuffer);
 
-	//int i;
 	size_t stringSize;
 	Tuple out;
 
-	for (; q->curtupIndex < tuplesInPage; q->curtupIndex++) {
+	while (q->curtupIndex < tuplesInPage) {
+		q->curtupIndex++;
 		stringSize = strlen(currentPageData + q->curtup);
 		out = malloc(stringSize + 1);
 		
 		q->curtup += sprintf(out, "%s",currentPageData + q->curtup) + 1;
 
 		printf("ovflow: %d. page: %d. ", q->is_ovflow, q->curpage);
+
 		if (strcmpWithWildcard(out, q) == 0) {
 			free(q->resultBuffer);
 			return out;
 		}
 		free(out);
 	}
-	free(q->resultBuffer);
+	//free(q->resultBuffer);
 	return NULL;
 }
 
@@ -207,6 +283,9 @@ Tuple getNextTuple(Query q)
 				if (nextBucket(q)) {
 					printf("morepages\n");
 					return getNextTuple(q);
+				}
+				else {
+					return NULL;
 				}
 			}
 		}
