@@ -33,7 +33,7 @@ void freeBucketArray(BucketArray bucketArray) {
 
 void addToBucketArray(BucketArray bucketArray, Bits data) {
 	// if (moreBuckets(bucketArray)) {
-		printf("added\n");
+		// printf("added\n");
 		bucketArray->data[bucketArray->nextFreeSpot] = data;
 		bucketArray->nextFreeSpot++;
 	// }
@@ -124,7 +124,7 @@ Query startQuery(Reln r, char *q)
 
 	new->unknownBits = MIN(new->unknownBits, depth(r));
 
-	printf("unknownBits: %d\n",new->unknownBits);
+	// printf("unknownBits: %d\n",new->unknownBits);
 
 	new->bucketArray = initBucketArray(new->bucketArray, pow(2, new->unknownBits));
 
@@ -134,15 +134,15 @@ Query startQuery(Reln r, char *q)
 	new->curBucket = 0;
 	new->curpage = new->bucketArray->data[new->curBucket];
 
-		char* tempPrint;
-		tempPrint = malloc(MAXCHVEC + 1);
-		bitsString(new->curpage, tempPrint);
-		printf("start: %s\n",tempPrint);
-		free(tempPrint);
+		// char* tempPrint;
+		// tempPrint = malloc(MAXCHVEC + 1);
+		// bitsString(new->unknown, tempPrint);
+		// printf("unknown: %s\n",tempPrint);
+		// free(tempPrint);
 
 	new->pageBuffer = getPage(dataFile(new->rel), new->curpage);
 	// putPage(dataFile(new->rel), new->curpage, new->pageBuffer);
-	// printf("here\n");
+	// printf("depth %d\n", depth(r)+1);
 	new->nextOverflowPage = pageOvflow(new->pageBuffer);
 	new->curtup = 0;
 	new->curtupIndex = 0;
@@ -155,11 +155,11 @@ Query startQuery(Reln r, char *q)
 void generateBuckets(Query q, Bits data, Count unknownIndex) {
 	if (unknownIndex == MAXCHVEC) 
     { 
-		char* tempPrint;
-		tempPrint = malloc(MAXCHVEC + 1);
-		bitsString(data, tempPrint);
-		printf("bitstring: %s\n",tempPrint);
-		free(tempPrint);
+		// char* tempPrint;
+		// tempPrint = malloc(MAXCHVEC + 1);
+		// bitsString(data, tempPrint);
+		// printf("bitstring: %s\n",tempPrint);
+		// free(tempPrint);
 
 		addToBucketArray(q->bucketArray, data);
 
@@ -192,11 +192,6 @@ Status nextBucket(Query q) {
 		q->curtupIndex = 0;
 		q->is_ovflow = 0;
 
-			char* tempPrint = malloc(sizeof(q->curpage) + 1);
-			bitsString(q->curpage, tempPrint);
-			printf("trying: %s\n",tempPrint);
-			free(tempPrint);
-
 		return 1;
 	}
 	else {
@@ -205,11 +200,15 @@ Status nextBucket(Query q) {
 }
 
 int strcmpWithWildcard(char* str, Query q) {
-	printf("query: %s\n", str);
+	// printf("query: %s\n", str);
 
 	char **vals = malloc(q->nvals*sizeof(char *));
+	
 	tupleVals(str, vals);
+	
 	int i;
+
+	
 
 	for (i = 0; i < q->nvals; i++) {
 		if ((strcmp(q->query[i], "?") != 0) && (strcmp(q->query[i], vals[i]) != 0)) {
@@ -238,7 +237,7 @@ Tuple getMatchingTupleFromCurrentPage(Query q) {
 		
 		q->curtup += sprintf(out, "%s",currentPageData + q->curtup) + 1;
 
-		printf("ovflow: %d. page: %d. ", q->is_ovflow, q->curpage);
+		//printf("ovflow: %d. page: %d. \n", q->is_ovflow, q->curpage);
 
 		if (strcmpWithWildcard(out, q) == 0) {
 			free(q->resultBuffer);
@@ -246,7 +245,7 @@ Tuple getMatchingTupleFromCurrentPage(Query q) {
 		}
 		free(out);
 	}
-	//free(q->resultBuffer);
+	free(q->resultBuffer);
 	return NULL;
 }
 
@@ -254,40 +253,29 @@ Tuple getMatchingTupleFromCurrentPage(Query q) {
 
 Tuple getNextTuple(Query q)
 {
-	for (;;) {
-		q->resultBuffer = getMatchingTupleFromCurrentPage(q);
-		if (q->resultBuffer != NULL) {
-			return q->resultBuffer;
+	q->resultBuffer = getMatchingTupleFromCurrentPage(q);
+	if (q->resultBuffer != NULL) {
+		return q->resultBuffer;
+	}
+	else if (q->nextOverflowPage  != NO_PAGE) {
+		free(q->pageBuffer);
+				
+		q->curpage = q->nextOverflowPage;
+		q->pageBuffer = getPage(ovflowFile(q->rel), q->curpage);
+		q->nextOverflowPage = pageOvflow(q->pageBuffer);
+		q->curtup = 0;
+		q->curtupIndex = 0;
+		q->is_ovflow = 1;
+
+		return getNextTuple(q);
+	}
+	else {
+		if (nextBucket(q)) {
+			// printf("morepages\n");
+			return getNextTuple(q);
 		}
 		else {
-			if (q->nextOverflowPage  != NO_PAGE) {
-				// printf("here1\n");
-				// putPage(dataFile(q->rel), q->curpage, q->pageBuffer);
-				// printf("here2\n");
-				free(q->pageBuffer);
-				
-				q->curpage = q->nextOverflowPage;
-				q->pageBuffer = getPage(ovflowFile(q->rel), q->curpage);
-				q->nextOverflowPage = pageOvflow(q->pageBuffer);
-				q->curtup = 0;
-				q->curtupIndex = 0;
-				q->is_ovflow = 1;
-
-				q->resultBuffer = getMatchingTupleFromCurrentPage(q);
-			}
-
-			if (q->resultBuffer != NULL) {
-				return q->resultBuffer;
-			}
-			else {
-				if (nextBucket(q)) {
-					printf("morepages\n");
-					return getNextTuple(q);
-				}
-				else {
-					return NULL;
-				}
-			}
+			return NULL;
 		}
 	}
 
@@ -310,6 +298,65 @@ Tuple getNextTuple(Query q)
 	// endif
 	return NULL;
 }
+
+// Tuple getNextTuple(Query q)
+// {
+// 	for (;;) {
+// 		q->resultBuffer = getMatchingTupleFromCurrentPage(q);
+// 		if (q->resultBuffer != NULL) {
+// 			return q->resultBuffer;
+// 		}
+// 		else {
+// 			if (q->nextOverflowPage  != NO_PAGE) {
+// 				// printf("here1\n");
+// 				// putPage(dataFile(q->rel), q->curpage, q->pageBuffer);
+// 				// printf("here2\n");
+// 				free(q->pageBuffer);
+				
+// 				q->curpage = q->nextOverflowPage;
+// 				q->pageBuffer = getPage(ovflowFile(q->rel), q->curpage);
+// 				q->nextOverflowPage = pageOvflow(q->pageBuffer);
+// 				q->curtup = 0;
+// 				q->curtupIndex = 0;
+// 				q->is_ovflow = 1;
+
+// 				q->resultBuffer = getMatchingTupleFromCurrentPage(q);
+// 			}
+
+// 			if (q->resultBuffer != NULL) {
+// 				return q->resultBuffer;
+// 			}
+// 			else {
+// 				if (nextBucket(q)) {
+// 					// printf("morepages\n");
+// 					return getNextTuple(q);
+// 				}
+// 				else {
+// 					return NULL;
+// 				}
+// 			}
+// 		}
+// 	}
+
+
+// 	// printf("%s\n", out);
+
+// 	// TODO
+// 	// Partial algorithm:
+// 	// if (more tuples in current page)
+// 	//    get next matching tuple from current page
+// 	// else if (current page has overflow)
+// 	//    move to overflow page
+// 	//    grab first matching tuple from page
+// 	// else
+// 	//    move to "next" bucket
+// 	//    grab first matching tuple from data page
+// 	// endif
+// 	// if (current page has no matching tuples)
+// 	//    go to next page (try again)
+// 	// endif
+// 	return NULL;
+// }
 
 // clean up a QueryRep object and associated data
 
