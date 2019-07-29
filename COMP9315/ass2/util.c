@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "util.h"
+
 void fatal(char *msg)
 {
 	fprintf(stderr,"%s\n",msg);
@@ -20,3 +22,34 @@ char *copyString(char *str)
 	strcpy(new, str);
 	return new;
 }
+
+
+struct VectorRep {
+	unsigned int nextFreeSpot;
+	//size_t length;
+	Bits data[];
+};
+
+Vector init(Vector vector, size_t length) {
+	vector = malloc(sizeof(Bits[length]) + sizeof(struct VectorRep));
+	vector->nextFreeSpot = 0;
+	//bucketArray->length = length;
+	return vector;
+};
+
+void freeVector(Vector vector) {
+	free(vector->data);
+};
+
+void push(Vector vector, Bits data) {
+	vector->data[vector->nextFreeSpot] = data;
+	vector->nextFreeSpot++;
+};
+
+Bits get(Vector vector, unsigned int index) {
+	return vector->data[index];
+};
+
+unsigned int nextFreeSpot(Vector vector) {
+	return vector->nextFreeSpot;
+};

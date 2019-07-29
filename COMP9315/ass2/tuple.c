@@ -40,17 +40,22 @@ void tupleVals(Tuple t, char **vals)
 {
 	char *c = t, *c0 = t;
 	int i = 0;
+	
 	for (;;) {
 		while (*c != ',' && *c != '\0') c++;
 		if (*c == '\0') {
 			// end of tuple; add last field to vals
+			// printf("here1!\n");
 			vals[i++] = copyString(c0);
+			// printf("here2!\n");
 			break;
 		}
 		else {
 			// end of next field; add to vals
 			*c = '\0';
+			
 			vals[i++] = copyString(c0);
+
 			*c = ',';
 			c++; c0 = c;
 		}

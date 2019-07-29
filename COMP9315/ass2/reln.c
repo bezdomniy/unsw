@@ -123,6 +123,7 @@ void closeRelation(Reln r)
 
 PageID addToRelation(Reln r, Tuple t)
 {
+	PageID ret = NO_PAGE;
 	Bits h, p;
 	// char buf[MAXBITS+1];
 	h = tupleHash(r,t);
@@ -138,10 +139,11 @@ PageID addToRelation(Reln r, Tuple t)
 	if (addToPage(pg,t) == OK) {
 		putPage(r->data,p,pg);
 		r->ntups++;
-		return p;
+		ret = p;
+		// return p;
 	}
 	// primary data page full
-	if (pageOvflow(pg) == NO_PAGE) {
+	else if (pageOvflow(pg) == NO_PAGE) {
 		// add first overflow page in chain
 		PageID newp = addPage(r->ovflow);
 		pageSetOvflow(pg,newp);
@@ -151,7 +153,8 @@ PageID addToRelation(Reln r, Tuple t)
 		if (addToPage(newpg,t) != OK) return NO_PAGE;
 		putPage(r->ovflow,newp,newpg);
 		r->ntups++;
-		return p;
+		ret = p;
+		// return p;
 	}
 	else {
 		// scan overflow chain until we find space
@@ -169,25 +172,45 @@ PageID addToRelation(Reln r, Tuple t)
 				if (prevpg != NULL) free(prevpg);
 				putPage(r->ovflow,ovp,ovpg);
 				r->ntups++;
-				return p;
+				ret = p;
+				break;
+				// return p;
 			}
 		}
-		// all overflow pages are full; add another to chain
-		// at this point, there *must* be a prevpg
-		assert(prevpg != NULL);
-		// make new ovflow page
-		PageID newp = addPage(r->ovflow);
-		// insert tuple into new page
-		Page newpg = getPage(r->ovflow,newp);
-        if (addToPage(newpg,t) != OK) return NO_PAGE;
-        putPage(r->ovflow,newp,newpg);
-		// link to existing overflow chain
-		pageSetOvflow(prevpg,newp);
-		putPage(r->ovflow,prevp,prevpg);
-        r->ntups++;
-		return p;
+		if (ovp == NO_PAGE) {
+			// all overflow pages are full; add another to chain
+			// at this point, there *must* be a prevpg
+			assert(prevpg != NULL);
+			// make new ovflow page
+			PageID newp = addPage(r->ovflow);
+			// insert tuple into new page
+			Page newpg = getPage(r->ovflow,newp);
+			if (addToPage(newpg,t) != OK) return NO_PAGE;
+			putPage(r->ovflow,newp,newpg);
+			// link to existing overflow chain
+			pageSetOvflow(prevpg,newp);
+			putPage(r->ovflow,prevp,prevpg);
+			r->ntups++;
+			ret = p;
+			// return p;
+		}
+
 	}
-	return NO_PAGE;
+	// if (needToSplit(r)) {
+	// 	printf("split\n");
+	// 	addPage(r->data);
+	// 	// distributeTuples(r);
+
+	// 	r->sp++;
+		
+	// 	if (r->sp == pow(2, r->depth)) {
+	// 		printf("depth plus 1\n");
+
+	// 		r->depth++;
+	// 		r->sp = 0;
+	// 	}
+	// }
+	return ret;
 }
 
 // external interfaces for Reln data

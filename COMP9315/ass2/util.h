@@ -7,7 +7,19 @@
 #ifndef UTIL_H
 #define UTIL_H 1
 
+#include "defs.h"
+#include "bits.h"
+
+typedef struct VectorRep *Vector;
+
 void fatal(char *);
 char *copyString(char *);
+
+
+Vector init(Vector vector, size_t length);
+void freeVector(Vector vector);
+void push(Vector vector, Bits data);
+Bits get(Vector vector, unsigned int index);
+unsigned int nextFreeSpot(Vector vector);
 
 #endif

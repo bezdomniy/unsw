@@ -9,42 +9,13 @@
 #include "tuple.h"
 #include "page.h"
 
+
+
 #include <math.h> 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 // A suggestion ... you can change however you like
 
-struct BucketArrayRep {
-	Count nextFreeSpot;
-	//size_t length;
-	Bits data[];
-};
-
-BucketArray initBucketArray(BucketArray bucketArray, size_t length) {
-	bucketArray = malloc(sizeof(Bits[length]) + sizeof(struct BucketArrayRep));
-	bucketArray->nextFreeSpot = 0;
-	//bucketArray->length = length;
-	return bucketArray;
-};
-
-void freeBucketArray(BucketArray bucketArray) {
-	free(bucketArray->data);
-};
-
-void addToBucketArray(BucketArray bucketArray, Bits data) {
-	// if (moreBuckets(bucketArray)) {
-		// printf("added\n");
-		bucketArray->data[bucketArray->nextFreeSpot] = data;
-		bucketArray->nextFreeSpot++;
-	// }
-};
-
-// Status moreBuckets(BucketArray bucketArray) {
-// 	if (bucketArray->nextFreeSpot < bucketArray->length)
-// 		return 1;
-// 	else
-// 		return 0;
-// };
 
 struct QueryRep {
 	Reln    rel;       // need to remember Relation info
@@ -60,7 +31,7 @@ struct QueryRep {
 	Page 	pageBuffer;
 	Count 	curPageSize;
 
-	BucketArray	bucketArray;
+	Vector	bucketArray;
 	Count	unknownBits;
 	Count   curBucket;
 
@@ -126,13 +97,13 @@ Query startQuery(Reln r, char *q)
 
 	// printf("unknownBits: %d\n",new->unknownBits);
 
-	new->bucketArray = initBucketArray(new->bucketArray, pow(2, new->unknownBits));
+	new->bucketArray = init(new->bucketArray, pow(2, new->unknownBits));
 
 	generateBuckets(new, new->known, 0);
 
 
 	new->curBucket = 0;
-	new->curpage = new->bucketArray->data[new->curBucket];
+	new->curpage = get(new->bucketArray, new->curBucket);
 
 		// char* tempPrint;
 		// tempPrint = malloc(MAXCHVEC + 1);
@@ -161,7 +132,7 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
 		// printf("bitstring: %s\n",tempPrint);
 		// free(tempPrint);
 
-		addToBucketArray(q->bucketArray, data);
+		push(q->bucketArray, data);
 
         return; 
     } 
@@ -181,11 +152,11 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
 
 Status nextBucket(Query q) {
 	q->curBucket++;
-	if (q->curBucket < q->bucketArray->nextFreeSpot) {
+	if (q->curBucket < nextFreeSpot(q->bucketArray)) {
 		
 		free(q->pageBuffer);
 
-		q->curpage = q->bucketArray->data[q->curBucket];
+		q->curpage = get(q->bucketArray,q->curBucket);
 		q->pageBuffer = getPage(dataFile(q->rel), q->curpage);
 		q->nextOverflowPage = pageOvflow(q->pageBuffer);
 		q->curtup = 0;

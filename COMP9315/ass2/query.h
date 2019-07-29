@@ -7,8 +7,8 @@
 #define QUERY_H 1
 
 typedef struct QueryRep *Query;
-typedef struct BucketArrayRep *BucketArray;
 
+#include "util.h"
 #include "reln.h"
 #include "tuple.h"
 
@@ -20,9 +20,6 @@ int strcmpWithWildcard(char* str, Query q);
 Status nextPage(Query);
 void closeQuery(Query);
 
-BucketArray initBucketArray(BucketArray bucketArray, size_t length);
-void freeBucketArray(BucketArray bucketArray);
-void addToBucketArray(BucketArray bucketArray, Bits data);
-Status moreBuckets(BucketArray bucketArray);
+
 
 #endif
