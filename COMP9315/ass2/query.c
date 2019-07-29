@@ -97,13 +97,22 @@ Query startQuery(Reln r, char *q)
 
 	// printf("unknownBits: %d\n",new->unknownBits);
 
-	new->bucketArray = init(pow(2, new->unknownBits));
+	new->bucketArray = init(pow(2, new->unknownBits) * sizeof(Bits), UINT_TYPE);
 
 	generateBuckets(new, new->known, 0);
 
+	char* tempPrint;
+	for (i = 0; i < nextFreeSpot(new->bucketArray) / sizeof(Bits); i++) {
+				
+		tempPrint = malloc(MAXCHVEC + 1);
+		bitsString(*(Bits*)get(new->bucketArray, i), tempPrint);
+		printf("bitstring: %s\n",tempPrint);
+		free(tempPrint);
+	}
+
 
 	new->curBucket = 0;
-	new->curpage = get(new->bucketArray, new->curBucket);
+	new->curpage = *(Bits*)get(new->bucketArray, new->curBucket);
 
 		// char* tempPrint;
 		// tempPrint = malloc(MAXCHVEC + 1);
@@ -132,7 +141,7 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
 		// printf("bitstring: %s\n",tempPrint);
 		// free(tempPrint);
 
-		q->bucketArray = push(q->bucketArray, data);
+		q->bucketArray = push(q->bucketArray, (void*)&data);
 
         return; 
     } 
@@ -152,11 +161,11 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
 
 Status nextBucket(Query q) {
 	q->curBucket++;
-	if (q->curBucket < nextFreeSpot(q->bucketArray)) {
+	if (q->curBucket < nextFreeSpot(q->bucketArray)/sizeof(Bits)) {
 		
 		free(q->pageBuffer);
 
-		q->curpage = get(q->bucketArray,q->curBucket);
+		q->curpage = *(Bits*)get(q->bucketArray,q->curBucket);
 		q->pageBuffer = getPage(dataFile(q->rel), q->curpage);
 		q->nextOverflowPage = pageOvflow(q->pageBuffer);
 		q->curtup = 0;

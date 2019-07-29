@@ -7,8 +7,13 @@
 #ifndef UTIL_H
 #define UTIL_H 1
 
+#define IS_BIG_ENDIAN (1 == *(unsigned char *)&(const int){1})
+
 #include "defs.h"
 #include "bits.h"
+
+#define UINT_TYPE 0
+#define CHAR_TYPE 1
 
 typedef struct VectorRep *Vector;
 
@@ -16,11 +21,11 @@ void fatal(char *);
 char *copyString(char *);
 
 
-Vector init(size_t length);
+Vector init(size_t size, unsigned short type);
 void freeVector(Vector vector);
-Vector push(Vector vector, Bits data);
-Bits get(Vector vector, unsigned int index);
-size_t length(Vector vector);
+Vector push(Vector vector, void* data);
+void* get(Vector vector, unsigned int index);
+size_t size(Vector vector);
 unsigned int nextFreeSpot(Vector vector);
 Vector _expand(Vector vector);
 
