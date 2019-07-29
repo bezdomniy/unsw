@@ -97,7 +97,7 @@ Query startQuery(Reln r, char *q)
 
 	// printf("unknownBits: %d\n",new->unknownBits);
 
-	new->bucketArray = init(new->bucketArray, pow(2, new->unknownBits));
+	new->bucketArray = init(pow(2, new->unknownBits));
 
 	generateBuckets(new, new->known, 0);
 
@@ -132,7 +132,7 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
 		// printf("bitstring: %s\n",tempPrint);
 		// free(tempPrint);
 
-		push(q->bucketArray, data);
+		q->bucketArray = push(q->bucketArray, data);
 
         return; 
     } 

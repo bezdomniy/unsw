@@ -10,6 +10,8 @@
 #include "bits.h"
 #include "hash.h"
 
+#include <math.h> 
+
 #define HEADERSIZE (3*sizeof(Count)+sizeof(Offset))
 
 struct RelnRep {
@@ -196,21 +198,61 @@ PageID addToRelation(Reln r, Tuple t)
 		}
 
 	}
-	// if (needToSplit(r)) {
-	// 	printf("split\n");
-	// 	addPage(r->data);
-	// 	// distributeTuples(r);
+	if (needToSplit(r)) {
+		printf("split\n");
+		addPage(r->data);
+		distributeTuples(r);
 
-	// 	r->sp++;
+		r->sp++;
 		
-	// 	if (r->sp == pow(2, r->depth)) {
-	// 		printf("depth plus 1\n");
+		if (r->sp == pow(2, r->depth)) {
+			printf("depth plus 1\n");
 
-	// 		r->depth++;
-	// 		r->sp = 0;
-	// 	}
-	// }
+			r->depth++;
+			r->sp = 0;
+		}
+	}
 	return ret;
+}
+
+void distributeTuples(Reln r) {
+	PageID curPageID = r->sp;
+
+	FILE* curFile = r->data;
+
+	Page curPage;
+
+
+	int i;
+	char* data;
+
+	Vector tuplesInBucket= init((size_t)floor(PAGESIZE/10 * r->nattrs));;
+	
+	while (curPageID != NO_PAGE) {
+		curPage = getPage(curFile, curPageID);
+		
+		i = 0;
+
+		data = pageData(curPage);
+
+		for (i = 0; i < pageNTuples(curPage); i++) {
+			push(tuplesInBucket, data[i]);
+		}
+
+
+		curPageID = pageOvflow(curPage);
+		curFile = r->ovflow;
+		free(curPage);
+	}
+
+	freeVector(tuplesInBucket);
+}
+
+Status needToSplit(Reln r) {
+	if (r->ntups % (int)floor(PAGESIZE/10 * r->nattrs) == 0) {
+		return 1;
+	}
+	return 0;
 }
 
 // external interfaces for Reln data

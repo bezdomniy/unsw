@@ -12,6 +12,7 @@ typedef struct RelnRep *Reln;
 #include "tuple.h"
 #include "page.h"
 #include "chvec.h"
+#include "util.h"
 
 Status newRelation(char *name, Count nattr, Count npages, Count d, char *cv);
 Reln openRelation(char *name, char *mode);
@@ -26,5 +27,7 @@ Count depth(Reln r);
 Count splitp(Reln r);
 ChVecItem *chvec(Reln r);
 void relationStats(Reln r);
+Status needToSplit(Reln r);
+void distributeTuples(Reln r);
 
 #endif

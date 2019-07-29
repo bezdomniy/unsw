@@ -23,17 +23,22 @@ char *copyString(char *str)
 	return new;
 }
 
+Vector _expand(Vector vector) {
+	size_t newSize = sizeof(Bits[length(vector)]) * 2;
+	printf("expand\n");
+	return realloc(vector, newSize);
+}
 
 struct VectorRep {
 	unsigned int nextFreeSpot;
-	//size_t length;
+	size_t length;
 	Bits data[];
 };
 
-Vector init(Vector vector, size_t length) {
-	vector = malloc(sizeof(Bits[length]) + sizeof(struct VectorRep));
+Vector init(size_t length) {
+	Vector vector = malloc(sizeof(Bits[length]) + sizeof(struct VectorRep));
 	vector->nextFreeSpot = 0;
-	//bucketArray->length = length;
+	vector->length = length;
 	return vector;
 };
 
@@ -41,9 +46,15 @@ void freeVector(Vector vector) {
 	free(vector->data);
 };
 
-void push(Vector vector, Bits data) {
+Vector push(Vector vector, Bits data) {
+	if (vector->nextFreeSpot == vector->length) {
+		vector = _expand(vector);
+	}
+
 	vector->data[vector->nextFreeSpot] = data;
 	vector->nextFreeSpot++;
+
+	return vector;
 };
 
 Bits get(Vector vector, unsigned int index) {
@@ -53,3 +64,7 @@ Bits get(Vector vector, unsigned int index) {
 unsigned int nextFreeSpot(Vector vector) {
 	return vector->nextFreeSpot;
 };
+
+size_t length(Vector vector) {
+	return vector->length;
+}

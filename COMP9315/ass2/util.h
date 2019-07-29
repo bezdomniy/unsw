@@ -16,10 +16,12 @@ void fatal(char *);
 char *copyString(char *);
 
 
-Vector init(Vector vector, size_t length);
+Vector init(size_t length);
 void freeVector(Vector vector);
-void push(Vector vector, Bits data);
+Vector push(Vector vector, Bits data);
 Bits get(Vector vector, unsigned int index);
+size_t length(Vector vector);
 unsigned int nextFreeSpot(Vector vector);
+Vector _expand(Vector vector);
 
 #endif
