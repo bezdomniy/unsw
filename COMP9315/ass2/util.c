@@ -87,14 +87,12 @@ Vector push(Vector vector, void* data) {
 		vector->nextFreeSpot += sizeof(unsigned int);
 
 	} else if (vector->type == CHAR_TYPE) {
-		int i;
-		for (i = 0; i < strlen((char*)data); i++) {
-			vector->data[vector->nextFreeSpot + i] = ((char*)data)[i];
-		}
-		// vector->data[vector->nextFreeSpot] = *(char*)data;
-		vector->nextFreeSpot += strlen((char*)data) + 1;
+		strcpy(vector->data + vector->nextFreeSpot, (char*)data);
 
-		//printf("in: %s, next spot: %d\n", (char*)data, (int)vector->nextFreeSpot);
+		printf("in: %s, next spot: %d\n", (char*)data, (int)vector->nextFreeSpot);
+		// printf("in: %s, next spot: %d\n", vector->data +vector->nextFreeSpot, (int)vector->nextFreeSpot);
+
+		vector->nextFreeSpot += strlen((char*)data) + 1;
 	}
 	else {
 		fatal("Invalid type somehow in vector.\n");
@@ -104,16 +102,7 @@ Vector push(Vector vector, void* data) {
 };
 
 void* get(Vector vector, unsigned int index) {
-
 	if (vector->type == UINT_TYPE) {
-		// unsigned char bytes[4];
-		
-		// bytes[0] = vector->data[index * sizeof(unsigned int)]     ;
-		// bytes[1] = vector->data[index * sizeof(unsigned int) + 1] ;
-		// bytes[2] = vector->data[index * sizeof(unsigned int) + 2] ;
-		// bytes[3] = vector->data[index * sizeof(unsigned int) + 3] ;
-
-		// return bytes;
 		return (void *)&vector->data[index * sizeof(unsigned int)]     ;
 	} else if (vector->type == CHAR_TYPE) {
 		return (void *)&vector->data[index];
