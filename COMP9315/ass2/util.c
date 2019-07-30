@@ -87,8 +87,14 @@ Vector push(Vector vector, void* data) {
 		vector->nextFreeSpot += sizeof(unsigned int);
 
 	} else if (vector->type == CHAR_TYPE) {
-		vector->data[vector->nextFreeSpot] = *(char*)data;
-		vector->nextFreeSpot += sizeof(data);
+		int i;
+		for (i = 0; i < strlen((char*)data); i++) {
+			vector->data[vector->nextFreeSpot + i] = ((char*)data)[i];
+		}
+		// vector->data[vector->nextFreeSpot] = *(char*)data;
+		vector->nextFreeSpot += strlen((char*)data) + 1;
+
+		//printf("in: %s, next spot: %d\n", (char*)data, (int)vector->nextFreeSpot);
 	}
 	else {
 		fatal("Invalid type somehow in vector.\n");
