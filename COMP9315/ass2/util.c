@@ -31,7 +31,7 @@ struct VectorRep {
 	char data[];
 };
 
-void _expand(Vector *vector) {
+void _expand(Vector *vector, size_t tupleLen) {
 	size_t newSize;
 	// size_t oldSize;
 	// unsigned int expansionFactor = 2;
@@ -39,7 +39,7 @@ void _expand(Vector *vector) {
 
 	// }
 
-	unsigned int expansionFactor = (unsigned int)ceil((double)(*vector)->nextFreeSpot/(double)(*vector)->size);
+	unsigned int expansionFactor = (unsigned int)ceil(((double)(*vector)->nextFreeSpot + tupleLen)/(double)(*vector)->size);
 	printf("expfact %d\n", expansionFactor);
 
 	if ((*vector)->type == UINT_TYPE) {
@@ -52,7 +52,7 @@ void _expand(Vector *vector) {
 	}
 	else {
 		fatal("expand: Invalid type somehow in vector.\n");
-	}
+	}  
 
 		printf("sizeb4 %d\n", (int)(*vector)->size);
 	printf("size2b %d\n", (int)newSize);
@@ -61,83 +61,92 @@ void _expand(Vector *vector) {
 	// memcpy(ret, vector, oldSize);
 	// free(vector);
 
-
 	*vector = (Vector)realloc(*vector, newSize);
-	
-	(*vector)->size *= expansionFactor;
-	printf("sizeaf %d\n", (int)(*vector)->size);
 	if (*vector == NULL) {
 		fatal("failed realloc.");
 	}
+
+	(*vector)->size *= expansionFactor;
+	printf("sizeaf %d\n", (int)(*vector)->size);
+
 	printf("expand\n");
 	//return ret;
 }
 
 
 
-Vector init(size_t size, unsigned short type) {
-	Vector vector;
+void init(Vector *vector, size_t size, unsigned short type) {
+	//Vector vector;
 
 	if (type == UINT_TYPE) {
-		vector = malloc(sizeof(unsigned int[size]) + sizeof(struct VectorRep));
+		(*vector) = (Vector)malloc(sizeof(unsigned int[size]) + sizeof(struct VectorRep));
+		// (*vector)->data[sizeof(unsigned int[size])+1] = '\0';
 	}
 	else if (type == CHAR_TYPE) {
-		vector = malloc(sizeof(char[size]) + sizeof(struct VectorRep));
+		(*vector) = (Vector)malloc(sizeof(char[size]) + sizeof(struct VectorRep));
+		// (*vector)->data[sizeof(char[size])+1] = '\0';
 	}
 	else {
 		fatal("Invalid type.\n");
 	}
+
 	
-	vector->nextFreeSpot = 0;
-	vector->size = size;
-	vector->type = type;
-	return vector;
+	
+	(*vector)->nextFreeSpot = 0;
+	(*vector)->size = size;
+	(*vector)->type = type;
+	//return vector;
 }
 
 void freeVector(Vector vector) {
-	free(vector->data);
+	//free(vector->data);
 }
 
-Vector push(Vector vector, void* data) {
-	if (vector->nextFreeSpot >= vector->size) {
+void push(Vector *vector, void* data) {
+	size_t tupleLen = strlen((char*)data) + 1;
+	printf("in: |%s|, next spot: %d\n", (char*)data, (int)(*vector)->nextFreeSpot);
+	if ((*vector)->nextFreeSpot + tupleLen >= (*vector)->size) {
 		//vector = _expand(vector);
-		_expand(&vector);
+		
+		printf("%p\n",vector);
+		_expand(vector, tupleLen);
+		printf("%p\n",vector);
 	}
 
-	printf("%d type\n", vector->type);
+	// printf("%d type\n", (*vector)->type);
 
-	if (vector->type == UINT_TYPE) {
+	if ((*vector)->type == UINT_TYPE) {
 		unsigned int n = *(unsigned int*)data;
 
 		if (IS_BIG_ENDIAN) {
-			vector->data[vector->nextFreeSpot + 3]     = (n >> 24) & 0xFF;
-			vector->data[vector->nextFreeSpot + 2] = (n >> 16) & 0xFF;
-			vector->data[vector->nextFreeSpot + 1] = (n >> 8) & 0xFF;
-			vector->data[vector->nextFreeSpot] = n & 0xFF;
+			(*vector)->data[(*vector)->nextFreeSpot + 3]     = (n >> 24) & 0xFF;
+			(*vector)->data[(*vector)->nextFreeSpot + 2] = (n >> 16) & 0xFF;
+			(*vector)->data[(*vector)->nextFreeSpot + 1] = (n >> 8) & 0xFF;
+			(*vector)->data[(*vector)->nextFreeSpot] = n & 0xFF;
 		} else {
-			vector->data[vector->nextFreeSpot]     = (n >> 24) & 0xFF;
-			vector->data[vector->nextFreeSpot + 1] = (n >> 16) & 0xFF;
-			vector->data[vector->nextFreeSpot + 2] = (n >> 8) & 0xFF;
-			vector->data[vector->nextFreeSpot + 3] = n & 0xFF;
+			(*vector)->data[(*vector)->nextFreeSpot]     = (n >> 24) & 0xFF;
+			(*vector)->data[(*vector)->nextFreeSpot + 1] = (n >> 16) & 0xFF;
+			(*vector)->data[(*vector)->nextFreeSpot + 2] = (n >> 8) & 0xFF;
+			(*vector)->data[(*vector)->nextFreeSpot + 3] = n & 0xFF;
 		}
 
 
-		vector->nextFreeSpot += sizeof(unsigned int);
+		(*vector)->nextFreeSpot += sizeof(unsigned int);
 
-	} else if (vector->type == CHAR_TYPE) {
-		strcpy(vector->data + vector->nextFreeSpot, (char*)data);
+	} else if ((*vector)->type == CHAR_TYPE) {
+		strcpy((*vector)->data + (*vector)->nextFreeSpot, (char*)data);
 
 		// printf("in: %s, next spot: %d\n", (char*)data, (int)vector->nextFreeSpot);
-		// printf("in: %s, next spot: %d\n", vector->data +vector->nextFreeSpot, (int)vector->nextFreeSpot);
+		// printf("in: %s, next spot: %d\n", (*vector)->data +(*vector)->nextFreeSpot, (int)(*vector)->nextFreeSpot);
 
-		vector->nextFreeSpot += strlen((char*)data) + 1;
+		(*vector)->nextFreeSpot += tupleLen;
 	}
 	else {
 		// printf("%d type\n", vector->type);
 		fatal("Push: Invalid type somehow in vector.\n");
 	}
 
-	return vector;
+	//return vector;
 }
 
 void* pop(Vector vector) {

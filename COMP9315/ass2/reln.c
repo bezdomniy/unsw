@@ -230,8 +230,11 @@ void distributeTuples(Reln r) {
 	// Tuple tuple;
 	Offset tupleOffset;
 
-	Vector tuplesInBucket = init((size_t)floor(PAGESIZE/10 * r->nattrs), CHAR_TYPE);
-	Vector freePageIDs = init(2, UINT_TYPE);
+	Vector tuplesInBucket;
+	init(&tuplesInBucket, (size_t)floor(PAGESIZE/10 * r->nattrs), CHAR_TYPE);
+
+	Vector freePageIDs;
+	init(&freePageIDs, 2, UINT_TYPE);
 	
 	while (curPageID != NO_PAGE) {
 		if (curPageID != r->sp) {
@@ -243,10 +246,12 @@ void distributeTuples(Reln r) {
 		//printf("tuples: %d\n",pageNTuples(curPage));
 
 		for (i = 0; i < pageNTuples(curPage); i++) {
-			Tuple tuple = malloc(strlen(data + tupleOffset) + 1);
+			//Tuple tuple = malloc(strlen(data + tupleOffset) + 1);
+			Tuple tuple = (Tuple)calloc(strlen(data + tupleOffset) + 1, sizeof(char));
 			tupleOffset += sprintf(tuple, "%s",data + tupleOffset) + 1;
-			tuplesInBucket = push(tuplesInBucket, tuple);
-			// push(tuplesInBucket, tuple);
+			// tuplesInBucket = push(tuplesInBucket, tuple);
+			push(&tuplesInBucket, tuple);
+			free(tuple);
 		}
 
 		printf("ovflow\n");

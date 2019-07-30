@@ -42,11 +42,13 @@ struct QueryRep {
 };
 
 void test() {
-	Vector tuplesInBucket= init(1, CHAR_TYPE);
+	Vector tuplesInBucket;
+	
+	init(&tuplesInBucket, 1, CHAR_TYPE);
 
-	push(tuplesInBucket, "abc");
-	push(tuplesInBucket, "xz");
-	push(tuplesInBucket, "mofo");
+	push(&tuplesInBucket, "abc");
+	push(&tuplesInBucket, "xz");
+	push(&tuplesInBucket, "mofo");
 	
 	// int i;
 	// for(i = 0; i < nextFreeSpot(tuplesInBucket); i++) {
@@ -123,7 +125,7 @@ Query startQuery(Reln r, char *q)
 
 	// printf("unknownBits: %d\n",new->unknownBits);
 
-	new->bucketArray = init(pow(2, new->unknownBits) * sizeof(Bits), UINT_TYPE);
+	init(&new->bucketArray, pow(2, new->unknownBits) * sizeof(Bits), UINT_TYPE);
 
 	generateBuckets(new, new->known, 0);
 
@@ -167,7 +169,8 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
 		// printf("bitstring: %s\n",tempPrint);
 		// free(tempPrint);
 
-		q->bucketArray = push(q->bucketArray, (void*)&data);
+		// q->bucketArray = push(q->bucketArray, (void*)&data);
+		push(&q->bucketArray, (void*)&data);
 
         return; 
     } 
