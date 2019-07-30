@@ -25,8 +25,9 @@ Vector init(size_t size, unsigned short type);
 void freeVector(Vector vector);
 Vector push(Vector vector, void* data);
 void* get(Vector vector, unsigned int index);
+void* pop(Vector vector);
 size_t size(Vector vector);
 unsigned int nextFreeSpot(Vector vector);
-Vector _expand(Vector vector);
+void _expand(Vector *vector);
 
 #endif

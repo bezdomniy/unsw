@@ -41,11 +41,37 @@ struct QueryRep {
 
 };
 
+void test() {
+	Vector tuplesInBucket= init(1, CHAR_TYPE);
+
+	push(tuplesInBucket, "abc");
+	push(tuplesInBucket, "xz");
+	push(tuplesInBucket, "mofo");
+	
+	// int i;
+	// for(i = 0; i < nextFreeSpot(tuplesInBucket); i++) {
+	// 	printf("%s\n", (char*)get(tuplesInBucket, i));
+	// }
+
+	int i = 0;
+	char* buf ;
+	while (i < nextFreeSpot(tuplesInBucket)) {
+		buf = (char*)get(tuplesInBucket, i);
+		printf("%d, %s\n", i, buf);
+		i+= strlen(buf) + 1;
+	}
+
+	//freeVector(tuplesInBucket);
+	exit(0);
+}
+
 // take a query string (e.g. "1234,?,abc,?")
 // set up a QueryRep object for the scan
 
 Query startQuery(Reln r, char *q)
 {
+	// test(); 
+
 	Query new = malloc(sizeof(struct QueryRep));
 	assert(new != NULL);
 	// TODO

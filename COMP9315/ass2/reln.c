@@ -200,7 +200,9 @@ PageID addToRelation(Reln r, Tuple t)
 	}
 	if (needToSplit(r)) {
 		printf("split\n");
+		
 		addPage(r->data);
+		r->npages++;
 		distributeTuples(r);
 
 		r->sp++;
@@ -225,27 +227,44 @@ void distributeTuples(Reln r) {
 
 	int i;
 	char* data;
+	// Tuple tuple;
+	Offset tupleOffset;
 
-	Vector tuplesInBucket= init((size_t)floor(PAGESIZE/10 * r->nattrs));;
+	Vector tuplesInBucket = init((size_t)floor(PAGESIZE/10 * r->nattrs), CHAR_TYPE);
+	Vector freePageIDs = init(2, UINT_TYPE);
 	
 	while (curPageID != NO_PAGE) {
+		if (curPageID != r->sp) {
+			// freePageIDs = push(freePageIDs, (void*)&curPageID);
+		}
 		curPage = getPage(curFile, curPageID);
-		
-		i = 0;
-
 		data = pageData(curPage);
+		tupleOffset = 0;
+		//printf("tuples: %d\n",pageNTuples(curPage));
 
 		for (i = 0; i < pageNTuples(curPage); i++) {
-			push(tuplesInBucket, data[i]);
+			Tuple tuple = malloc(strlen(data + tupleOffset) + 1);
+			tupleOffset += sprintf(tuple, "%s",data + tupleOffset) + 1;
+			tuplesInBucket = push(tuplesInBucket, tuple);
+			// push(tuplesInBucket, tuple);
 		}
 
-
+		printf("ovflow\n");
 		curPageID = pageOvflow(curPage);
 		curFile = r->ovflow;
 		free(curPage);
 	}
 
-	freeVector(tuplesInBucket);
+	i = 0;
+	char* buf ;
+	while (i < nextFreeSpot(tuplesInBucket)) {
+		buf = (char*)get(tuplesInBucket, i);
+		printf("%d: %s\n", i, buf);
+		i+= strlen(buf) + 1;
+	}
+	printf("end\n");
+	free(freePageIDs);
+	free(tuplesInBucket);
 }
 
 Status needToSplit(Reln r) {
