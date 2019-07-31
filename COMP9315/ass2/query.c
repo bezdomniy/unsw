@@ -119,7 +119,7 @@ void test2() {
 
 Query startQuery(Reln r, char *q)
 {
-	test2(); 
+	// test2(); 
 
 	Query new = malloc(sizeof(struct QueryRep));
 	assert(new != NULL);
@@ -134,13 +134,16 @@ Query startQuery(Reln r, char *q)
 	new->rel = r;
 	//new->queryString = copyString(q); //TODO: check if i need to copy
 	Bits h = tupleHash(r, q);
+	new->known = getLower(h, depth(r)+1);
+	new->unknownBits = depth(r)+1;
+	// new->known = tupleHash(r, q);
 
-	if (depth(r) == 0)
-		new->known = 1;
-	else {
-		new->known = getLower(h, depth(r));
-		if (new->known < splitp(r)) new->known = getLower(h, depth(r)+1);
-	}
+	// if (depth(r) == 0)
+	// 	new->known = 1;
+	// else {
+	// 	new->known = getLower(h, depth(r));
+	// 	if (new->known < splitp(r)) new->known = getLower(h, depth(r)+1);
+	// }
 
 
 	new->unknown = 0;
@@ -152,7 +155,7 @@ Query startQuery(Reln r, char *q)
 
 	int i;
 	Byte a;
-	new->unknownBits = 0;
+	// new->unknownBits = 0;
 
 	for (i = 0; i < MAXCHVEC; i++) {
 		a = chvec(r)[i].att;
@@ -160,7 +163,7 @@ Query startQuery(Reln r, char *q)
 		if (strcmp(new->query[a], "?") == 0) {
 			new->unknown = setBit(new->unknown, i);
 			//new->known = unsetBit(new->known, i); //init all unknown in known as 0
-			new->unknownBits++;
+			// new->unknownBits++;
 		}
 	}
 
@@ -168,11 +171,20 @@ Query startQuery(Reln r, char *q)
 	new->unknown = getLower(new->unknown, depth(r));
 	if (new->unknown < splitp(r)) new->unknown = getLower(new->unknown, depth(r)+1);
 
-	new->unknownBits = MIN(new->unknownBits, depth(r));
+	// new->unknownBits = depth(r)+1;
+
+	// if (new->unknown < splitp(r)) {
+	// 	new->unknown = getLower(new->unknown, depth(r) + 1);
+	// 	new->unknownBits =  depth(r) + 1;
+	// }
+	// else {
+	// 	new->unknownBits =  depth(r);
+	// }
+	
 
 	// printf("unknownBits: %d\n",new->unknownBits);
 
-	init(&new->bucketArray, pow(2, new->unknownBits) * sizeof(Bits), UINT_TYPE);
+	init(&new->bucketArray, pow(2, new->unknownBits), UINT_TYPE);
 
 	generateBuckets(new, new->known, 0);
 
@@ -181,13 +193,23 @@ Query startQuery(Reln r, char *q)
 				
 		tempPrint = malloc(MAXCHVEC + 1);
 		bitsString(*(Bits*)get(new->bucketArray, i), tempPrint);
-		printf("bitstring: %s\n",tempPrint);
+		printf("bitstring: %s, pageid: %d\n",tempPrint, *(Bits*)get(new->bucketArray, i));
 		free(tempPrint);
 	}
 
 
-	new->curBucket = 0;
-	new->curpage = *(Bits*)get(new->bucketArray, new->curBucket);
+	// new->curBucket = 0;
+	// new->curpage = *(Bits*)get(new->bucketArray, new->curBucket);
+	void* nullCheckPtr = pop(new->bucketArray);
+	if (nullCheckPtr) { 
+		new->curpage = *(Bits*)nullCheckPtr;
+	}
+	else {
+		fatal("empty hash list on init.\n");
+	}
+	// printf("page: %d\n",(int)new->curpage);
+
+	//new->curpage = *(Bits*)pop(new->bucketArray);
 
 		// char* tempPrint;
 		// tempPrint = malloc(MAXCHVEC + 1);
@@ -217,7 +239,16 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
 		// free(tempPrint);
 
 		// q->bucketArray = push(q->bucketArray, (void*)&data);
-		push(&q->bucketArray, (void*)&data);
+
+		printf("%d,split: %d\n",data, splitp(q->rel));
+		
+		if (data < splitp(q->rel)) {
+			data = getLower(data, depth(q->rel) + 1);
+		}
+		else {
+			data = getLower(data, depth(q->rel));
+		}
+		push(&q->bucketArray, &data);
 
         return; 
     } 
@@ -236,12 +267,18 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
 }
 
 Status nextBucket(Query q) {
-	q->curBucket++;
-	if (q->curBucket < nextFreeSpot(q->bucketArray)/sizeof(Bits)) {
+	void* nullCheckPtr = pop(q->bucketArray);
+	// q->curBucket++;
+	// if (q->curBucket < nextFreeSpot(q->bucketArray)/sizeof(Bits)) {
+	if (nullCheckPtr) {
 		
 		free(q->pageBuffer);
 
-		q->curpage = *(Bits*)get(q->bucketArray,q->curBucket);
+		// q->curpage = *(Bits*)get(q->bucketArray,q->curBucket);
+		q->curpage = *(Bits*)nullCheckPtr;
+		// printf("page: %d\n",(int)q->curpage);
+		
+
 		q->pageBuffer = getPage(dataFile(q->rel), q->curpage);
 		q->nextOverflowPage = pageOvflow(q->pageBuffer);
 		q->curtup = 0;
@@ -354,65 +391,6 @@ Tuple getNextTuple(Query q)
 	// endif
 	return NULL;
 }
-
-// Tuple getNextTuple(Query q)
-// {
-// 	for (;;) {
-// 		q->resultBuffer = getMatchingTupleFromCurrentPage(q);
-// 		if (q->resultBuffer != NULL) {
-// 			return q->resultBuffer;
-// 		}
-// 		else {
-// 			if (q->nextOverflowPage  != NO_PAGE) {
-// 				// printf("here1\n");
-// 				// putPage(dataFile(q->rel), q->curpage, q->pageBuffer);
-// 				// printf("here2\n");
-// 				free(q->pageBuffer);
-				
-// 				q->curpage = q->nextOverflowPage;
-// 				q->pageBuffer = getPage(ovflowFile(q->rel), q->curpage);
-// 				q->nextOverflowPage = pageOvflow(q->pageBuffer);
-// 				q->curtup = 0;
-// 				q->curtupIndex = 0;
-// 				q->is_ovflow = 1;
-
-// 				q->resultBuffer = getMatchingTupleFromCurrentPage(q);
-// 			}
-
-// 			if (q->resultBuffer != NULL) {
-// 				return q->resultBuffer;
-// 			}
-// 			else {
-// 				if (nextBucket(q)) {
-// 					// printf("morepages\n");
-// 					return getNextTuple(q);
-// 				}
-// 				else {
-// 					return NULL;
-// 				}
-// 			}
-// 		}
-// 	}
-
-
-// 	// printf("%s\n", out);
-
-// 	// TODO
-// 	// Partial algorithm:
-// 	// if (more tuples in current page)
-// 	//    get next matching tuple from current page
-// 	// else if (current page has overflow)
-// 	//    move to overflow page
-// 	//    grab first matching tuple from page
-// 	// else
-// 	//    move to "next" bucket
-// 	//    grab first matching tuple from data page
-// 	// endif
-// 	// if (current page has no matching tuples)
-// 	//    go to next page (try again)
-// 	// endif
-// 	return NULL;
-// }
 
 // clean up a QueryRep object and associated data
 

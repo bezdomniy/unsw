@@ -104,3 +104,15 @@ Count pageFreeSpace(Page p) {
 	return (PAGESIZE-hdr_size-p->free);
 }
 
+// Clear page data in memory only
+void pageClearPage(Page p) {
+	p->free = 0;
+	p->ntuples = 0;
+
+	Count hdr_size = 2*sizeof(Offset) + sizeof(Count);
+	int dataSize = PAGESIZE - hdr_size;
+	memset(p->data, 0, dataSize);
+	p->ovflow = NO_PAGE;
+}
+
+

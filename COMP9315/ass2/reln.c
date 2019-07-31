@@ -236,12 +236,10 @@ void distributeTuples(Reln r) {
 
 	Vector freePageIDs;
 	init(&freePageIDs, 2, UINT_TYPE);
+
+	PageID tempPageID;
 	
 	while (curPageID != NO_PAGE) {
-		if (curPageID != r->sp) {
-			push(&freePageIDs, &curPageID);
-			printf("*****pageID %d added to free list\n",curPageID);
-		}
 		curPage = getPage(curFile, curPageID);
 		data = pageData(curPage);
 		tupleOffset = 0;
@@ -256,10 +254,23 @@ void distributeTuples(Reln r) {
 			free(tuple);
 		}
 
+		tempPageID = pageOvflow(curPage);
+		pageClearPage(curPage);
+		if (curPageID != r->sp) {
+			push(&freePageIDs, &curPageID);
+			printf("*****pageID %d added to free list\n",curPageID);
+		}
+
 		//printf("ovflow\n");
-		curPageID = pageOvflow(curPage);
+		
+		
+		printf("writing\n");
+		putPage(curFile, curPageID,curPage);
+
 		curFile = r->ovflow;
-		free(curPage);
+		curPageID = tempPageID;
+
+		// free(curPage);
 	}
 
 
@@ -267,6 +278,7 @@ void distributeTuples(Reln r) {
 	char* buf ;
 	Bits p;
 	PageID buddyPageID = r->sp + pow(2, r->depth);
+	PageID buddyBucket = r->sp + pow(2, r->depth);
 	FILE* buddyFile = r->data;
 	curFile = r->data;
 
@@ -282,9 +294,9 @@ void distributeTuples(Reln r) {
 
 		printf("allocating with depth: %d  ", r->depth + 1);
 
-		if (p == buddyPageID) {
+		if (p == buddyBucket) {
 			printf("to buddy: %d\n", p);
-			if (addToPage(buddyPage, buf)) {
+			if (addToPage(buddyPage, buf) == -1) {
 
 				void* nullCheckPtr = pop(freePageIDs);
 				if (!nullCheckPtr) { //reuse a page, or add one if you can't
@@ -311,7 +323,7 @@ void distributeTuples(Reln r) {
 			printf("to current: %d\n", p);
 			
 
-			if (addToPage(curPage, buf)) {
+			if (addToPage(curPage, buf) == -1) {
 				void* nullCheckPtr = pop(freePageIDs);
 				if (!nullCheckPtr) { //reuse a page, or add one if you can't
 					printf("adding page\n");
@@ -321,8 +333,6 @@ void distributeTuples(Reln r) {
 					printf("**using page from freelist %d\n", nextPageID);
 					nextPageID = *(PageID*)nullCheckPtr;
 				}
-				
-				
 
 				pageSetOvflow(curPage, nextPageID);
 
