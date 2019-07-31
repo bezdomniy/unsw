@@ -199,11 +199,14 @@ PageID addToRelation(Reln r, Tuple t)
 
 	}
 	if (needToSplit(r)) {
-		printf("split\n");
 		
-		addPage(r->data);
+		
+		PageID temp = addPage(r->data);
+		printf("split: added: %d\n",temp);
 		r->npages++;
 		distributeTuples(r);
+
+		
 
 		r->sp++;
 		
@@ -258,13 +261,13 @@ void distributeTuples(Reln r) {
 		pageClearPage(curPage);
 		if (curPageID != r->sp) {
 			push(&freePageIDs, &curPageID);
-			printf("*****pageID %d added to free list\n",curPageID);
+			// printf("*****pageID %d added to free list\n",curPageID);
 		}
 
 		//printf("ovflow\n");
 		
 		
-		printf("writing\n");
+		// printf("writing\n");
 		putPage(curFile, curPageID,curPage);
 
 		curFile = r->ovflow;
@@ -277,8 +280,9 @@ void distributeTuples(Reln r) {
 	i = 0;
 	char* buf ;
 	Bits p;
-	PageID buddyPageID = r->sp + pow(2, r->depth);
-	PageID buddyBucket = r->sp + pow(2, r->depth);
+	PageID buddyPageID = r->sp + pow(2, r->depth) ;
+	PageID buddyBucket = buddyPageID;
+	printf("buddy bucket: %d\n",buddyBucket);
 	FILE* buddyFile = r->data;
 	curFile = r->data;
 
@@ -292,19 +296,19 @@ void distributeTuples(Reln r) {
 		buf = (char*)get(tuplesInBucket, i);
 		p = getLower(tupleHash(r, buf) , r->depth + 1);
 
-		printf("allocating with depth: %d  ", r->depth + 1);
+		// printf("allocating with depth: %d  ", r->depth + 1);
 
 		if (p == buddyBucket) {
-			printf("to buddy: %d\n", p);
+			// printf("to buddy: %d\n", p);
 			if (addToPage(buddyPage, buf) == -1) {
 
 				void* nullCheckPtr = pop(freePageIDs);
 				if (!nullCheckPtr) { //reuse a page, or add one if you can't
-					printf("adding page\n");
+					// printf("adding page\n");
 					nextPageID = addPage(r->ovflow);
 				}
 				else {
-					printf("**using page from freelist %d\n", nextPageID);
+					// printf("**using page from freelist %d\n", nextPageID);
 					nextPageID = *(PageID*)nullCheckPtr;
 				}
 				
@@ -320,17 +324,17 @@ void distributeTuples(Reln r) {
 			}
 		}
 		else {
-			printf("to current: %d\n", p);
+			// printf("to current: %d\n", p);
 			
 
 			if (addToPage(curPage, buf) == -1) {
 				void* nullCheckPtr = pop(freePageIDs);
 				if (!nullCheckPtr) { //reuse a page, or add one if you can't
-					printf("adding page\n");
+					// printf("adding page\n");
 					nextPageID = addPage(r->ovflow);
 				}
 				else {
-					printf("**using page from freelist %d\n", nextPageID);
+					// printf("**using page from freelist %d\n", nextPageID);
 					nextPageID = *(PageID*)nullCheckPtr;
 				}
 
@@ -345,14 +349,14 @@ void distributeTuples(Reln r) {
 			}
 		}
 
-		printf("%d: %s\n", i, buf);
+		// printf("%d: %s\n", i, buf);
 		i+= strlen(buf) + 1;
 	}
 
 	putPage(buddyFile, buddyPageID, buddyPage);
 	putPage(curFile, curPageID, curPage);
 
-	printf("end\n");
+	// printf("end\n");
 	free(freePageIDs);
 	free(tuplesInBucket);
 }

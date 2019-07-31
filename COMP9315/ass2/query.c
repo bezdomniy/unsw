@@ -32,7 +32,7 @@ struct QueryRep {
 	Count 	curPageSize;
 
 	Vector	bucketArray;
-	Count	unknownBits;
+	// Count	unknownBits;
 	Count   curBucket;
 
 	char** 	query;
@@ -134,16 +134,19 @@ Query startQuery(Reln r, char *q)
 	new->rel = r;
 	//new->queryString = copyString(q); //TODO: check if i need to copy
 	Bits h = tupleHash(r, q);
-	new->known = getLower(h, depth(r)+1);
-	new->unknownBits = depth(r)+1;
+	// new->known = getLower(h, depth(r)+1);
+	// new->unknownBits = depth(r)+1;
 	// new->known = tupleHash(r, q);
 
-	// if (depth(r) == 0)
-	// 	new->known = 1;
-	// else {
-	// 	new->known = getLower(h, depth(r));
-	// 	if (new->known < splitp(r)) new->known = getLower(h, depth(r)+1);
-	// }
+	if (depth(r) == 0) {
+		new->known = 1;
+	}
+	else {
+		new->known = getLower(h, depth(r));
+		if (new->known < splitp(r)) {
+			new->known = getLower(h, depth(r)+1);
+		} 
+	}
 
 
 	new->unknown = 0;
@@ -168,8 +171,8 @@ Query startQuery(Reln r, char *q)
 	}
 
 	// printf("%d\n",depth(r));
-	new->unknown = getLower(new->unknown, depth(r));
-	if (new->unknown < splitp(r)) new->unknown = getLower(new->unknown, depth(r)+1);
+	new->unknown = getLower(new->unknown, depth(r) + 1);
+	//if (new->unknown < splitp(r)) new->unknown = getLower(new->unknown, depth(r)+1);
 
 	// new->unknownBits = depth(r)+1;
 
@@ -184,7 +187,7 @@ Query startQuery(Reln r, char *q)
 
 	// printf("unknownBits: %d\n",new->unknownBits);
 
-	init(&new->bucketArray, pow(2, new->unknownBits), UINT_TYPE);
+	init(&new->bucketArray, pow(2, depth(r)+1), UINT_TYPE);
 
 	generateBuckets(new, new->known, 0);
 
@@ -193,7 +196,7 @@ Query startQuery(Reln r, char *q)
 				
 		tempPrint = malloc(MAXCHVEC + 1);
 		bitsString(*(Bits*)get(new->bucketArray, i), tempPrint);
-		printf("bitstring: %s, pageid: %d\n",tempPrint, *(Bits*)get(new->bucketArray, i));
+		// printf("bitstring: %s, pageid: %d\n",tempPrint, *(Bits*)get(new->bucketArray, i));
 		free(tempPrint);
 	}
 
@@ -240,15 +243,19 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
 
 		// q->bucketArray = push(q->bucketArray, (void*)&data);
 
-		printf("%d,split: %d\n",data, splitp(q->rel));
 		
-		if (data < splitp(q->rel)) {
-			data = getLower(data, depth(q->rel) + 1);
+		
+		// if (data < splitp(q->rel)) {
+		// 	data = getLower(data, depth(q->rel) + 1);
+		// }
+		// else {
+		// 	data = getLower(data, depth(q->rel));
+		// }
+		if (data < npages(q->rel)){
+			// printf("%d,split: %d\n",data, splitp(q->rel));
+			push(&q->bucketArray, &data);
 		}
-		else {
-			data = getLower(data, depth(q->rel));
-		}
-		push(&q->bucketArray, &data);
+		
 
         return; 
     } 
