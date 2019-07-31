@@ -41,7 +41,7 @@ struct QueryRep {
 
 };
 
-void test() {
+void test1() {
 	Vector tuplesInBucket;
 	
 	init(&tuplesInBucket, 1, CHAR_TYPE);
@@ -67,12 +67,59 @@ void test() {
 	exit(0);
 }
 
+void test2() {
+	Vector tuplesInBucket;
+	
+	init(&tuplesInBucket, 1, UINT_TYPE);
+
+	unsigned int num = 1;
+
+	push(&tuplesInBucket, &num);
+	// num = 2;
+	// push(&tuplesInBucket, &num);
+	// num = 3;
+	// push(&tuplesInBucket, &num);
+
+	unsigned int out = 0;
+	int i = 0;
+	while (1) {
+		void* nullCheckPtr = pop(tuplesInBucket);
+		if (!nullCheckPtr) { //reuse a page, or add one if you can't
+			out = 0;
+			break;
+		}
+		else {
+			out = *(unsigned int*)nullCheckPtr;
+			printf("out: %d\n", out);
+		}
+		
+		i+=sizeof(unsigned int);
+	}
+
+	
+	// int i;
+	// for(i = 0; i < nextFreeSpot(tuplesInBucket); i++) {
+	// 	printf("%s\n", (char*)get(tuplesInBucket, i));
+	// }
+
+	// int i = 0;
+	// char* buf ;
+	// while (i < nextFreeSpot(tuplesInBucket)) {
+	// 	buf = (char*)get(tuplesInBucket, i);
+	// 	printf("%d, %s\n", i, buf);
+	// 	i+= strlen(buf) + 1;
+	// }
+
+	//freeVector(tuplesInBucket);
+	exit(0);
+}
+
 // take a query string (e.g. "1234,?,abc,?")
 // set up a QueryRep object for the scan
 
 Query startQuery(Reln r, char *q)
 {
-	// test(); 
+	test2(); 
 
 	Query new = malloc(sizeof(struct QueryRep));
 	assert(new != NULL);

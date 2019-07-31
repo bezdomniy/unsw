@@ -33,14 +33,8 @@ struct VectorRep {
 
 void _expand(Vector *vector, size_t tupleLen) {
 	size_t newSize;
-	// size_t oldSize;
-	// unsigned int expansionFactor = 2;
-	// if ( vector->nextFreeSpot - vector->size > vector->size) {
-
-	// }
 
 	unsigned int expansionFactor = (unsigned int)ceil(((double)(*vector)->nextFreeSpot + tupleLen)/(double)(*vector)->size);
-	printf("expfact %d\n", expansionFactor);
 
 	if ((*vector)->type == UINT_TYPE) {
 		// oldSize = sizeof(unsigned int[size(vector)]) + sizeof(struct VectorRep);
@@ -54,22 +48,14 @@ void _expand(Vector *vector, size_t tupleLen) {
 		fatal("expand: Invalid type somehow in vector.\n");
 	}  
 
-		printf("sizeb4 %d\n", (int)(*vector)->size);
-	printf("size2b %d\n", (int)newSize);
-
-	// Vector ret = malloc(newSize);
-	// memcpy(ret, vector, oldSize);
-	// free(vector);
-
 	*vector = (Vector)realloc(*vector, newSize);
 	if (*vector == NULL) {
 		fatal("failed realloc.");
 	}
 
 	(*vector)->size *= expansionFactor;
-	printf("sizeaf %d\n", (int)(*vector)->size);
 
-	printf("expand\n");
+	// printf("expand\n");
 	//return ret;
 }
 
@@ -90,12 +76,9 @@ void init(Vector *vector, size_t size, unsigned short type) {
 		fatal("Invalid type.\n");
 	}
 
-	
-	
 	(*vector)->nextFreeSpot = 0;
 	(*vector)->size = size;
 	(*vector)->type = type;
-	//return vector;
 }
 
 void freeVector(Vector vector) {
@@ -103,17 +86,19 @@ void freeVector(Vector vector) {
 }
 
 void push(Vector *vector, void* data) {
-	size_t tupleLen = strlen((char*)data) + 1;
-	printf("in: |%s|, next spot: %d\n", (char*)data, (int)(*vector)->nextFreeSpot);
-	if ((*vector)->nextFreeSpot + tupleLen >= (*vector)->size) {
-		//vector = _expand(vector);
-		
-		printf("%p\n",vector);
-		_expand(vector, tupleLen);
-		printf("%p\n",vector);
-	}
+	size_t tupleLen = sizeof(unsigned int);
+	if ((*vector)->type == CHAR_TYPE)
+		tupleLen = strlen((char*)data) + 1;
 
-	// printf("%d type\n", (*vector)->type);
+	// //Debug
+	// if ((*vector)->type == UINT_TYPE)
+	// 	printf("in: |%d|, next spot: %d\n", *(int*)data, (int)(*vector)->nextFreeSpot);
+	// if ((*vector)->type == CHAR_TYPE)
+	// 	printf("in: |%s|, next spot: %d\n", (char*)data, (int)(*vector)->nextFreeSpot);
+	
+	if ((*vector)->nextFreeSpot + tupleLen >= (*vector)->size) {
+		_expand(vector, tupleLen);
+	}
 
 	if ((*vector)->type == UINT_TYPE) {
 		unsigned int n = *(unsigned int*)data;
@@ -129,29 +114,24 @@ void push(Vector *vector, void* data) {
 			(*vector)->data[(*vector)->nextFreeSpot + 2] = (n >> 8) & 0xFF;
 			(*vector)->data[(*vector)->nextFreeSpot + 3] = n & 0xFF;
 		}
-
-
-		(*vector)->nextFreeSpot += sizeof(unsigned int);
-
 	} else if ((*vector)->type == CHAR_TYPE) {
 		strcpy((*vector)->data + (*vector)->nextFreeSpot, (char*)data);
-
-		// printf("in: %s, next spot: %d\n", (char*)data, (int)vector->nextFreeSpot);
-		// printf("in: %s, next spot: %d\n", (*vector)->data +(*vector)->nextFreeSpot, (int)(*vector)->nextFreeSpot);
-
-		(*vector)->nextFreeSpot += tupleLen;
 	}
 	else {
-		// printf("%d type\n", vector->type);
 		fatal("Push: Invalid type somehow in vector.\n");
 	}
-
-	//return vector;
+	(*vector)->nextFreeSpot += tupleLen;
 }
 
 void* pop(Vector vector) {
 	if (vector->type == UINT_TYPE) {
-		void* ret = (void *)&vector->data[vector->nextFreeSpot - sizeof(unsigned int)];
+
+		int index = vector->nextFreeSpot- (unsigned int)sizeof(unsigned int);
+		if (index < 0) {
+			return NULL;
+		}
+
+		void* ret = (void *)&vector->data[index];
 		vector->nextFreeSpot -= sizeof(unsigned int);
 		return ret;
 	} else if (vector->type == CHAR_TYPE) {

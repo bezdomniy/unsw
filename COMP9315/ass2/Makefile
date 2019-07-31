@@ -5,8 +5,8 @@
 # - these define interfaces, and interfaces don't change
 
 CC=gcc
-CFLAGS=-Wall -Werror -g -std=c99
-LIBS=query.o page.o reln.o tuple.o util.o chvec.o hash.o bits.o -lm
+CFLAGS=-Wall -Werror -g -std=c99 
+LIBS=query.o page.o reln.o tuple.o util.o chvec.o hash.o bits.o -lm 
 BINS=create dump insert select stats gendata
 
 all : $(BINS)
