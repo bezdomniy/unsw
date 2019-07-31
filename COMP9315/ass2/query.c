@@ -138,17 +138,17 @@ Query startQuery(Reln r, char *q)
 	// new->unknownBits = depth(r)+1;
 	// new->known = tupleHash(r, q);
 
-	if (depth(r) == 0) {
-		new->known = 1;
-	}
-	else {
-		new->known = getLower(h, depth(r));
-		if (new->known < splitp(r)) {
-			new->known = getLower(h, depth(r)+1);
-		} 
-	}
+	// if (depth(r) == 0) {
+	// 	new->known = 1;
+	// }
+	// else {
+	// 	new->known = getLower(h, depth(r));
+	// 	if (new->known < splitp(r)) {
+	// 		new->known = getLower(h, depth(r)+1);
+	// 	} 
+	// }
 
-
+	new->known = getLower(h, depth(r) + 1);
 	new->unknown = 0;
 
 	new->nvals = nattrs(r);
@@ -191,12 +191,18 @@ Query startQuery(Reln r, char *q)
 
 	generateBuckets(new, new->known, 0);
 
+
+
 	char* tempPrint;
+			tempPrint = malloc(MAXCHVEC + 1);
+		bitsString(new->unknown, tempPrint);
+		printf("unknown: %s\n",tempPrint);
+		free(tempPrint);
 	for (i = 0; i < nextFreeSpot(new->bucketArray) / sizeof(Bits); i++) {
 				
 		tempPrint = malloc(MAXCHVEC + 1);
 		bitsString(*(Bits*)get(new->bucketArray, i), tempPrint);
-		// printf("bitstring: %s, pageid: %d\n",tempPrint, *(Bits*)get(new->bucketArray, i));
+		printf("bitstring: %s, pageid: %d\n",tempPrint, *(Bits*)get(new->bucketArray, i));
 		free(tempPrint);
 	}
 
@@ -245,12 +251,12 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
 
 		
 		
-		// if (data < splitp(q->rel)) {
-		// 	data = getLower(data, depth(q->rel) + 1);
+		// if (data < splitp(q->rel) && bitIsSet(q->unknown, depth(q->rel) + 1)) {
+		// 	data = setBit(data, depth(q->rel) + 1); 
+		// 	push(&q->bucketArray, &data);
 		// }
-		// else {
-		// 	data = getLower(data, depth(q->rel));
-		// }
+		// push(&q->bucketArray, &data);
+
 		if (data < npages(q->rel)){
 			// printf("%d,split: %d\n",data, splitp(q->rel));
 			push(&q->bucketArray, &data);
@@ -260,7 +266,7 @@ void generateBuckets(Query q, Bits data, Count unknownIndex) {
         return; 
     } 
   
-    if (bitIsSet(q->unknown, unknownIndex)) 
+    if (bitIsSet(q->unknown, unknownIndex))
     {	
         data = unsetBit(data, unknownIndex); 
 		generateBuckets(q, data, unknownIndex + 1); 
