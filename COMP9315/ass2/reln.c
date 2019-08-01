@@ -246,13 +246,10 @@ void distributeTuples(Reln r) {
 		curPage = getPage(curFile, curPageID);
 		data = pageData(curPage);
 		tupleOffset = 0;
-		//printf("tuples: %d\n",pageNTuples(curPage));
 
 		for (i = 0; i < pageNTuples(curPage); i++) {
-			//Tuple tuple = malloc(strlen(data + tupleOffset) + 1);
 			Tuple tuple = (Tuple)calloc(strlen(data + tupleOffset) + 1, sizeof(char));
 			tupleOffset += sprintf(tuple, "%s",data + tupleOffset) + 1;
-			// tuplesInBucket = push(tuplesInBucket, tuple);
 			push(&tuplesInBucket, tuple);
 			free(tuple);
 		}
@@ -261,13 +258,8 @@ void distributeTuples(Reln r) {
 		pageClearPage(curPage);
 		if (curPageID != r->sp) {
 			push(&freePageIDs, &curPageID);
-			// printf("*****pageID %d added to free list\n",curPageID);
 		}
 
-		//printf("ovflow\n");
-		
-		
-		// printf("writing\n");
 		putPage(curFile, curPageID,curPage);
 
 		curFile = r->ovflow;
@@ -311,7 +303,6 @@ void distributeTuples(Reln r) {
 					// printf("**using page from freelist %d\n", nextPageID);
 					nextPageID = *(PageID*)nullCheckPtr;
 				}
-				
 
 				pageSetOvflow(buddyPage, nextPageID);
 

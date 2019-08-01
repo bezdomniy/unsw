@@ -37,11 +37,9 @@ void _expand(Vector *vector, size_t tupleLen) {
 	unsigned int expansionFactor = (unsigned int)ceil(((double)(*vector)->nextFreeSpot + tupleLen)/(double)(*vector)->size);
 
 	if ((*vector)->type == UINT_TYPE) {
-		// oldSize = sizeof(unsigned int[size(vector)]) + sizeof(struct VectorRep);
 		newSize = (sizeof(unsigned int[size((*vector))]) * expansionFactor) + sizeof(struct VectorRep);
 	}
 	else if ((*vector)->type == CHAR_TYPE) {
-		// oldSize = sizeof(char[size(vector)]) + sizeof(struct VectorRep);
 		newSize = (sizeof(char[size((*vector))]) * expansionFactor) + sizeof(struct VectorRep);
 	}
 	else {
@@ -54,23 +52,16 @@ void _expand(Vector *vector, size_t tupleLen) {
 	}
 
 	(*vector)->size *= expansionFactor;
-
-	// printf("expand\n");
-	//return ret;
 }
 
 
 
 void init(Vector *vector, size_t size, unsigned short type) {
-	//Vector vector;
-
 	if (type == UINT_TYPE) {
 		(*vector) = (Vector)malloc(sizeof(unsigned int[size]) + sizeof(struct VectorRep));
-		// (*vector)->data[sizeof(unsigned int[size])+1] = '\0';
 	}
 	else if (type == CHAR_TYPE) {
 		(*vector) = (Vector)malloc(sizeof(char[size]) + sizeof(struct VectorRep));
-		// (*vector)->data[sizeof(char[size])+1] = '\0';
 	}
 	else {
 		fatal("Invalid type.\n");
@@ -81,9 +72,6 @@ void init(Vector *vector, size_t size, unsigned short type) {
 	(*vector)->type = type;
 }
 
-void freeVector(Vector vector) {
-	//free(vector->data);
-}
 
 void push(Vector *vector, void* data) {
 	size_t tupleLen = sizeof(unsigned int);
@@ -136,7 +124,6 @@ void* pop(Vector vector) {
 		return ret;
 	} else if (vector->type == CHAR_TYPE) {
 		fatal("Pop not implemented for char_type vector.\n");
-		// return (void *)&vector->data[index];
 	}
 	else {
 		fatal("Pop: Invalid type somehow in vector.\n");

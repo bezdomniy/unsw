@@ -71,7 +71,7 @@ void freeVals(char **vals, int nattrs)
 }
 
 // hash a tuple using the choice vector
-// TODO: actually use the choice vector to make the hash - DONE
+// DONE: actually use the choice vector to make the hash 
 
 Bits tupleHash(Reln r, Tuple t)
 {
@@ -100,7 +100,17 @@ Bits tupleHash(Reln r, Tuple t)
 			
 	}
 	bitsString(hash,buf);
-	printf("hash(%s) = %s\n", vals[0], buf);
+
+	printf("hash(");
+	for (i = 0; i < nattrs(r) - 1; i++) {
+		printf("%s,", vals[i]);
+	}
+	printf("%s", vals[i]);
+	printf(") = %s\n", buf);
+
+	freeVals(vals, nvals);
+	free(vals);
+		
 	return hash;
 }
 
