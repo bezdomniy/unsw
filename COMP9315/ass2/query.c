@@ -102,6 +102,7 @@ Query startQuery(Reln r, char *q)
 	new->curtup = 0;
 	new->curtupIndex = 0;
 	new->is_ovflow = 0;
+	new->resultBuffer = NULL;
 	
 
 	return new;
@@ -159,11 +160,13 @@ int strcmpWithWildcard(char* str, Query q) {
 		if ((strcmp(q->query[i], "?") != 0) && (strcmp(q->query[i], vals[i]) != 0)) {
 			// printf("not match!\n");
 			freeVals(vals, q->nvals);
+			free(vals);
 			return -1;
 		}
 	}
 	// printf("match!\n");
 	freeVals(vals, q->nvals);
+	free(vals);
 	return 0;
 }
 
@@ -187,7 +190,10 @@ Tuple getMatchingTupleFromCurrentPage(Query q) {
 		}
 		free(out);
 	}
-	free(q->resultBuffer);
+	if (q->resultBuffer) {
+		free(q->resultBuffer);
+	}
+		
 	return NULL;
 }
 
@@ -217,6 +223,7 @@ Tuple getNextTuple(Query q)
 			return getNextTuple(q);
 		}
 		else {
+			free(q->pageBuffer);
 			return NULL;
 		}
 	}
@@ -231,6 +238,7 @@ void closeQuery(Query q)
 	freeVals(q->query, q->nvals);
 	free(q->resultBuffer);
 	free(q->query);
+	free(q->bucketArray);
 
 	free(q);
 }
