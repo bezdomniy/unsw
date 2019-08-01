@@ -8,7 +8,7 @@
 #include "reln.h"
 #include "page.h"
 
-void showAllTuples(Page, PageID);
+void showAllTuples(Page);
 
 #define USAGE "./dump  RelName"
 
@@ -33,14 +33,14 @@ int main(int argc, char **argv)
 		printf("Bucket[%d]\n",pid);
 		// show tuples in data file
 		Page pg = getPage(dataFile(r),pid);
-		showAllTuples(pg, pid);
+		showAllTuples(pg);
 		// show tuples in overflow pages
 		Page ovpg;  PageID ovp;
 		ovp = pageOvflow(pg);
 		while (ovp != NO_PAGE) {
 			printf("Ovflow->\n");
 			ovpg = getPage(ovflowFile(r), ovp);
-			showAllTuples(ovpg, pid);
+			showAllTuples(ovpg);
 			ovp = pageOvflow(ovpg);
 			free(ovpg);
 		}
@@ -53,12 +53,12 @@ int main(int argc, char **argv)
 
 // scan all tuples in Page
 
-void showAllTuples(Page pg, PageID pgid)
+void showAllTuples(Page pg)
 {
 		Count ntups = pageNTuples(pg);
 		char *c = pageData(pg);
 		for (int i = 0; i < ntups; i++) {
-			printf("%s : bucket %d\n", c, pgid);
+			printf("%s\n", c);
 			c += strlen(c) + 1;
 		}
 }
