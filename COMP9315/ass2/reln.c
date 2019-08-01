@@ -207,20 +207,15 @@ PageID addToRelation(Reln r, Tuple t)
 
 	}
 	if (needToSplit(r)) {
-		
-		
-		PageID temp = addPage(r->data);
-		printf("split: added: %d\n",temp);
+		addPage(r->data);
+		// PageID temp = addPage(r->data);
+		// printf("split: added: %d\n",temp);
 		r->npages++;
 		distributeTuples(r);
-
-		
-
 		r->sp++;
 		
 		if (r->sp == pow(2, r->depth)) {
-			printf("depth plus 1\n");
-
+			// printf("depth plus 1\n");
 			r->depth++;
 			r->sp = 0;
 		}
@@ -231,11 +226,9 @@ PageID addToRelation(Reln r, Tuple t)
 void distributeTuples(Reln r) {
 	PageID curPageID = r->sp;
 
-
 	FILE* curFile = r->data;
 
 	Page curPage;
-
 
 	int i;
 	char* data;
@@ -282,7 +275,7 @@ void distributeTuples(Reln r) {
 	Bits p;
 	PageID buddyPageID = r->sp + pow(2, r->depth) ;
 	PageID buddyBucket = buddyPageID;
-	printf("buddy bucket: %d\n",buddyBucket);
+	// printf("buddy bucket: %d\n",buddyBucket);
 	FILE* buddyFile = r->data;
 	curFile = r->data;
 
