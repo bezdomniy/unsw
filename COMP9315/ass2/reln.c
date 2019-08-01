@@ -159,19 +159,26 @@ PageID addToRelation(Reln r, Tuple t)
 		// return p;
 	}
 	else {
+		
 		// scan overflow chain until we find space
 		// worst case: add new ovflow page at end of chain
 		Page ovpg, prevpg = NULL;
 		PageID ovp, prevp = NO_PAGE;
 		ovp = pageOvflow(pg);
+
+		putPage(r->data,p,pg);
+		
 		while (ovp != NO_PAGE) {
 			ovpg = getPage(r->ovflow, ovp);
 			if (addToPage(ovpg,t) != OK) {
 				prevp = ovp; prevpg = ovpg;
 				ovp = pageOvflow(ovpg);
+
+				// free(prevpg);
+				putPage(r->ovflow,prevp,ovpg);
 			}
 			else {
-				if (prevpg != NULL) free(prevpg);
+				//if (prevpg != NULL) free(prevpg);
 				putPage(r->ovflow,ovp,ovpg);
 				r->ntups++;
 				ret = p;
@@ -180,6 +187,7 @@ PageID addToRelation(Reln r, Tuple t)
 			}
 		}
 		if (ovp == NO_PAGE) {
+			prevpg = getPage(r->ovflow, prevp);
 			// all overflow pages are full; add another to chain
 			// at this point, there *must* be a prevpg
 			assert(prevpg != NULL);
