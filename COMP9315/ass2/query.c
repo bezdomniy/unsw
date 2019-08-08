@@ -50,7 +50,7 @@ Query startQuery(Reln r, char *q)
 	assert(new != NULL);
 
 	new->rel = r;
-	Bits h = tupleHash(r, q);
+	Bits h = tupleHash(r, q , 0);
 
 	// if (depth(r) == 0) {
 	// 	new->known = 1;

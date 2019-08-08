@@ -15,7 +15,7 @@ typedef char *Tuple;
 
 int tupLength(Tuple t);
 Tuple readTuple(Reln r, FILE *in);
-Bits tupleHash(Reln r, Tuple t);
+Bits tupleHash(Reln r, Tuple t, int print);
 void tupleVals(Tuple t, char **vals);
 void freeVals(char **vals, int nattrs);
 Bool tupleMatch(Reln r, Tuple t1, Tuple t2);

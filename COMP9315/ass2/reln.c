@@ -128,7 +128,7 @@ PageID addToRelation(Reln r, Tuple t)
 	PageID ret = NO_PAGE;
 	Bits h, p;
 	// char buf[MAXBITS+1];
-	h = tupleHash(r,t);
+	h = tupleHash(r,t, 1);
 	if (r->depth == 0)
 		p = 1;
 	else {
@@ -287,14 +287,14 @@ void distributeTuples(Reln r) {
 
 	while (i < nextFreeSpot(tuplesInBucket)) {
 		buf = (char*)get(tuplesInBucket, i);
-		p = getLower(tupleHash(r, buf) , r->depth + 1);
+		p = getLower(tupleHash(r, buf, 0) , r->depth + 1);
 
 		// printf("allocating with depth: %d  ", r->depth + 1);
 
 		if (p == buddyBucket) {
 			// printf("to buddy: %d\n", p);
 			if (addToPage(buddyPage, buf) == -1) {
-
+				// printf("page full\n");
 				void* nullCheckPtr = pop(freePageIDs);
 				if (!nullCheckPtr) { //reuse a page, or add one if you can't
 					// printf("adding page\n");
@@ -313,6 +313,8 @@ void distributeTuples(Reln r) {
 				buddyPageID = nextPageID;
 					
 				buddyPage = getPage(buddyFile, buddyPageID);
+
+				addToPage(buddyPage, buf);
 			}
 		}
 		else {
@@ -320,6 +322,7 @@ void distributeTuples(Reln r) {
 			
 
 			if (addToPage(curPage, buf) == -1) {
+				// printf("page full\n");
 				void* nullCheckPtr = pop(freePageIDs);
 				if (!nullCheckPtr) { //reuse a page, or add one if you can't
 					// printf("adding page\n");
@@ -338,6 +341,8 @@ void distributeTuples(Reln r) {
 				curPageID = nextPageID;
 					
 				curPage = getPage(curFile, curPageID);
+
+				addToPage(curPage, buf);
 			}
 		}
 
