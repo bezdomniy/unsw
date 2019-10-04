@@ -5,6 +5,7 @@ Rule::Rule(const std::string ruleType)
     this->type = ruleType;
 
     std::string patternString = ""; // regex for (formulas) ruleType (formulas)
+    // except for neg, which is ruleType(formulas)
 
     this->pattern = std::regex(patternString);
     

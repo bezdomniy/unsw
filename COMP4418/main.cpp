@@ -3,7 +3,7 @@
 #include "sequent.h"
 
 int main(int, char**) {
-    // Rule r("([a-zA-Z])", "P2");
+    // Rule r("([a-zA-Z])", "neg");
 
 	Sequent("[abc,dicks seq def,omg]");
 }
