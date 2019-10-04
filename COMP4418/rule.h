@@ -10,7 +10,7 @@ private:
 
 public:
     Rule(const std::string);
-    ~Rule();
+    ~Rule(); 
 
     bool checkMatch(const std::string);
     std::string tranform(Sequent&, bool);
