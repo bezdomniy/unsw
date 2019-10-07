@@ -33,6 +33,8 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
 
     std::string formula = formulas[formulaIndex];
     std::string formulaType = Utils::getFormulaRuleType(formula);
+    std::cout << "ftype: " << formulaType << std::endl;
+    s.print();
     boost::regex pattern("(" + formulaType + ")(?![^()]*(?:\\([^()]*\\))?\\))");
 
     std::vector<std::string> tokens;
@@ -46,8 +48,8 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
     case rAnd: 
         if (left) {
             formulas.erase(formulas.begin() + formulaIndex);
-            formulas.push_back(tokens[0]);
-            formulas.push_back(tokens[1]);
+            formulas.push_back(Utils::removeBrackets(tokens[0]));
+            formulas.push_back(Utils::removeBrackets(tokens[1]));
 
             result1 = Sequent(formulas, otherFormulas);
 
@@ -55,12 +57,12 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
         }
         else {
             formulas.erase(formulas.begin() + formulaIndex);
-            formulas.push_back(tokens[0]);
+            formulas.push_back(Utils::removeBrackets(tokens[0]));
 
             result1 = Sequent(otherFormulas, formulas);
 
             formulas.pop_back();
-            formulas.push_back(tokens[1]);
+            formulas.push_back(Utils::removeBrackets(tokens[1]));
 
             result2 = Sequent(otherFormulas, formulas);
 
@@ -71,12 +73,12 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
     case rOr : 
         if (left) {
             formulas.erase(formulas.begin() + formulaIndex);
-            formulas.push_back(tokens[0]);
+            formulas.push_back(Utils::removeBrackets(tokens[0]));
 
             result1 = Sequent(formulas, otherFormulas);
 
             formulas.pop_back();
-            formulas.push_back(tokens[1]);
+            formulas.push_back(Utils::removeBrackets(tokens[1]));
 
             result2 = Sequent(formulas, otherFormulas);
 
@@ -85,8 +87,8 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
         }
         else {
             formulas.erase(formulas.begin() + formulaIndex);
-            formulas.push_back(tokens[0]);
-            formulas.push_back(tokens[1]);
+            formulas.push_back(Utils::removeBrackets(tokens[0]));
+            formulas.push_back(Utils::removeBrackets(tokens[1]));
 
             result1 = Sequent(otherFormulas, formulas);
 
@@ -110,12 +112,12 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
     case rImp : 
         if (left) {
             formulas.erase(formulas.begin() + formulaIndex);
-            formulas.push_back(tokens[1]);
+            formulas.push_back(Utils::removeBrackets(tokens[1]));
 
             result1 = Sequent(formulas, otherFormulas);
 
             formulas.pop_back();
-            otherFormulas.push_back(tokens[0]);
+            otherFormulas.push_back(Utils::removeBrackets(tokens[0]));
 
             result2 = Sequent(formulas, otherFormulas);
 
@@ -124,8 +126,8 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
         }
         else {
             formulas.erase(formulas.begin() + formulaIndex);
-            formulas.push_back(tokens[1]);
-            otherFormulas.push_back(tokens[0]);
+            formulas.push_back(Utils::removeBrackets(tokens[1]));
+            otherFormulas.push_back(Utils::removeBrackets(tokens[0]));
 
             result1 = Sequent(otherFormulas, formulas);
 
@@ -135,16 +137,16 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
     case rIff: 
         if (left) {
             formulas.erase(formulas.begin() + formulaIndex);
-            formulas.push_back(tokens[0]);
-            formulas.push_back(tokens[1]);
+            formulas.push_back(Utils::removeBrackets(tokens[0]));
+            formulas.push_back(Utils::removeBrackets(tokens[1]));
 
             result1 = Sequent(formulas, otherFormulas);
 
             formulas.pop_back();
             formulas.pop_back();
 
-            otherFormulas.push_back(tokens[0]);
-            otherFormulas.push_back(tokens[1]);
+            otherFormulas.push_back(Utils::removeBrackets(tokens[0]));
+            otherFormulas.push_back(Utils::removeBrackets(tokens[1]));
 
             result2 = Sequent(formulas, otherFormulas);
 

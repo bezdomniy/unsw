@@ -10,7 +10,14 @@ int main(int, char**) {
     // Sequent s("[λ, φ imp ψ, neg(ρ)] seq [π, neg(x)]");
     // Sequent s("[a, b iff c, d] seq [e]");
 
-    Sequent s("[neg(e)] seq [a, b iff c, d]");
+    // Sequent s("[neg(e)] seq [a, b iff c, d]");
+
+    // Sequent s("[neg(p or q)] seq [neg(p)]");
+    // Sequent s("[p] seq [q imp p]");
+
+    // Sequent s("[p imp q,neg(r) imp neg(q) ] seq [p impr]"); // parser failed here, sure to neg outside brackets
+
+    Sequent s("[p iff e] seq [(q iff r) imp (p iff r)]");
 
     SearchTree searchTree(s);
     searchTree.findTransformations(searchTree.getRootPtr());
