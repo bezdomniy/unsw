@@ -1,7 +1,5 @@
 #include "sequent.h"
 
-#include <iostream>
-
 Sequent::Sequent()
 {
     
@@ -32,7 +30,7 @@ void Sequent::parse(const std::string sequentString)
     std::string leftString = sequentString.substr(1, seqPos - 3);
     std::string rightString = sequentString.substr(seqPos + 5, sequentString.length() - seqPos - 4 - 2);
 
-    std::cout << leftString << std::endl << rightString << std::endl;
+    // std::cout << leftString << std::endl << rightString << std::endl;
 
     Utils::splitIntoVector(leftString, this->leftSide, ",");
     Utils::splitIntoVector(rightString, this->rightSide, ",");

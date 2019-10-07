@@ -1,28 +1,25 @@
 #include "rule.h"
 
-#include <iostream>
-
-Rule::Rule()
-{
-    this->s_mapRuleTypes["and"] = rAnd;
-    this->s_mapRuleTypes["or"] = rOr;
-    this->s_mapRuleTypes["neg"] = rNeg;
-    this->s_mapRuleTypes["imp"] = rImp;
-    this->s_mapRuleTypes["iff"] = rIff;
-    
-}
-
-Rule::~Rule()
-{
-}
-
 bool Rule::checkMatch(const std::string formula) 
 {
-    return boost::regex_match(formula, this->pattern);
+    std::string formulaType = Utils::getFormulaRuleType(formula);
+
+    return formulaType.compare("atom") != 0;
 }
 
 std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left, unsigned int formulaIndex)
 {
+    enum RuleTypes {  notDefined, 
+                            rAnd, 
+                            rOr, 
+                            rNeg, 
+                            rImp,
+                            rIff,
+                            rend };
+                        
+    std::map<std::string, RuleTypes> s_mapRuleTypes = {{"and", rAnd}, {"or", rOr}, {"neg", rNeg},
+                        {"imp", rImp}, {"iff", rIff}};
+
     std::vector<std::string> formulas;
     std::vector<std::string> otherFormulas;
     if (left) {
@@ -44,11 +41,6 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
     std::pair<Sequent, std::optional<Sequent>>  out;
     Sequent result1;
     Sequent result2;
-
-    for (auto& s: tokens) {
-        std::cout << s << ", ";
-    }
-    std::cout << std::endl;
 
     switch(s_mapRuleTypes[formulaType]) {
     case rAnd: 
@@ -179,11 +171,9 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
         }
         break;    
     default : 
-        std::cout << '6';
+        // std::cout << '6';
         break;
     }
-
-    // std::cout << out << std::endl;
 
     return out;
 

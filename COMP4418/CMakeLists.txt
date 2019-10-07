@@ -7,9 +7,7 @@ enable_testing()
 set(Boost_USE_STATIC_LIBS OFF) 
 set(Boost_USE_MULTITHREADED ON)  
 set(Boost_USE_STATIC_RUNTIME OFF) 
-find_package(Boost 1.65.0 COMPONENTS regex) 
-
-
+find_package(Boost 1.65.1 COMPONENTS regex) 
 
 file(GLOB SOURCES
     *.h
@@ -22,7 +20,6 @@ if(Boost_FOUND)
     target_link_libraries(ass1 ${Boost_LIBRARIES})
 endif()
 
-# add_executable(ass1 ${SOURCES})
 
 set_target_properties(ass1 PROPERTIES
             CXX_STANDARD 17
