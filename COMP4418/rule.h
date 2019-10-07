@@ -2,6 +2,9 @@
 // #include <regex>
 #include <boost/regex.hpp>
 #include <map>
+#include <algorithm>
+#include <utility>
+#include <optional>
 #include "sequent.h"
 
 class Rule
@@ -20,11 +23,11 @@ private:
     std::map<std::string, RuleTypes> s_mapRuleTypes;
 
 public:
-    Rule(const std::string);
+    Rule();
     ~Rule();
 
     bool checkMatch(const std::string);
-    Sequent tranform(Sequent&, bool, unsigned int);
+    std::pair<Sequent, std::optional<Sequent>> tranform(Sequent&, bool, unsigned int);
 };
 
 

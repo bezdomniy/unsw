@@ -5,14 +5,18 @@
 
 int main(int, char**) {
 
+    // P5bRule→`:  Ifλ, ψ, ρ`πandλ, ρ`π, φ, thenλ, φ→ψ, ρ`π
+	// Sequent s("[def,(omg)] seq [abc,(dicks imp boobs) imp (ass)]");
 
-	Sequent s("[abc,(dicks imp boobs) imp (ass)] seq [def,(omg)]");
+    Sequent s("[λ, φ imp ψ, neg(ρ)] seq [π, neg(x)]");
 
     std::vector<std::string> left = s.getLeft();
+    Rule r;
 
-    std::string formulaType = Utils::getFormulaRuleType(left[1]);
-    
-    Rule r(formulaType);
+    std::pair<Sequent, std::optional<Sequent>> out = r.tranform(s, false, 1);
 
-    r.tranform(s, true, 1);
+    out.first.print();
+
+    if (out.second.has_value())
+        out.second.value().print();
 }

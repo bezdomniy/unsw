@@ -17,6 +17,8 @@ public:
     Sequent(std::vector<std::string>, std::vector<std::string>);
     ~Sequent();
 
+    void print();
+
     std::vector<std::string> getLeft();
     std::vector<std::string> getRight();
 

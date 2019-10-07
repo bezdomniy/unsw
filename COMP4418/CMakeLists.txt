@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.10.0)
 project(ass1 VERSION 0.1.0)
 
 include(CTest)
@@ -23,6 +23,11 @@ if(Boost_FOUND)
 endif()
 
 # add_executable(ass1 ${SOURCES})
+
+set_target_properties(ass1 PROPERTIES
+            CXX_STANDARD 17
+            CXX_EXTENSIONS OFF
+            )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

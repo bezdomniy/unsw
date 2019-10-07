@@ -59,6 +59,18 @@ void Sequent::parse(const std::string sequentString)
 //     vec.push_back(str.substr(previous, current - previous));
 // }
 
+void Sequent::print() {
+    std::cout << "[ ";
+    for (auto& s: leftSide) {
+        std::cout << s << ", ";
+    }
+    std::cout << "] seq [ ";
+    for (auto& s: rightSide) {
+        std::cout << s << ", ";
+    }
+    std::cout<< "]" << std::endl;
+}
+
 std::vector<std::string> Sequent::getLeft()
 {
     return this->leftSide;

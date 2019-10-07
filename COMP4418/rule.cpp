@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-Rule::Rule(const std::string ruleType)
+Rule::Rule()
 {
     this->s_mapRuleTypes["and"] = rAnd;
     this->s_mapRuleTypes["or"] = rOr;
@@ -21,14 +21,17 @@ bool Rule::checkMatch(const std::string formula)
     return boost::regex_match(formula, this->pattern);
 }
 
-Sequent Rule::tranform(Sequent& s, bool left, unsigned int formulaIndex)
+std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left, unsigned int formulaIndex)
 {
     std::vector<std::string> formulas;
+    std::vector<std::string> otherFormulas;
     if (left) {
         formulas = s.getLeft();
+        otherFormulas = s.getRight();
     }
     else {
         formulas = s.getRight();
+        otherFormulas = s.getLeft();
     }
 
     std::string formula = formulas[formulaIndex];
@@ -38,12 +41,17 @@ Sequent Rule::tranform(Sequent& s, bool left, unsigned int formulaIndex)
     std::vector<std::string> tokens;
     Utils::splitIntoVector(formula, tokens, pattern);
 
-    Sequent out;
+    std::pair<Sequent, std::optional<Sequent>>  out;
+    Sequent result1;
+    Sequent result2;
 
     for (auto& s: tokens) {
-        std::cout << s << std::endl;
+        std::cout << s << ", ";
     }
     std::cout << std::endl;
+
+    std::string formulaLeft;
+    std::string formulaRight;
 
     switch(s_mapRuleTypes[formulaType]) {
     case rAnd: 
@@ -53,10 +61,47 @@ Sequent Rule::tranform(Sequent& s, bool left, unsigned int formulaIndex)
         std::cout << '2';
         break;
     case rNeg: 
-        std::cout << '3'; 
+        
+        formulaLeft = Utils::removeBrackets(tokens[1]);
+        formulas.erase(formulas.begin() + formulaIndex);
+        otherFormulas.push_back(formulaLeft);
+
+        if (left) {
+            result1 = Sequent(formulas, otherFormulas);
+        }
+        else {
+            result1 = Sequent(otherFormulas, formulas);
+        }
+
+        out.first = result1;
+        
         break;    
     case rImp : 
-        std::cout << '4' << std::endl;
+        formulaLeft = tokens[0];
+        formulaRight = tokens[1];
+        if (left) {
+            formulas.erase(formulas.begin() + formulaIndex);
+            formulas.push_back(formulaRight);
+
+            result1 = Sequent(formulas, otherFormulas);
+
+            formulas.pop_back();
+            otherFormulas.push_back(formulaLeft);
+
+            result2 = Sequent(formulas, otherFormulas);
+
+            out.first = result1;
+            out.second = result2;
+        }
+        else {
+            formulas.erase(formulas.begin() + formulaIndex);
+            formulas.push_back(formulaRight);
+            otherFormulas.push_back(formulaLeft);
+
+            result1 = Sequent(otherFormulas, formulas);
+
+            out.first = result1;
+        }
         break;
     case rIff: 
         std::cout << '5'; 
