@@ -50,21 +50,60 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
     }
     std::cout << std::endl;
 
-    std::string formulaLeft;
-    std::string formulaRight;
-
     switch(s_mapRuleTypes[formulaType]) {
     case rAnd: 
-        std::cout << '1'; 
+        if (left) {
+            formulas.erase(formulas.begin() + formulaIndex);
+            formulas.push_back(tokens[0]);
+            formulas.push_back(tokens[1]);
+
+            result1 = Sequent(formulas, otherFormulas);
+
+            out.first = result1;
+        }
+        else {
+            formulas.erase(formulas.begin() + formulaIndex);
+            formulas.push_back(tokens[0]);
+
+            result1 = Sequent(otherFormulas, formulas);
+
+            formulas.pop_back();
+            formulas.push_back(tokens[1]);
+
+            result2 = Sequent(otherFormulas, formulas);
+
+            out.first = result1;
+            out.second = result2;
+        }
         break;    
     case rOr : 
-        std::cout << '2';
+        if (left) {
+            formulas.erase(formulas.begin() + formulaIndex);
+            formulas.push_back(tokens[0]);
+
+            result1 = Sequent(formulas, otherFormulas);
+
+            formulas.pop_back();
+            formulas.push_back(tokens[1]);
+
+            result2 = Sequent(formulas, otherFormulas);
+
+            out.first = result1;
+            out.second = result2;
+        }
+        else {
+            formulas.erase(formulas.begin() + formulaIndex);
+            formulas.push_back(tokens[0]);
+            formulas.push_back(tokens[1]);
+
+            result1 = Sequent(otherFormulas, formulas);
+
+            out.first = result1;
+        }
         break;
     case rNeg: 
-        
-        formulaLeft = Utils::removeBrackets(tokens[1]);
         formulas.erase(formulas.begin() + formulaIndex);
-        otherFormulas.push_back(formulaLeft);
+        otherFormulas.push_back(Utils::removeBrackets(tokens[1]));
 
         if (left) {
             result1 = Sequent(formulas, otherFormulas);
@@ -77,16 +116,14 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
         
         break;    
     case rImp : 
-        formulaLeft = tokens[0];
-        formulaRight = tokens[1];
         if (left) {
             formulas.erase(formulas.begin() + formulaIndex);
-            formulas.push_back(formulaRight);
+            formulas.push_back(tokens[1]);
 
             result1 = Sequent(formulas, otherFormulas);
 
             formulas.pop_back();
-            otherFormulas.push_back(formulaLeft);
+            otherFormulas.push_back(tokens[0]);
 
             result2 = Sequent(formulas, otherFormulas);
 
@@ -95,8 +132,8 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
         }
         else {
             formulas.erase(formulas.begin() + formulaIndex);
-            formulas.push_back(formulaRight);
-            otherFormulas.push_back(formulaLeft);
+            formulas.push_back(tokens[1]);
+            otherFormulas.push_back(tokens[0]);
 
             result1 = Sequent(otherFormulas, formulas);
 
