@@ -141,7 +141,42 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
         }
         break;
     case rIff: 
-        std::cout << '5'; 
+        if (left) {
+            formulas.erase(formulas.begin() + formulaIndex);
+            formulas.push_back(tokens[0]);
+            formulas.push_back(tokens[1]);
+
+            result1 = Sequent(formulas, otherFormulas);
+
+            formulas.pop_back();
+            formulas.pop_back();
+
+            otherFormulas.push_back(tokens[0]);
+            otherFormulas.push_back(tokens[1]);
+
+            result2 = Sequent(formulas, otherFormulas);
+
+            out.first = result1;
+            out.second = result2;
+        }
+        else {
+            formulas.erase(formulas.begin() + formulaIndex);
+            formulas.push_back(tokens[0]);
+            otherFormulas.push_back(tokens[1]);
+
+            result1 = Sequent(otherFormulas, formulas);
+
+            formulas.pop_back();
+            otherFormulas.pop_back();
+
+            otherFormulas.push_back(tokens[0]);
+            formulas.push_back(tokens[1]);
+
+            result2 = Sequent(otherFormulas, formulas);
+
+            out.first = result1;
+            out.second = result2;
+        }
         break;    
     default : 
         std::cout << '6';

@@ -10,8 +10,8 @@ int main(int, char**) {
 
     // Sequent s("[λ, φ imp ψ, neg(ρ)] seq [π, neg(x)]");
 
-    // Sequent s("[a, b or c, d] seq [e]");
-    Sequent s("[e] seq [a, b and c, d]");
+    // Sequent s("[a, b iff c, d] seq [e]");
+    Sequent s("[e] seq [a, b iff c, d]");
 
     std::vector<std::string> left = s.getLeft();
     Rule r;
