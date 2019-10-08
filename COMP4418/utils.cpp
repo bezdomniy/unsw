@@ -44,8 +44,12 @@ std::string Utils::getFormulaRuleType(const std::string& formula)
     return std::string("atom");
 }
 
+#include <iostream>
 std::string Utils::removeBrackets(const std::string& str) {
-    boost::regex regex("^\\(*|\\)*$");
+    boost::regex regex("^ *\\(|\\) *$");
+
+    // std::string out = boost::regex_replace(str, regex, "");
+    // std::cout << "in: " << str << ", out: " << out << std::endl;
 
     return boost::regex_replace(str, regex, ""); 
 }

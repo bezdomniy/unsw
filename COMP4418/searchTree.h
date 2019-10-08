@@ -20,7 +20,7 @@ private:
     std::shared_ptr<Node> rootNode;
 
     void addChild(const std::shared_ptr<Node>&, const std::shared_ptr<Node>&);
-    void childrenFromSequent(const std::vector<std::string>&, const std::shared_ptr<Node>&, bool);
+    void childrenFromSequent(Sequent&,std::vector<std::string>&, const std::shared_ptr<Node>&, bool);
 public:
     SearchTree(Sequent&);
     ~SearchTree();

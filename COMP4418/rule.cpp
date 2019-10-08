@@ -33,7 +33,7 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
 
     std::string formula = formulas[formulaIndex];
     std::string formulaType = Utils::getFormulaRuleType(formula);
-    std::cout << "ftype: " << formulaType << std::endl;
+    std::cout << "formula: " << formula << ", ftype: " << formulaType << std::endl;
     s.print();
     boost::regex pattern("(" + formulaType + ")(?![^()]*(?:\\([^()]*\\))?\\))");
 

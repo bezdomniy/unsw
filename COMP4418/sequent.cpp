@@ -69,11 +69,11 @@ void Sequent::print() {
     std::cout<< "]" << std::endl;
 }
 
-std::vector<std::string> Sequent::getLeft()
+std::vector<std::string>& Sequent::getLeft()
 {
     return this->leftSide;
 }
 
-std::vector<std::string> Sequent::getRight() {
+std::vector<std::string>& Sequent::getRight() {
     return this->rightSide;
 }

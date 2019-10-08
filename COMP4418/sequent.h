@@ -20,8 +20,8 @@ public:
 
     void print();
 
-    std::vector<std::string> getLeft();
-    std::vector<std::string> getRight();
+    std::vector<std::string>& getLeft();
+    std::vector<std::string>& getRight();
 
 
 };

@@ -25,14 +25,14 @@ void SearchTree::addChild(const std::shared_ptr<Node>& child, const std::shared_
 }
 
 
-void SearchTree::childrenFromSequent(const std::vector<std::string>& s, const std::shared_ptr<Node>& current, bool left)
+void SearchTree::childrenFromSequent(Sequent& s,std::vector<std::string>& formulas, const std::shared_ptr<Node>& current, bool left)
 {
-    for (int i = 0; i < s.size(); i++)
+    for (int i = 0; i < formulas.size(); i++)
     {
-        if (Rule::checkMatch(s.at(i))) {
+        if (Rule::checkMatch(formulas.at(i))) {
             std::shared_ptr<Node> newNodePtr = std::make_shared<Node>();
             newNodePtr->parent = current;
-            newNodePtr->data = Rule::tranform(current->data.first, left, i);
+            newNodePtr->data = Rule::tranform(s, left, i);
 
             addChild(newNodePtr, current);
 
@@ -47,13 +47,15 @@ void SearchTree::childrenFromSequent(const std::vector<std::string>& s, const st
 
 void SearchTree::findTransformations(const std::shared_ptr<Node>& current)
 {
-    childrenFromSequent(current->data.first.getLeft(), current, true);
-    childrenFromSequent(current->data.first.getRight(), current, false);
+    childrenFromSequent(current->data.first, current->data.first.getLeft(), current, true);
+    childrenFromSequent(current->data.first, current->data.first.getRight(), current, false);
 
     if (current->data.second.has_value()) {
-        childrenFromSequent(current->data.second.value().getLeft(), current, true);
-        childrenFromSequent(current->data.second.value().getRight(), current, false);
+        childrenFromSequent(current->data.second.value(), current->data.second.value().getLeft(), current, true);
+        childrenFromSequent(current->data.second.value(), current->data.second.value().getRight(), current, false);
     }
+
+    std::cout << "next level" << std::endl;
 
     for (auto& node: current->children) {
         findTransformations(node);
