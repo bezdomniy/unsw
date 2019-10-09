@@ -6,10 +6,15 @@
 
 int main(int, char**) {
 
-    std::string input = "[] seq [(neg p) or p]"; 
+    // TODO dedup outputs
+    
+    // std::string input = "[] seq [(neg p) or p]"; 
     // TODO seems to be removing brackets on neg when splitting e.g. (neg a) or (neg b)
+
     // std::string input = "[p imp q,(neg r) imp (neg q) ] seq [p imp r]";
     // std::string input = "[p] seq [(neg p)]";
+    // std::string input = "[neg (p or q)] seq [neg p]"; // TODO not working with brackets, only without - seems fine.
+    std::string input = "[p iff q] seq [(q iff r) imp (p iff r)]"; 
 
 	// Sequent s("[def,(omg)] seq [abc,(dicks imp boobs) imp (ass)]");
     // Sequent s("[λ, φ imp ψ, neg(ρ)] seq [π, neg(x)]");

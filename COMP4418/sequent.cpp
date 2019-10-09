@@ -56,7 +56,14 @@ void Sequent::setRule(const std::string& r) {
 
 void Sequent::print(const std::string& r) {
     std::cout << "[ ";
-    // for (auto& s: leftSide) {
+
+    std::sort( leftSide.begin(), leftSide.end() );
+    leftSide.erase( std::unique( leftSide.begin(), leftSide.end() ), leftSide.end() );
+
+    std::sort( rightSide.begin(), rightSide.end() );
+    rightSide.erase( std::unique( rightSide.begin(), rightSide.end() ), rightSide.end() );
+
+
     for (int i = 0; i < leftSide.size(); i++) {
         std::cout << leftSide.at(i);
         if (i < leftSide.size() - 1) std::cout << ", ";
