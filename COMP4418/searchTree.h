@@ -5,6 +5,7 @@
 #include <optional>
 #include <memory>
 #include "rule.h"
+#include "utils.h"
 #include "sequent.h"
 
 struct Node
@@ -25,7 +26,7 @@ public:
     SearchTree(Sequent&);
     ~SearchTree();
 
-    void findTransformations(const std::shared_ptr<Node>&);
+    void findTransformations(const std::shared_ptr<Node>&, std::vector<std::string>&, std::vector<std::shared_ptr<Node>>*, bool*);
     const std::shared_ptr<Node>& getRootPtr();
 };
 

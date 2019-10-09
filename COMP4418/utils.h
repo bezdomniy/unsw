@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include <boost/regex.hpp>
+#include <sstream>
+#include <algorithm>
 
 
 namespace Utils {
@@ -9,4 +11,12 @@ namespace Utils {
     void splitIntoVector(const std::string& str, std::vector<std::string>& vec, boost::regex& regex);
     std::string getFormulaRuleType(const std::string& str);
     std::string removeBrackets(const std::string& str);
+    std::vector<std::string> extractAtoms(const std::string& str);
+    bool checkFirstRule(std::vector<std::string>& left, std::vector<std::string>& right, std::vector<std::string>& atoms);
+
+    std::string ltrim(const std::string& s);
+
+    std::string rtrim(const std::string& s);
+
+    std::string trim(const std::string& s);
 }

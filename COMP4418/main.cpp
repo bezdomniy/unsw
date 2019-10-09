@@ -6,6 +6,9 @@
 
 int main(int, char**) {
 
+    // std::string input = "[] seq [(neg p) or p]";
+    std::string input = "[p imp q,(neg r) imp (neg q) ] seq [p imp r]";
+
 	// Sequent s("[def,(omg)] seq [abc,(dicks imp boobs) imp (ass)]");
     // Sequent s("[λ, φ imp ψ, neg(ρ)] seq [π, neg(x)]");
     // Sequent s("[a, b iff c, d] seq [e]");
@@ -15,17 +18,48 @@ int main(int, char**) {
     // Sequent s("[neg(p or q)] seq [neg(p)]");
     // Sequent s("[p] seq [q imp p]");
 
-    // Sequent s("[p imp q,neg(r) imp neg(q) ] seq [p impr]"); // parser failed here, sure to neg outside brackets
+    // Sequent s("[p imp q,(neg r) imp (neg q) ] seq [p imp r]"); // neg seems to work - need to test more
 
-    Sequent s("[p iff e] seq [(q iff r) imp (p iff r)]");
+    // Sequent s("[p iff e] seq [(q iff r) imp (p iff r)]");
+
+    Sequent s(input); 
+    std::vector<std::string> atoms = Utils::extractAtoms(input);
+
+    // for (auto& c: v) {
+    //     std::cout << c << ", ";
+    // }
+    // std::cout << std::endl;
 
     SearchTree searchTree(s);
-    searchTree.findTransformations(searchTree.getRootPtr());
+    std::vector<std::shared_ptr<Node>>* results = new std::vector<std::shared_ptr<Node>>();
 
-    // std::vector<std::string> left = s.getLeft();
-    // std::pair<Sequent, std::optional<Sequent>> out = Rule::tranform(s, false, 1);
+    bool* resultFound = new bool(false);
+    searchTree.findTransformations(searchTree.getRootPtr(), atoms, results, resultFound);
 
-    // out.first.print();
-    // if (out.second.has_value())
-    //     out.second.value().print();
+    if (!results->empty()) {
+        std::cout << "true" << std::endl;
+        std::shared_ptr<Node> currentNode = results->at(0);
+
+        std::string rule = "P1";
+
+        while (currentNode) {
+            // currentNode->data.first.setRule("P1");
+            currentNode->data.first.print(rule);
+            rule = currentNode->data.first.rule;
+            currentNode = currentNode->parent;
+        }
+        std::cout << "QED" << std::endl;
+    }
+
+    // for (auto& nodePtr: *results) {
+    //     nodePtr->data.first.print();
+
+    //     if (nodePtr->data.second.has_value()) {
+    //         nodePtr->data.second.value().print();
+    //     }
+    //     std::cout << std::endl;
+    // }
+
+    delete results;
+    delete resultFound;
 }

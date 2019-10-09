@@ -45,29 +45,44 @@ void SearchTree::childrenFromSequent(Sequent& s,std::vector<std::string>& formul
     }
 }
 
-void SearchTree::findTransformations(const std::shared_ptr<Node>& current)
+void SearchTree::findTransformations(const std::shared_ptr<Node>& current, std::vector<std::string>& atoms, std::vector<std::shared_ptr<Node>>* outVec, bool* resultFound)
 {
-    childrenFromSequent(current->data.first, current->data.first.getLeft(), current, true);
-    childrenFromSequent(current->data.first, current->data.first.getRight(), current, false);
-
-    if (current->data.second.has_value()) {
-        childrenFromSequent(current->data.second.value(), current->data.second.value().getLeft(), current, true);
-        childrenFromSequent(current->data.second.value(), current->data.second.value().getRight(), current, false);
-    }
-
-    std::cout << "next level" << std::endl;
-
-    for (auto& node: current->children) {
-        findTransformations(node);
-    }
-
-    if (current->children.empty()) {
-        current->data.first.print();
+    if (!(*resultFound)) {
+    // if (true) {
+        childrenFromSequent(current->data.first, current->data.first.getLeft(), current, true);
+        childrenFromSequent(current->data.first, current->data.first.getRight(), current, false);
 
         if (current->data.second.has_value()) {
-            current->data.second.value().print();
+            childrenFromSequent(current->data.second.value(), current->data.second.value().getLeft(), current, true);
+            childrenFromSequent(current->data.second.value(), current->data.second.value().getRight(), current, false);
         }
-        std::cout << std::endl;
-    }
-        
+
+        // std::cout << "next level" << std::endl;
+
+        for (auto& node: current->children) {
+            findTransformations(node, atoms, outVec, resultFound);
+        }
+
+        if (current->children.empty()) {
+            // bool leftFirstGood = current->data.first.getLeft()
+            if (Utils::checkFirstRule(current->data.first.getLeft(), current->data.first.getRight(), atoms)) {
+                *resultFound = true;
+            }
+            else if (current->data.second.has_value()) {
+                if (Utils::checkFirstRule(current->data.second.value().getLeft(), current->data.second.value().getRight(), atoms)) {
+                    *resultFound = true;
+                }
+            }
+            outVec->push_back(current);
+
+
+
+            // current->data.first.print();
+
+            // if (current->data.second.has_value()) {
+            //     current->data.second.value().print();
+            // }
+            // std::cout << std::endl;
+        }
+    }  
 }
