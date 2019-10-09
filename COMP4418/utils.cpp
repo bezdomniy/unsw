@@ -77,7 +77,7 @@ std::vector<std::string> Utils::extractAtoms(const std::string& str) {
     return vec;
 }
 
-// #include <iostream>
+#include <iostream>
 bool Utils::checkFirstRule(std::vector<std::string>& left, std::vector<std::string>& right, std::vector<std::string>& atoms) {
     // std::vector<std::string> joined;
     
@@ -109,6 +109,9 @@ bool Utils::checkFirstRule(std::vector<std::string>& left, std::vector<std::stri
     std::set_intersection(left.begin(),left.end(),
                           right.begin(),right.end(),
                           back_inserter(intersect));
+
+    // for (auto& c: intersect) std::cout<<c<<", ";
+    // std::cout<<std::endl <<!intersect.empty() <<std::endl;
 
     return !intersect.empty();
 }

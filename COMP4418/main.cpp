@@ -6,8 +6,10 @@
 
 int main(int, char**) {
 
-    // std::string input = "[] seq [(neg p) or p]";
-    std::string input = "[p imp q,(neg r) imp (neg q) ] seq [p imp r]";
+    std::string input = "[] seq [(neg p) or p]"; 
+    // TODO seems to be removing brackets on neg when splitting e.g. (neg a) or (neg b)
+    // std::string input = "[p imp q,(neg r) imp (neg q) ] seq [p imp r]";
+    // std::string input = "[p] seq [(neg p)]";
 
 	// Sequent s("[def,(omg)] seq [abc,(dicks imp boobs) imp (ass)]");
     // Sequent s("[λ, φ imp ψ, neg(ρ)] seq [π, neg(x)]");
@@ -49,6 +51,9 @@ int main(int, char**) {
             currentNode = currentNode->parent;
         }
         std::cout << "QED" << std::endl;
+    }
+    else {
+        std::cout << "false" << std::endl;
     }
 
     // for (auto& nodePtr: *results) {

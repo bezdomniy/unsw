@@ -66,14 +66,17 @@ void SearchTree::findTransformations(const std::shared_ptr<Node>& current, std::
         if (current->children.empty()) {
             // bool leftFirstGood = current->data.first.getLeft()
             if (Utils::checkFirstRule(current->data.first.getLeft(), current->data.first.getRight(), atoms)) {
+                // std::cout << "here1" << std::endl;
                 *resultFound = true;
+                outVec->push_back(current);
             }
             else if (current->data.second.has_value()) {
                 if (Utils::checkFirstRule(current->data.second.value().getLeft(), current->data.second.value().getRight(), atoms)) {
                     *resultFound = true;
+                    outVec->push_back(current);
                 }
             }
-            outVec->push_back(current);
+            // outVec->push_back(current);
 
 
 

@@ -56,14 +56,18 @@ void Sequent::setRule(const std::string& r) {
 
 void Sequent::print(const std::string& r) {
     std::cout << "[ ";
-    for (auto& s: leftSide) {
-        std::cout << s << ", ";
+    // for (auto& s: leftSide) {
+    for (int i = 0; i < leftSide.size(); i++) {
+        std::cout << leftSide.at(i);
+        if (i < leftSide.size() - 1) std::cout << ", ";
     }
-    std::cout << "] seq [ ";
-    for (auto& s: rightSide) {
-        std::cout << s << ", ";
+    std::cout << " ] seq [ ";
+    // for (auto& s: rightSide) {
+    for (int i = 0; i < rightSide.size(); i++) {
+        std::cout << rightSide.at(i);
+        if (i < rightSide.size() - 1) std::cout << ", ";
     }
-    std::cout<< "] - " << r << std::endl;
+    std::cout<< " ] - Rule " << r << std::endl;
 }
 
 std::vector<std::string>& Sequent::getLeft()
