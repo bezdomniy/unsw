@@ -26,7 +26,7 @@ public:
     SearchTree(Sequent&);
     ~SearchTree();
 
-    void findTransformations(const std::shared_ptr<Node>&, std::vector<std::string>&, std::vector<std::shared_ptr<Node>>*, bool*);
+    void findTransformations(const std::shared_ptr<Node>&, std::vector<std::shared_ptr<Node>>*, bool*);
     const std::shared_ptr<Node>& getRootPtr();
 };
 

@@ -8,7 +8,6 @@ Sequent::Sequent()
 Sequent::Sequent(const std::string sequentString)
 {
     parse(sequentString);
-    // this->atoms = Utils::extractAtoms(sequentString);
 }
 
 Sequent::Sequent(std::vector<std::string> left, std::vector<std::string> right, std::string rule)
@@ -22,10 +21,6 @@ Sequent::~Sequent()
 {
 }
 
-// const std::vector<std::string>& Sequent::getAtoms() {
-//     return this->atoms;
-// }
-
 void Sequent::parse(const std::string sequentString)
 {
     std::string seq = "seq";
@@ -36,18 +31,8 @@ void Sequent::parse(const std::string sequentString)
     std::string leftString = sequentString.substr(1, seqPos - 3);
     std::string rightString = sequentString.substr(seqPos + 5, sequentString.length() - seqPos - 4 - 2);
 
-    // std::cout << leftString << std::endl << rightString << std::endl;
-
     Utils::splitIntoVector(leftString, this->leftSide, ",");
     Utils::splitIntoVector(rightString, this->rightSide, ",");
-
-    // for (auto& s: leftSide) {
-    //     std::cout << s << std::endl;
-    // }
-    // std::cout << std::endl;
-
-
-
 }
 
 void Sequent::setRule(const std::string& r) {
@@ -69,7 +54,6 @@ void Sequent::print(const std::string& r) {
         if (i < leftSide.size() - 1) std::cout << ", ";
     }
     std::cout << " ] seq [ ";
-    // for (auto& s: rightSide) {
     for (int i = 0; i < rightSide.size(); i++) {
         std::cout << rightSide.at(i);
         if (i < rightSide.size() - 1) std::cout << ", ";

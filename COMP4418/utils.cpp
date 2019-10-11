@@ -11,10 +11,6 @@ void Utils::splitIntoVector(const std::string& str, std::vector<std::string>& ve
         current = str.find(delim, previous);
     }
     vec.push_back(Utils::trim(str.substr(previous, current - previous)));
-
-
-    //     std::string leftString = sequentString.substr(1, seqPos - 1);
-    // std::string rightString = sequentString.substr(seqPos + 4, sequentString.length() - seqPos - 4 - 1);
 }
 
 void Utils::splitIntoVector(const std::string& str, std::vector<std::string>& vec, boost::regex& regex)
@@ -47,10 +43,6 @@ std::string Utils::getFormulaRuleType(const std::string& formula)
 // #include <iostream>
 std::string Utils::removeBrackets(const std::string& str) {
     boost::regex regex("^ *\\(|\\) *$");
-
-    // std::string out = boost::regex_replace(str, regex, "");
-    // std::cout << "in: " << str << ", out: " << out << std::endl;
-
     return boost::regex_replace(str, regex, ""); 
 }
 
@@ -77,31 +69,7 @@ std::vector<std::string> Utils::extractAtoms(const std::string& str) {
     return vec;
 }
 
-#include <iostream>
-bool Utils::checkFirstRule(std::vector<std::string>& left, std::vector<std::string>& right, std::vector<std::string>& atoms) {
-    // std::vector<std::string> joined;
-    
-    // joined.reserve( left.size() + right.size() ); 
-    // joined.insert( joined.end(), left.begin(), left.end() );
-    // joined.insert( joined.end(), right.begin(), right.end() );
-
-    // std::vector<std::string> v3;
-
-    // std::sort(joined.begin(), joined.end());
-
-    // std::set_intersection(joined.begin(),joined.end(),
-    //                       atoms.begin(),atoms.end(),
-    //                       back_inserter(v3));
-
-    // for (auto& c: joined) std::cout<<c<<", ";
-    // std::cout<<std::endl;
-    // for (auto& c: atoms) std::cout<<c<<", ";
-    // std::cout<<std::endl;
-    // for (auto& c: v3) std::cout<<c<<", ";
-    // std::cout<<std::endl;
-
-    // return v3 == atoms && !left.empty() && !right.empty();
-
+bool Utils::checkFirstRule(std::vector<std::string>& left, std::vector<std::string>& right) {
     std::vector<std::string> intersect;
     std::sort(left.begin(), left.end());
     std::sort(right.begin(), right.end());
@@ -109,9 +77,6 @@ bool Utils::checkFirstRule(std::vector<std::string>& left, std::vector<std::stri
     std::set_intersection(left.begin(),left.end(),
                           right.begin(),right.end(),
                           back_inserter(intersect));
-
-    // for (auto& c: intersect) std::cout<<c<<", ";
-    // std::cout<<std::endl <<!intersect.empty() <<std::endl;
 
     return !intersect.empty();
 }

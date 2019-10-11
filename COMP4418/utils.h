@@ -12,7 +12,7 @@ namespace Utils {
     std::string getFormulaRuleType(const std::string& str);
     std::string removeBrackets(const std::string& str);
     std::vector<std::string> extractAtoms(const std::string& str);
-    bool checkFirstRule(std::vector<std::string>& left, std::vector<std::string>& right, std::vector<std::string>& atoms);
+    bool checkFirstRule(std::vector<std::string>& left, std::vector<std::string>& right);
 
     std::string ltrim(const std::string& s);
 

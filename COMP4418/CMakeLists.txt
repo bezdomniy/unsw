@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10.0)
-project(ass1 VERSION 0.1.0)
+project(assn1q3 VERSION 0.1.0)
 
 include(CTest)
 enable_testing()
@@ -16,12 +16,12 @@ file(GLOB SOURCES
 
 if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS}) 
-    add_executable(ass1 ${SOURCES}) 
-    target_link_libraries(ass1 ${Boost_LIBRARIES})
+    add_executable(assn1q3 ${SOURCES}) 
+    target_link_libraries(assn1q3 ${Boost_LIBRARIES})
 endif()
 
 
-set_target_properties(ass1 PROPERTIES
+set_target_properties(assn1q3 PROPERTIES
             CXX_STANDARD 17
             CXX_EXTENSIONS OFF
             )
