@@ -154,16 +154,16 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
         }
         else {
             formulas.erase(formulas.begin() + formulaIndex);
-            formulas.push_back(tokens[0]);
-            otherFormulas.push_back(tokens[1]);
+            formulas.push_back(Utils::removeBrackets(tokens[0]));
+            otherFormulas.push_back(Utils::removeBrackets(tokens[1]));
 
             result1 = Sequent(otherFormulas, formulas, "P6A");
 
             formulas.pop_back();
             otherFormulas.pop_back();
 
-            otherFormulas.push_back(tokens[0]);
-            formulas.push_back(tokens[1]);
+            otherFormulas.push_back(Utils::removeBrackets(tokens[0]));
+            formulas.push_back(Utils::removeBrackets(tokens[1]));
 
             result2 = Sequent(otherFormulas, formulas, "P6A");
 

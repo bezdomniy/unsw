@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include <optional>
 #include "utils.h"
 
 class Sequent
@@ -17,7 +18,7 @@ public:
     Sequent(std::vector<std::string>, std::vector<std::string>, std::string);
     ~Sequent();
 
-    void print(const std::string&);
+    int print(const std::string&, std::optional<Sequent>&, int, bool, bool);
 
     std::vector<std::string>& getLeft();
     std::vector<std::string>& getRight();

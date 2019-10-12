@@ -39,8 +39,10 @@ void Sequent::setRule(const std::string& r) {
     this->rule = r;
 }
 
-void Sequent::print(const std::string& r) {
-    std::cout << "[ ";
+int Sequent::print(const std::string& r,std::optional<Sequent>& other, int counter, bool fromDoubleRule, bool secondary) {
+
+    counter++;
+    std::cout << counter << ". [ ";
 
     std::sort( leftSide.begin(), leftSide.end() );
     leftSide.erase( std::unique( leftSide.begin(), leftSide.end() ), leftSide.end() );
@@ -58,7 +60,37 @@ void Sequent::print(const std::string& r) {
         std::cout << rightSide.at(i);
         if (i < rightSide.size() - 1) std::cout << ", ";
     }
-    std::cout<< " ] - Rule " << r << std::endl;
+    std::cout<< " ] - Rule " << r;
+
+    if (counter == 1) {
+        std::cout << std::endl;
+    }
+    else if (fromDoubleRule) {
+        if (secondary) {
+            std::cout << " - from: " << counter - 3 << ". and " << counter - 2 << ". " << std::endl;
+        } else {
+            std::cout << " - from: " << counter - 2 << ". and " << counter - 1 << ". " << std::endl;
+        }
+    }
+    else {
+        if (secondary) {
+            std::cout << " - from: " << counter - 2 << ". " << std::endl;
+        }
+        else {
+            std::cout << " - from: " << counter - 1 << ". " << std::endl;
+        }
+        
+    }
+
+    if (other.has_value()) {
+        // std::cout<<"here"<<std::endl;
+        std::optional<Sequent> empty;
+        counter = other.value().print(r, empty, counter, fromDoubleRule, true);
+        
+    }
+
+    return counter;
+    
 }
 
 std::vector<std::string>& Sequent::getLeft()

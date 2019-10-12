@@ -28,10 +28,13 @@ int main(int argc, char** argv) {
         std::shared_ptr<Node> currentNode = results->at(0);
 
         std::string rule = "P1";
+        int counter = 0;
+        bool fromDoubleRule = false;
 
         while (currentNode) {
-            currentNode->data.first.print(rule);
+            counter = currentNode->data.first.print(rule, currentNode->data.second, counter, fromDoubleRule, false);
             rule = currentNode->data.first.rule;
+            fromDoubleRule = currentNode->data.second.has_value();
             currentNode = currentNode->parent;
         }
         std::cout << "QED" << std::endl;
