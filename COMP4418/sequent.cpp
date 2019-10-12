@@ -42,6 +42,24 @@ void Sequent::setRule(const std::string& r) {
 int Sequent::print(const std::string& r,std::optional<Sequent>& other, int counter, bool fromDoubleRule, bool secondary) {
 
     counter++;
+    bool atomic = true;
+
+    // Check if sequent is comprised entirely of atomic formulas (no neg, or, and, iff, imp)
+    for (auto& formula: this->leftSide) {
+        if (Utils::getFormulaRuleType(formula) != "atom") {
+            atomic = false;
+            break;
+        }
+    }
+    if (atomic) {
+        for (auto& formula: this->rightSide) {
+            if (Utils::getFormulaRuleType(formula) != "atom") {
+                atomic = false;
+                break;
+            }
+        }
+    }
+
     std::cout << counter << ". [ ";
 
     std::sort( leftSide.begin(), leftSide.end() );
@@ -60,9 +78,15 @@ int Sequent::print(const std::string& r,std::optional<Sequent>& other, int count
         std::cout << rightSide.at(i);
         if (i < rightSide.size() - 1) std::cout << ", ";
     }
-    std::cout<< " ] - Rule " << r;
 
-    if (counter == 1) {
+    if (atomic) {
+        std::cout<< " ] - Rule P1";
+    } else {
+        std::cout<< " ] - Rule " << r;
+    }
+    
+
+    if (r == "P1" || atomic) {
         std::cout << std::endl;
     }
     else if (fromDoubleRule) {
