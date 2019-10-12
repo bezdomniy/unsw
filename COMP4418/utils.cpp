@@ -13,11 +13,11 @@ void Utils::splitIntoVector(const std::string& str, std::vector<std::string>& ve
     vec.push_back(Utils::trim(str.substr(previous, current - previous)));
 }
 
-void Utils::splitIntoVector(const std::string& str, std::vector<std::string>& vec, boost::regex& regex)
+void Utils::splitIntoVector(const std::string& str, std::vector<std::string>& vec, std::regex& regex)
 {
     
-    boost::sregex_token_iterator it(str.begin(), str.end(), regex, -1);
-    boost::sregex_token_iterator end;
+    std::sregex_token_iterator it(str.begin(), str.end(), regex, -1);
+    std::sregex_token_iterator end;
 
     while (it != end) {
         vec.push_back(Utils::trim(*it++));
@@ -27,13 +27,13 @@ void Utils::splitIntoVector(const std::string& str, std::vector<std::string>& ve
 
 std::string Utils::getFormulaRuleType(const std::string& formula)
 {
-    std::string patternString = "(and|imp|or|iff|neg)(?![^()]*(?:\\([^()]*\\))?\\))"; // regex for (formulas) ruleType (formulas)
-    // except for neg, which is ruleType(formulas)
+    // regex for extracting ruleType in: "(formulas) ruleType (formulas)" or "ruleType atom"
+    std::string patternString = "(and|imp|or|iff|neg)(?![^()]*(?:\\([^()]*\\))?\\))"; 
 
-    boost::regex pattern(patternString);
-    boost::smatch match;
+    std::regex pattern(patternString);
+    std::smatch match;
 
-    if (boost::regex_search(formula, match, pattern))
+    if (std::regex_search(formula, match, pattern))
     {
         return std::string(match[0].first, match[0].second);
     } 
@@ -41,17 +41,18 @@ std::string Utils::getFormulaRuleType(const std::string& formula)
 }
 
 std::string Utils::removeBrackets(const std::string& str) {
-    boost::regex regex("^ *\\(|\\) *$");
-    return boost::regex_replace(str, regex, ""); 
+    std::regex regex("^ *\\(|\\) *$");
+    return std::regex_replace(str, regex, ""); 
 }
 
+// Converts formula string into list of logical atoms
 std::vector<std::string> Utils::extractAtoms(const std::string& str) {
-    boost::regex regex("(and|imp|or|iff|neg|seq|neg|[\\(\\)\\[\\],])");
-    std::string temp = boost::regex_replace(str, regex, "");
+    std::regex regex("(and|imp|or|iff|neg|seq|neg|[\\(\\)\\[\\],])");
+    std::string temp = std::regex_replace(str, regex, "");
 
-    regex = boost::regex("\\s+");
+    regex = std::regex("\\s+");
 
-    temp = boost::regex_replace(temp, regex, ",");
+    temp = std::regex_replace(temp, regex, ",");
 
     std::vector<std::string> vec;
     std::stringstream ss(temp);
@@ -68,6 +69,7 @@ std::vector<std::string> Utils::extractAtoms(const std::string& str) {
     return vec;
 }
 
+// Checks whether both sides of a sequent satisfy sequent rule P1
 bool Utils::checkFirstRule(std::vector<std::string>& left, std::vector<std::string>& right) {
     std::vector<std::string> intersect;
     std::sort(left.begin(), left.end());
@@ -80,6 +82,8 @@ bool Utils::checkFirstRule(std::vector<std::string>& left, std::vector<std::stri
     return !intersect.empty();
 }
 
+// Functions to trim leading and trailing white space.
+// Reference: https://www.techiedelight.com/trim-string-cpp-remove-leading-trailing-spaces/
 std::string Utils::ltrim(const std::string& s)
 {
 	size_t start = s.find_first_not_of(" \n\r\t\f\v");

@@ -1,12 +1,13 @@
 #include "rule.h"
 
+// Checks if formula and be decomposed according to sequent rules
 bool Rule::checkMatch(const std::string formula) 
 {
     std::string formulaType = Utils::getFormulaRuleType(formula);
-
     return formulaType.compare("atom") != 0;
 }
 
+// 
 std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left, unsigned int formulaIndex)
 {
     enum RuleTypes {  notDefined, 
@@ -34,7 +35,7 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
     std::string formula = formulas[formulaIndex];
     std::string formulaType = Utils::getFormulaRuleType(formula);
 
-    boost::regex pattern("(" + formulaType + ")(?![^()]*(?:\\([^()]*\\))?\\))");
+    std::regex pattern("(" + formulaType + ")(?![^()]*(?:\\([^()]*\\))?\\))");
 
     std::vector<std::string> tokens;
     Utils::splitIntoVector(formula, tokens, pattern);
@@ -172,7 +173,6 @@ std::pair<Sequent, std::optional<Sequent>> Rule::tranform(Sequent& s, bool left,
         }
         break;    
     default : 
-        // std::cout << '6';
         break;
     }
 

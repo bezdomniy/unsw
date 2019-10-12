@@ -15,8 +15,6 @@ int main(int argc, char** argv) {
     }
 
     Sequent s(input); 
-    // std::vector<std::string> atoms = Utils::extractAtoms(input);
-
     SearchTree searchTree(s);
     std::vector<std::shared_ptr<Node>>* results = new std::vector<std::shared_ptr<Node>>();
 

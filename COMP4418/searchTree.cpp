@@ -23,7 +23,7 @@ void SearchTree::addChild(const std::shared_ptr<Node>& child, const std::shared_
     current->children.push_back(child);
 }
 
-
+// Loop through list of formulas and apply sequent rule to decompose where possible
 void SearchTree::childrenFromSequent(Sequent& s,std::vector<std::string>& formulas, const std::shared_ptr<Node>& current, bool left)
 {
     for (int i = 0; i < formulas.size(); i++)
@@ -38,6 +38,7 @@ void SearchTree::childrenFromSequent(Sequent& s,std::vector<std::string>& formul
     }
 }
 
+// Recursively decompose formulas in sequent until you are left with a formula that satisfies sequent rule P1
 void SearchTree::findTransformations(const std::shared_ptr<Node>& current, std::vector<std::shared_ptr<Node>>* outVec, bool* resultFound)
 {
     if (!(*resultFound)) {
