@@ -83,7 +83,6 @@ int Sequent::print(const std::string& r,std::optional<Sequent>& other, int count
     }
 
     if (other.has_value()) {
-        // std::cout<<"here"<<std::endl;
         std::optional<Sequent> empty;
         counter = other.value().print(r, empty, counter, fromDoubleRule, true);
         
