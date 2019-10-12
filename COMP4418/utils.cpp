@@ -3,14 +3,18 @@
 void Utils::splitIntoVector(const std::string& str, std::vector<std::string>& vec, const std::string& delim)
 {
     std::size_t current, previous = 0;
+    std::string next;
     current = str.find(delim);
 
     while (current != std::string::npos) {
-        vec.push_back(Utils::trim(str.substr(previous, current - previous)));
+        next = Utils::trim(str.substr(previous, current - previous));
+
+        if (next != "") vec.push_back(next);
         previous = current + delim.length();
         current = str.find(delim, previous);
     }
-    vec.push_back(Utils::trim(str.substr(previous, current - previous)));
+    next = Utils::trim(str.substr(previous, current - previous));
+    if (next != "") vec.push_back(next);
 }
 
 void Utils::splitIntoVector(const std::string& str, std::vector<std::string>& vec, std::regex& regex)
