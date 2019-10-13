@@ -1,0 +1,45 @@
+Assignment 1:
+Question 2:
+
+i) KB |=
+    1.  ∃x.Photographer(x)
+    2.  ∃x.Photographer(x) → SameFloor(Ivor, x)
+    3.  ∃x.MedicalStudent(x)
+    4.  ∃x.MedicalStudent(x) → LivesImmediatelyAbove(Edwina, x)
+    5.  LivesImmediatelyAbove(Patrick, Ivor)
+    6.  LawStudent(Patrick)
+    7.  ∃x.AirHostess(x)
+    8.  ∃x.AirHostess(x) → LivesOpposite(Patrick, x)
+    9.  ∃x.StoreDetective(x)
+    10. ∃x.StoreDetective(x) → HomeOf(Flat4, x)
+    11. HomeOf(Flat2, Doris)
+    12. ∃x.Clerk(x)
+    13. ∃x.HomeOf(x, Rodney)
+    14. ∃x.HomeOf(x, Rosemary)
+    15. ∃x.HomeOf(x, Ivor)
+    16. ∃x.HomeOf(x, Edwina)
+    17. ∃x.HomeOf(x, Ivor)
+    18. ∃x.HomeOf(x, Doris)
+
+    19. ∃x.∃y(HomeOf(Flat1, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat2, y)))
+    20. ∃x.∃y(HomeOf(Flat2, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat1, y)))
+
+    21. ∃x.∃y(HomeOf(Flat3, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat4, y)))
+    22. ∃x.∃y(HomeOf(Flat3, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat4, y)))
+
+    23. ∃x.∃y(HomeOf(Flat5, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat6, y)))
+    24. ∃x.∃y(HomeOf(Flat5, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat6, y)))
+
+    25. ∃x.∃y((HomeOf(Flat3, x) ∧ HomeOf(Flat1, y)) → LivesImmediatelyAbove(x, y))
+    26. ∃x.∃y((HomeOf(Flat4, x) ∧ HomeOf(Flat2, y)) → LivesImmediatelyAbove(x, y))
+    27. ∃x.∃y((HomeOf(Flat5, x) ∧ HomeOf(Flat3, y)) → LivesImmediatelyAbove(x, y))
+    28. ∃x.∃y((HomeOf(Flat6, x) ∧ HomeOf(Flat4, y)) → LivesImmediatelyAbove(x, y))
+
+ii) Let I be an interpretation such that: I |= KB
+    Case 1: I |= HomeOf(Flat4, Ivor)
+
+
+iii) No, need to make a couple of assumptions:
+    19. AirHostess(x) → Female(x)
+    20. Female(Rosemary)
+    21. ¬Female(Rodney)
