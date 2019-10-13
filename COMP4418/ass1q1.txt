@@ -17,7 +17,7 @@ i) p ∧ (q ∨ r)[|=/|-](p ∧ q) ∨ (p ∧ r)
         F F F |   F   |   F   |   F   |   F   |   F   |
         F F T |   T   |   F   |   F   |   F   |   F   |
 
-        all 4 |= 5, :. statement is valid.
+        all 4 |= 5, :. Inference holds.
 
     b) |- 
         Negated CNF of conclusion:
@@ -29,7 +29,7 @@ i) p ∧ (q ∨ r)[|=/|-](p ∧ q) ∨ (p ∧ r)
         2. ¬(p ∧ (q ∨ r)) | Negation of conclusions
         3. []             | 1,2 resolution
 
-        :. statement is valid
+        :. Inference holds.
 
 ii) [|=/|-] p → (q → p)
 
@@ -43,7 +43,7 @@ ii) [|=/|-] p → (q → p)
         F F |   T   |   T   | 
         F T |   F   |   T   | 
 
-        :. tautology: statement is valid.
+        :. tautology: Inference holds.
 
     b) |- 
         Negated CNF of conclusion:
@@ -57,7 +57,7 @@ ii) [|=/|-] p → (q → p)
         2. ¬p             | Negation of conclusions
         3. []             | 1,2 resolution
 
-        :. statement is valid
+        :. Inference holds.
 
 iii) ∃x.∀y.Likes(x,y) [|=/|-] ∀x.∃y.Likes(x,y)
 
@@ -77,7 +77,7 @@ iii) ∃x.∀y.Likes(x,y) [|=/|-] ∀x.∃y.Likes(x,y)
 
         alpha |=  Likes(b, f(b))       | {x, b}
           
-        I does not entail alpha QED. Not valid.
+        QED: I does not entail alpha. Inference does not hold.
 
     b) |-
         CNF Hypthesis:
@@ -98,6 +98,8 @@ iii) ∃x.∀y.Likes(x,y) [|=/|-] ∀x.∃y.Likes(x,y)
         4. ¬Likes(a,b)      | [2. {y,b}]
         5. []               | 3,4 resolution
 
+        :. Inference holds.
+
 iv) ¬p → ¬q, p → q [|=/|-] p ↔ q
 
     a) |= (truth table)
@@ -110,7 +112,7 @@ iv) ¬p → ¬q, p → q [|=/|-] p ↔ q
         F T |    F    |   T   |   F   |   F   |
         F F |    T    |   T   |   T   |   T   |
 
-        :. tautology: statement is valid.
+        :. tautology: Inference holds.
 
     b) |- 
         CNF Hyptheses:
@@ -138,7 +140,7 @@ iv) ¬p → ¬q, p → q [|=/|-] p ↔ q
         7. p                       | 4,5 resolution
         8. []                      | 7,8 resolution
 
-        :. statement is valid
+        :. Inference holds.
 
 v) ∀x.P(x) → Q(x), ∀x.Q(x) → R(x), ¬R(a) [|=/|-] ¬P(a)
 
@@ -149,7 +151,7 @@ v) ∀x.P(x) → Q(x), ∀x.Q(x) → R(x), ¬R(a) [|=/|-] ¬P(a)
         I |= ¬Q(y), ¬P(a) ∨ Q(y)
         I |= ¬P(a)
         I |= alpha
-        QED. Statement is valid
+        QED. Inference holds.
 
     b) |-
         CNF Hyptheses:
@@ -175,4 +177,4 @@ v) ∀x.P(x) → Q(x), ∀x.Q(x) → R(x), ¬R(a) [|=/|-] ¬P(a)
         8. R(a)                 | [7. {y,a}]
         5. []                   | 3,8 resolution
 
-        :. statement is valid
+        :. Inference holds.

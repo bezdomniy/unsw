@@ -1,0 +1,14 @@
+Assignment 1:
+Question 3 report:
+
+The solution is implemented in C++17. To build the executable, run make. To execute, type ./assnq1 'your query'
+
+The solution contains 2 classes, and 2 namespaces (for static functions) in separate files (each with .cpp and .h). 
+
+The Sequent class is used to parse, store, and represent (print) a sequenet in the form eg. '[x, y] seq [y, x neg z]'. 
+
+The SearchTree files contain a struct for a Node, with a possible pair of sequent values (to represent backward split into 2 sequents), a list of pointers to children nodes, and a pointer to it's parent node. The SearchTree class initialises from and stores a root node, and contains functions to build the search tree from an input sequent.
+
+The Rule namespace contains functions to check whether a formula can be tranformed according to a rule, and to perform this transformation.
+
+The Utils namespaces contains functions for string processing using regex functions. Some examples are finding the outermost rule keyword (outside all brackets), stripping brackets, and splitting a string into a list.

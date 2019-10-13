@@ -2,6 +2,7 @@ Assignment 1:
 Question 2:
 
 i) KB |=
+    // From sentences
     1.  ∃x.Photographer(x)
     2.  ∃x.Photographer(x) → SameFloor(Ivor, x)
     3.  ∃x.MedicalStudent(x)
@@ -21,19 +22,14 @@ i) KB |=
     17. ∃x.HomeOf(x, Ivor)
     18. ∃x.HomeOf(x, Doris)
 
-    19. ∃x.∃y(HomeOf(Flat1, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat2, y)))
-    20. ∃x.∃y(HomeOf(Flat2, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat1, y)))
-
-    21. ∃x.∃y(HomeOf(Flat3, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat4, y)))
-    22. ∃x.∃y(HomeOf(Flat3, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat4, y)))
-
-    23. ∃x.∃y(HomeOf(Flat5, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat6, y)))
-    24. ∃x.∃y(HomeOf(Flat5, x) ↔ (SameFloor(x, y) ∧ HomeOf(Flat6, y)))
-
-    25. ∃x.∃y((HomeOf(Flat3, x) ∧ HomeOf(Flat1, y)) → LivesImmediatelyAbove(x, y))
-    26. ∃x.∃y((HomeOf(Flat4, x) ∧ HomeOf(Flat2, y)) → LivesImmediatelyAbove(x, y))
-    27. ∃x.∃y((HomeOf(Flat5, x) ∧ HomeOf(Flat3, y)) → LivesImmediatelyAbove(x, y))
-    28. ∃x.∃y((HomeOf(Flat6, x) ∧ HomeOf(Flat4, y)) → LivesImmediatelyAbove(x, y))
+    // From the picture of the building
+    19. ∃x.∃y((HomeOf(Flat1, x) ∧ HomeOf(Flat2, y)) → SameFloor(x, y))
+    20. ∃x.∃y((HomeOf(Flat3, x) ∧ HomeOf(Flat4, y)) → SameFloor(x, y))
+    21. ∃x.∃y((HomeOf(Flat5, x) ∧ HomeOf(Flat6, y)) → SameFloor(x, y))
+    22. ∃x.∃y((HomeOf(Flat3, x) ∧ HomeOf(Flat1, y)) → LivesImmediatelyAbove(x, y))
+    23. ∃x.∃y((HomeOf(Flat4, x) ∧ HomeOf(Flat2, y)) → LivesImmediatelyAbove(x, y))
+    24. ∃x.∃y((HomeOf(Flat5, x) ∧ HomeOf(Flat3, y)) → LivesImmediatelyAbove(x, y))
+    25. ∃x.∃y((HomeOf(Flat6, x) ∧ HomeOf(Flat4, y)) → LivesImmediatelyAbove(x, y))
 
 ii) Let I be an interpretation such that: I |= KB
     Case 1: I |= HomeOf(Flat4, Ivor)

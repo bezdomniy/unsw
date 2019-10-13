@@ -1,0 +1,17 @@
+Assignment 1:
+Question 4:
+
+Frames
+
+(i)  how the method represents knowledge;
+This method represent knowledge in an object oriented style. A frame represents an object, with named attributes and which has relations with other frames. The frame class follows a heirarchical taxonomy, an example of which could be: 
+Mammal({attributes}) -> Primate({attributes}) -> Man({attributes}) -> Steve({attributes}). Frame attributes (called slots) can also be references to other frames.
+
+There are individual frames - which represent instances of objects, and generic frames - which represent categories or classes of objects. Individual frames have a field indicating their class which refer to a generic frame. Frames have inheritance of attributes from their parent classes, where the values of these attributes are not defined on instantiation.
+
+Generic frames can also have attributes which are filled with attached procedures. Any constraints on attribute values are expressed through these stored procedures. Procedures are expressed as attribute values under tags: IF-ADDED and IF-NEEDED, which represent whether the attribute is being newly created, or is being queried.
+
+(ii)  describes how inference works for reasoning with that knowledge representation.
+Inference works by asking by querying the values of attributes in a frame, and this query cascading through the knowledge-base until a value is reached and returned. Since frame attributes can contain stored procedures, this cascade can alter then knowledge base, create new frames, and trigger other procedure calls.
+
+If the query does not produce a result then the value of the slot is considered unknown.
