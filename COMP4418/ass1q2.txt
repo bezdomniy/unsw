@@ -2,40 +2,49 @@ Assignment 1:
 Question 2:
 
 i) KB |=
-    // From sentences
-    1.  ∃x.Photographer(x)
-    2.  ∃x.Photographer(x) → SameFloor(Ivor, x)
-    3.  ∃x.MedicalStudent(x)
-    4.  ∃x.MedicalStudent(x) → LivesImmediatelyAbove(Edwina, x)
-    5.  LivesImmediatelyAbove(Patrick, Ivor)
-    6.  LawStudent(Patrick)
-    7.  ∃x.AirHostess(x)
-    8.  ∃x.AirHostess(x) → LivesOpposite(Patrick, x)
-    9.  ∃x.StoreDetective(x)
-    10. ∃x.StoreDetective(x) → HomeOf(Flat4, x)
-    11. HomeOf(Flat2, Doris)
-    12. ∃x.Clerk(x)
-    13. ∃x.HomeOf(x, Rodney)
-    14. ∃x.HomeOf(x, Rosemary)
-    15. ∃x.HomeOf(x, Ivor)
-    16. ∃x.HomeOf(x, Edwina)
-    17. ∃x.HomeOf(x, Ivor)
-    18. ∃x.HomeOf(x, Doris)
+// From sentences
+1.  ∃x.Photographer(x)
+2.  ∃x.(Photographer(x) ∧ SameFloor(Ivor, x))
+3.  ∃x.MedicalStudent(x)
+4.  ∃x.(MedicalStudent(x) ∧ LivesImmediatelyAbove(Edwina, x))
+5.  LivesImmediatelyAbove(Patrick, Ivor)
+6.  LawStudent(Patrick)
+7.  ∃x.AirHostess(x)
+8.  ∃x.(AirHostess(x) ∧ SameFloor(Patrick, x))
+9.  ∃x.StoreDetective(x)
+10. ∃x.(StoreDetective(x) ∧ HomeOf(Flat4, x))
+11. HomeOf(Flat2, Doris)
+12. ∃x.Clerk(x)
+13. ∃x.HomeOf(x, Rodney)
+14. ∃x.HomeOf(x, Rosemary)
+15. ∃x.HomeOf(x, Ivor)
+16. ∃x.HomeOf(x, Edwina)
+17. ∃x.HomeOf(x, Ivor)
 
-    // From the picture of the building
-    19. ∃x.∃y((HomeOf(Flat1, x) ∧ HomeOf(Flat2, y)) → SameFloor(x, y))
-    20. ∃x.∃y((HomeOf(Flat3, x) ∧ HomeOf(Flat4, y)) → SameFloor(x, y))
-    21. ∃x.∃y((HomeOf(Flat5, x) ∧ HomeOf(Flat6, y)) → SameFloor(x, y))
-    22. ∃x.∃y((HomeOf(Flat3, x) ∧ HomeOf(Flat1, y)) → LivesImmediatelyAbove(x, y))
-    23. ∃x.∃y((HomeOf(Flat4, x) ∧ HomeOf(Flat2, y)) → LivesImmediatelyAbove(x, y))
-    24. ∃x.∃y((HomeOf(Flat5, x) ∧ HomeOf(Flat3, y)) → LivesImmediatelyAbove(x, y))
-    25. ∃x.∃y((HomeOf(Flat6, x) ∧ HomeOf(Flat4, y)) → LivesImmediatelyAbove(x, y))
+// From the picture of the building
+18. ∃x.∃y((HomeOf(Flat1, x) ∧ HomeOf(Flat2, y)) → SameFloor(x, y))
+19. ∃x.∃y((HomeOf(Flat3, x) ∧ HomeOf(Flat4, y)) → SameFloor(x, y))
+20. ∃x.∃y((HomeOf(Flat5, x) ∧ HomeOf(Flat6, y)) → SameFloor(x, y))
+21. ∃x.∃y((HomeOf(Flat3, x) ∧ HomeOf(Flat1, y)) → LivesImmediatelyAbove(x, y))
+22. ∃x.∃y((HomeOf(Flat4, x) ∧ HomeOf(Flat2, y)) → LivesImmediatelyAbove(x, y))
+23. ∃x.∃y((HomeOf(Flat5, x) ∧ HomeOf(Flat3, y)) → LivesImmediatelyAbove(x, y))
+24. ∃x.∃y((HomeOf(Flat6, x) ∧ HomeOf(Flat4, y)) → LivesImmediatelyAbove(x, y))
 
 ii) Let I be an interpretation such that: I |= KB
     Case 1: I |= HomeOf(Flat4, Ivor)
+    19. ∃x.((HomeOf(Flat3, x) ∧ HomeOf(Flat4, Ivor)) → SameFloor(x, Ivor))
+    22. ∃y((HomeOf(Flat4, Ivor) ∧ HomeOf(Flat2, y)) → LivesImmediatelyAbove(Ivor, y))
+    24. ∃x((HomeOf(Flat6, x) ∧ HomeOf(Flat4, Ivor)) → LivesImmediatelyAbove(x, Ivor))
 
 
-iii) No, need to make a couple of assumptions:
+iii) No, we need to make a couple of assumptions:
     19. AirHostess(x) → Female(x)
     20. Female(Rosemary)
     21. ¬Female(Rodney)
+
+    Flat 5: Rosemary, Air Hostess,
+    Flat 6: Patrick, Law Student,
+    Flat 3: Edwina, Photographer,
+    Flat 4: Ivor, Store Detective,
+    Flat 1: Rodney, Medical Student,
+    Flat 2: Doris, Clerk
