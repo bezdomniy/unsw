@@ -1,0 +1,178 @@
+Assignment 1: 
+Question 1:
+
+i) p ∧ (q ∨ r)[|=/|-](p ∧ q) ∨ (p ∧ r)
+
+    a) |= (truth table)
+
+                1       2       3       4       5
+        p q r | q ∨ r | p ∧ q | p ∧ r | p ∧ 1 | 1 ∨ 2 |
+        ------------------------
+        T T T |   T   |   T   |   T   |   T   |   T   |
+        T T F |   T   |   T   |   F   |   T   |   T   |
+        T F F |   F   |   F   |   F   |   F   |   F   |
+        T F T |   T   |   F   |   T   |   T   |   T   |
+        F T T |   T   |   F   |   F   |   F   |   F   |
+        F T F |   T   |   F   |   F   |   F   |   F   |
+        F F F |   F   |   F   |   F   |   F   |   F   |
+        F F T |   T   |   F   |   F   |   F   |   F   |
+
+        all 4 |= 5, :. statement is valid.
+
+    b) |- 
+        Negated CNF of conclusion:
+        ¬((p ∧ q) ∨ (p ∧ r))
+        ¬(p ∧ (q ∨ r))    | distribute
+
+        Resolution:
+        1. p ∧ (q ∨ r)    | hypothesis
+        2. ¬(p ∧ (q ∨ r)) | Negation of conclusions
+        3. []             | 1,2 resolution
+
+        :. statement is valid
+
+ii) [|=/|-] p → (q → p)
+
+    a) |= (truth table)
+
+                1          
+        p q | q → p | p → 1 |
+        ------------------------
+        T T |   T   |   T   | 
+        T F |   T   |   T   | 
+        F F |   T   |   T   | 
+        F T |   F   |   T   | 
+
+        :. tautology: statement is valid.
+
+    b) |- 
+        Negated CNF of conclusion:
+        ¬(p → (q → p))
+        ¬(¬p ∨ (¬q ∨ p))  | Remove implications
+        p ∧ ¬(¬q ∨ p)     | DeMorgans and double negation
+        p ∧ q ∧ ¬p        | DeMorgans and double negation
+
+        Resolution:
+        1. p              | Negation of conclusion
+        2. ¬p             | Negation of conclusions
+        3. []             | 1,2 resolution
+
+        :. statement is valid
+
+iii) ∃x.∀y.Likes(x,y) [|=/|-] ∀x.∃y.Likes(x,y)
+
+    a)  KB |=    CNF(∃x.∀y.Likes(x,y))
+                 ∀y.Likes(a,y)         | Skolomise
+                 Likes(a,y)            | Drop universal quantifier
+
+        alpha |= CNF(∀x.∃y.Likes(x,y))
+                 Likes(x,f(x))         | Skolomise
+
+        Let I be an interpretation such that: I |= KB:
+        I |= ∀y.¬Likes(b,y)
+        CNF:  ¬Likes(b,y)              | Drop universal quantifier
+             
+        I |=  ¬Likes(b,y)  
+              ¬Likes(b,f(b))           | {y, f(b)}
+
+        alpha |=  Likes(b, f(b))       | {x, b}
+          
+        I does not entail alpha QED. Not valid.
+
+    b) |-
+        CNF Hypthesis:
+        ∃x.∀y.Likes(x,y)
+        ∀y.Likes(a,y)       | Skolomise
+        Likes(a,y)          | Drop universal quantifier
+
+        Negated CNF of conclusion:
+        ¬(∀x.∃y.Likes(x,y))
+        ∃x.∀y.¬Likes(x,y)   | Drive ¬ inwards
+        ∀y.¬Likes(a,y)      | Skolomise
+        ¬Likes(a,y)         | Drop universal quantifier
+
+        Resolution:
+        1. Likes(a,y)       | Hypothesis
+        2. ¬Likes(a,y)      | Negation of conclusions
+        3. Likes(a,b)       | [1. {y,b}]
+        4. ¬Likes(a,b)      | [2. {y,b}]
+        5. []               | 3,4 resolution
+
+iv) ¬p → ¬q, p → q [|=/|-] p ↔ q
+
+    a) |= (truth table)
+
+                 1        2       3       4    
+        p q | ¬p → ¬q | p → q | p ↔ q | 1 ∧ 2 |
+        ---------------------------------------
+        T T |    T    |   T   |   T   |   T   |
+        T F |    T    |   F   |   F   |   F   |
+        F T |    F    |   T   |   F   |   F   |
+        F F |    T    |   T   |   T   |   T   |
+
+        :. tautology: statement is valid.
+
+    b) |- 
+        CNF Hyptheses:
+        1. ¬p → ¬q
+           p ∨ ¬q         | Remove implication and double negation
+
+        2. p → q
+           ¬p ∨ q         | Remove implication
+
+        Negated CNF of conclusion:
+        ¬(p ↔ q)
+        ¬((p → q) ∧ (q → p))       | Remove iff
+        ¬((¬p ∨ q) ∧ (¬q ∨ p))     | Remove implication
+        ¬(¬p ∨ q) ∨ ¬(¬q ∨ p))     | DeMorgans
+        (p ∧ ¬q) ∨ (q ∧ ¬p)        | DeMorgans and double negation
+        (¬p ∨ ¬q) ∧ (p ∨ q)
+
+        Resolution:
+        1. p ∨ ¬q                  | Hypothesis
+        2. ¬p ∨ q                  | Hypothesis 
+        3. ¬p ∨ ¬q                 | Negation of conclusions
+        4. p ∨ q                   | Negation of conclusions
+        5. ¬q                      | 1,3 resolution
+        6. ¬p                      | 2,3 resolution
+        7. p                       | 4,5 resolution
+        8. []                      | 7,8 resolution
+
+        :. statement is valid
+
+v) ∀x.P(x) → Q(x), ∀x.Q(x) → R(x), ¬R(a) [|=/|-] ¬P(a)
+
+    a)  KB |=  ¬P(a) ∨ Q(y), ¬Q(a) ∨ R(y), ¬R(a)
+        alpha |= ¬P(a)
+
+        Let I be an interpretation such that: I |= KB:
+        I |= ¬Q(y), ¬P(a) ∨ Q(y)
+        I |= ¬P(a)
+        I |= alpha
+        QED. Statement is valid
+
+    b) |-
+        CNF Hyptheses:
+        1.  ∀x.P(x) → Q(x)
+            ¬∀x.P(x) ∨ Q(x)     | Remove implication
+            ∃x.¬P(x) ∨ Q(x)     | Drive negation inwards
+            ∃x.¬P(x) ∨ Q(y)     | Standardise variables
+            ¬P(a) ∨ Q(y)        | Skolomise
+
+        2. ∀x.Q(x) → R(x)
+           ¬Q(a) ∨ R(y)         | same steps as 1.
+
+        3. ¬R(a)
+
+        Negated CNF of conclusion:
+        4.  ¬(¬P(a))
+            P(a)                | Double negation
+
+        Resolution:
+        5. Q(y)                 | 1,4 resolution 
+        6. Q(a)                 | [5. {y,a}]
+        7. R(y)                 | 2,6 resolution 
+        8. R(a)                 | [7. {y,a}]
+        5. []                   | 3,8 resolution
+
+        :. statement is valid
