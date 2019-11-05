@@ -37,14 +37,24 @@ Initial State:
     floor(7,7),floor(7,8),floor(8,1),floor(8,3),
     floor(8,4),floor(8,5),floor(9,1),floor(9,7),
     floor(9,8),floor(9,9),
+
     boulder(3,3),boulder(3,4),boulder(4,3),
+
     player(2,2),
-    adjacent(2,2,2,3),adjacent(2,2,3,2),
+
+    adjacent(2,2,2,3),adjacent(2,2,3,2)
+    ''' #for each corner tile
+
     adjacent(2,3,2,2),adjacent(2,3,2,4),adjacent(2,3,3,3),
+    ''' #for each wall adjacent tile that is not a corner
+
     adjacent(3,3,2,3),adjacent(3,3,3,2),adjacent(3,3,3,4),adjacent(3,3,4,3)
+    ''' #for each not wall adjacent tile
 
 
 Question 3.4:
 Goal:
+    boulder(4,8),boulder(5,8),boulder(6,8)
 
 Question 3.5:
+    The search space can be very large. Without specifying a search algorithm with a distance heustistic (like A*), an ASP solution can be slower than one where the search algorithm is defined explicitly.
